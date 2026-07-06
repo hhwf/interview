@@ -44,7 +44,17 @@ function closeSidebar() {
 
 function toggleQA(id) {
   const item = document.getElementById(id);
-  if (item) item.classList.toggle('open');
+  if (!item) return;
+  const answer = item.querySelector('.qa-answer');
+  if (!answer) return;
+  const inner = answer.querySelector('.qa-answer-inner');
+  if (item.classList.contains('open')) {
+    answer.style.maxHeight = '0';
+    item.classList.remove('open');
+  } else {
+    item.classList.add('open');
+    answer.style.maxHeight = (inner ? inner.scrollHeight : answer.scrollHeight) + 'px';
+  }
 }
 
 navLinks.forEach(link => {
@@ -154,4 +164,158 @@ document.querySelectorAll('.arch-box').forEach(box => {
     const total = document.documentElement.scrollHeight - window.innerHeight;
     bar.style.width = (total > 0 ? (scrolled / total) * 100 : 0) + '%';
   }, { passive: true });
+})();
+
+/* ── Dark mode toggle ── */
+(function () {
+  const DARK_KEY = 'interview-dark';
+  const html = document.documentElement;
+
+  // Apply saved preference immediately (before paint)
+  const saved = localStorage.getItem(DARK_KEY);
+  if (saved === 'dark') html.setAttribute('data-theme', 'dark');
+
+  // Inject toggle button into sidebar-logo
+  const logo = document.querySelector('.sidebar-logo');
+  if (!logo) return;
+  const btn = document.createElement('button');
+  btn.id = 'dark-toggle';
+  btn.title = '切换深色模式';
+  const isDark = () => html.getAttribute('data-theme') === 'dark';
+  btn.textContent = isDark() ? '☀' : '☽';
+  btn.addEventListener('click', () => {
+    const dark = !isDark();
+    html.setAttribute('data-theme', dark ? 'dark' : 'light');
+    localStorage.setItem(DARK_KEY, dark ? 'dark' : 'light');
+    btn.textContent = dark ? '☀' : '☽';
+  });
+  logo.appendChild(btn);
+})();
+
+/* ── Search overlay (Ctrl+K or /) ── */
+(function () {
+  // Build search index from current page
+  function buildIndex() {
+    const items = [];
+    document.querySelectorAll('.subsection[id], .gc-section[id]').forEach(el => {
+      if (el.id === 'overview') return;
+      const titleEl = el.querySelector('.sub-title, .section-title');
+      const title = titleEl ? titleEl.textContent.replace(/[●○◑▸·•]/g, '').trim() : '';
+      const bodyEl = el.querySelector('.sub-body, .section-intro');
+      const body = bodyEl ? bodyEl.textContent.trim().slice(0, 120) : '';
+      if (title) items.push({ id: el.id, title, ctx: body });
+    });
+    document.querySelectorAll('.qa-item[id]').forEach(el => {
+      const q = el.querySelector('.qa-q-text');
+      if (q) items.push({ id: el.id, title: q.textContent.trim(), ctx: 'Q&A' });
+    });
+    return items;
+  }
+
+  function highlight(text, q) {
+    if (!q) return text;
+    const re = new RegExp('(' + q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
+    return text.replace(re, '<mark>$1</mark>');
+  }
+
+  const overlay = document.createElement('div');
+  overlay.id = 'search-overlay';
+  overlay.innerHTML = `
+    <div id="search-box">
+      <input id="search-input" placeholder="搜索本页内容…" autocomplete="off" spellcheck="false">
+      <div id="search-results"></div>
+      <div id="search-hint">
+        <span class="search-kbd"><kbd>↑</kbd><kbd>↓</kbd> 导航</span>
+        <span class="search-kbd"><kbd>↵</kbd> 跳转</span>
+        <span class="search-kbd"><kbd>Esc</kbd> 关闭</span>
+        <span style="margin-left:auto;opacity:.6">Ctrl+K 或 /</span>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  const input = document.getElementById('search-input');
+  const results = document.getElementById('search-results');
+  let index = null, selIdx = 0;
+
+  function open() {
+    if (!index) index = buildIndex();
+    overlay.classList.add('open');
+    input.value = '';
+    results.innerHTML = '';
+    selIdx = 0;
+    setTimeout(() => input.focus(), 30);
+  }
+  function close() { overlay.classList.remove('open'); }
+
+  function render(q) {
+    const q2 = q.trim().toLowerCase();
+    const matches = q2.length < 1 ? [] :
+      index.filter(it => it.title.toLowerCase().includes(q2) || it.ctx.toLowerCase().includes(q2)).slice(0, 12);
+    if (!matches.length) {
+      results.innerHTML = q2 ? '<div class="search-empty">无匹配结果</div>' : '';
+      return;
+    }
+    results.innerHTML = matches.map((m, i) => `
+      <a class="search-item${i === selIdx ? ' selected' : ''}" href="#${m.id}" data-idx="${i}">
+        <div class="search-item-title">${highlight(m.title, q)}</div>
+        <div class="search-item-ctx">${highlight(m.ctx, q)}</div>
+      </a>`).join('');
+    results.querySelectorAll('.search-item').forEach(el => {
+      el.addEventListener('click', () => close());
+    });
+  }
+
+  input.addEventListener('input', () => { selIdx = 0; render(input.value); });
+  input.addEventListener('keydown', e => {
+    const items = results.querySelectorAll('.search-item');
+    if (e.key === 'ArrowDown')      { selIdx = Math.min(selIdx + 1, items.length - 1); }
+    else if (e.key === 'ArrowUp')   { selIdx = Math.max(selIdx - 1, 0); }
+    else if (e.key === 'Enter' && items[selIdx]) { items[selIdx].click(); close(); return; }
+    else if (e.key === 'Escape')    { close(); return; }
+    items.forEach((el, i) => el.classList.toggle('selected', i === selIdx));
+    if (items[selIdx]) items[selIdx].scrollIntoView({ block: 'nearest' });
+  });
+
+  overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+  document.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); open(); }
+    if (e.key === '/' && !overlay.classList.contains('open') &&
+        !['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) {
+      e.preventDefault(); open();
+    }
+  });
+})();
+
+/* ── Syntax highlighting (Prism.js via CDN) ── */
+(function () {
+  // Detect if any arch-pre looks like Java/shell code
+  const pres = document.querySelectorAll('.arch-pre');
+  const hasCode = Array.from(pres).some(p =>
+    /\b(public|private|class|void|return|synchronized|new |import |@|if \(|for \()\b/.test(p.textContent)
+  );
+  if (!hasCode) return; // pure ASCII diagrams don't need highlighting
+
+  const link = document.createElement('link');
+  link.rel = 'stylesheet';
+  link.href = 'https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css';
+  document.head.appendChild(link);
+
+  const script = document.createElement('script');
+  script.src = 'https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js';
+  script.onload = () => {
+    const autoloader = document.createElement('script');
+    autoloader.src = 'https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js';
+    document.head.appendChild(autoloader);
+    autoloader.onload = () => {
+      pres.forEach(pre => {
+        if (!pre.className.includes('language-')) {
+          // Auto-detect: Java keywords → language-java, else leave plain
+          const isJava = /\b(public|class|void|return|synchronized|new |import )\b/.test(pre.textContent);
+          if (isJava) pre.classList.add('language-java');
+        }
+      });
+      if (window.Prism) window.Prism.highlightAll();
+    };
+  };
+  document.head.appendChild(script);
 })();
