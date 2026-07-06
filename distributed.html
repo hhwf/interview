@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>分布式系统 — CAP / 分布式事务 / 分布式锁 / 限流熔断</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=DM+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<style>
+:root {
+  --bg: #f0f2f5; --bg-1: #f6f8fa; --bg-2: #eaecef;
+  --bg-card: #ffffff; --bg-hi: #f5f3ff;
+  --border: rgba(28,25,23,0.09); --border-b: rgba(28,25,23,0.18);
+  --text: #111827; --text-2: #374151; --text-3: #9ca3af;
+  --g1: #15803d; --g1-2: #16a34a;
+  --g1-d: rgba(21,128,61,0.08); --g1-b: rgba(21,128,61,0.28);
+  --zgc: #6d28d9; --zgc-2: #7c3aed;
+  --zgc-d: rgba(109,40,217,0.08); --zgc-b: rgba(109,40,217,0.28);
+  --gold: #92400e; --gold-d: rgba(146,64,14,0.08);
+  --red: #dc2626; --red-d: rgba(220,38,38,0.08);
+  --teal: #0e7490; --purple: #6d28d9; --orange: #c2410c;
+  --dist: #7c3aed; --dist-2: #6d28d9;
+  --dist-d: rgba(124,58,237,0.08); --dist-b: rgba(124,58,237,0.28);
+  --accent:     #7c3aed;
+  --accent-nav: #7c3aed; --accent-nav-d: rgba(124,58,237,0.08);
+  --accent-em:  #6d28d9; --accent-em-d:  rgba(109,40,217,0.08);
+  --fw: 'Outfit', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --fb: 'Outfit', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --fm: 'DM Mono', 'SF Mono', Consolas, monospace;
+}
+</style>
+</head>
+<body>
+
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <span class="logo-badge" style="background:linear-gradient(135deg,#7c3aed,#6d28d9)">DST</span>
+    <span class="logo-text">分布式系统</span>
+  </div>
+  <div class="page-tabs">
+    <a href="gc-principles.html"  class="tab">GC 原理</a>
+    <a href="spring.html"         class="tab">Spring</a>
+    <a href="mysql.html"          class="tab">MySQL</a>
+    <a href="redis.html"          class="tab">Redis</a>
+    <a href="mq.html"             class="tab">MQ</a>
+    <a href="juc.html"            class="tab">JUC</a>
+    <a href="distributed.html"    class="tab active-dist">分布式</a>
+  </div>
+  <div class="nav-section-label" style="color:rgba(124,58,237,0.65)">目 录</div>
+  <a href="#dist-cap"          class="nav-link">CAP &amp; BASE 理论</a>
+  <a href="#dist-transaction"  class="nav-link">分布式事务</a>
+  <a href="#dist-lock"         class="nav-link">分布式锁</a>
+  <a href="#dist-registry"     class="nav-link">注册中心</a>
+  <a href="#dist-id"           class="nav-link">分布式 ID</a>
+  <a href="#dist-ratelimit"    class="nav-link">限流与熔断</a>
+  <a href="#dist-consistent"   class="nav-link">一致性哈希</a>
+  <a href="#dist-qa"           class="nav-link">分布式面试题</a>
+</nav>
+
+<div class="content-wrap">
+<button class="menu-btn" id="menuBtn" onclick="toggleSidebar()">☰</button>
+<main class="main">
+
+  <!-- ══════════ Hero ══════════ -->
+  <section class="hero" id="overview">
+    <div class="hero-eyebrow" style="color:#7c3aed">分布式 · CAP / 事务 / 锁 / 限流 / 一致性哈希</div>
+    <h1><span style="color:#7c3aed">分布式系统</span> 核心知识</h1>
+    <p class="hero-desc">覆盖 CAP/BASE 理论、分布式事务（2PC/TCC/Saga）、分布式锁（Redis/ZK）、注册中心对比、Snowflake ID、令牌桶限流与熔断、一致性哈希，是大厂后端面试的核心必考方向。</p>
+  </section>
+
+  <!-- ══════════ 正文 ══════════ -->
+  <section class="gc-section" id="dist-section">
+    <span class="section-badge" style="background:rgba(124,58,237,0.08);color:#7c3aed;border:1px solid rgba(124,58,237,0.25)">● 分布式</span>
+    <h2 class="section-title">分布式系统核心知识</h2>
+    <p class="section-intro">
+      分布式系统将单体应用拆分为多个独立服务，带来水平扩展能力的同时，也引入了网络分区、数据一致性、服务协调等新挑战。
+      掌握 CAP/BASE 理论、分布式事务、分布式锁等核心原理，是设计高可用系统和通过大厂面试的必备基础。
+    </p>
+
+    <!-- ── 1. CAP & BASE ── -->
+    <div class="subsection" id="dist-cap">
+      <h3 class="sub-title">
+        <span class="dot" style="background:#7c3aed;box-shadow:0 0 0 3px rgba(124,58,237,0.15)"></span>
+        CAP &amp; BASE 理论
+      </h3>
+      <p class="sub-body">CAP 定理指出分布式系统不能同时满足一致性（C）、可用性（A）、分区容忍性（P），只能三选二。BASE 是对 ACID 的弱化，通过牺牲强一致性换取高可用与高性能。</p>
+
+      <!-- CAP 三要素 -->
+      <p class="sub-body" style="margin-top:1rem;font-weight:600;color:var(--text-2)">CAP 三要素</p>
+      <div class="kv-grid" style="margin-top:0.6rem">
+        <div class="kv-row">
+          <span class="kv-key" style="color:#7c3aed">C — 一致性</span>
+          <span class="kv-val">Consistency：所有节点在同一时刻看到相同的数据。写操作完成后，所有后续读都能读到最新值（强一致性）。</span>
+        </div>
+        <div class="kv-row">
+          <span class="kv-key" style="color:#7c3aed">A — 可用性</span>
+          <span class="kv-val">Availability：每个请求都能收到响应（不一定是最新数据），系统不会拒绝服务。</span>
+        </div>
+        <div class="kv-row">
+          <span class="kv-key" style="color:#7c3aed">P — 分区容忍性</span>
+          <span class="kv-val">Partition tolerance：网络分区（节点间通信中断）发生时，系统仍能继续运行。分布式系统中 P 几乎不可放弃。</span>
+        </div>
+      </div>
+
+      <!-- 为什么只能三选二 -->
+      <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">为什么只能三选二？</p>
+      <div class="arch-box" style="margin-top:0.5rem">
+        <pre class="arch-pre" style="font-size:0.78rem;line-height:1.8">
+  网络分区发生时（P 必须保留），节点 A 和节点 B 无法通信：
+
+  若要保证 C（一致性）：写 A 后必须同步到 B 才能返回成功
+    → B 不可达时必须拒绝写请求或阻塞等待 → 牺牲 A（可用性）
+
+  若要保证 A（可用性）：写 A 直接返回成功，不等待 B 同步
+    → B 的数据暂时落后 → 牺牲 C（一致性）
+
+  结论：分区发生时，C 和 A 只能选一个。</pre>
+      </div>
+
+      <!-- CP vs AP 典型系统 -->
+      <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">CP vs AP — 典型系统选型</p>
+      <div class="cmp-table-wrap" style="margin-top:0.5rem">
+        <table class="cmp-table">
+          <thead><tr><th>类型</th><th>代表系统</th><th>分区时行为</th><th>适用场景</th></tr></thead>
+          <tbody>
+            <tr><td><strong>CP</strong></td><td>ZooKeeper、etcd、HBase、Consul</td><td>拒绝服务，保证数据一致</td><td>分布式锁、选主、配置中心（数据不能错）</td></tr>
+            <tr><td><strong>AP</strong></td><td>Eureka、Cassandra、DynamoDB、CouchDB</td><td>继续服务，可能返回旧数据</td><td>服务注册、购物车、DNS（可用性优先）</td></tr>
+            <tr><td><strong>CA</strong></td><td>单机关系型数据库（MySQL 单节点）</td><td>不存在网络分区问题</td><td>单体应用（无法水平扩展）</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- BASE 理论 -->
+      <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">BASE 理论</p>
+      <p class="sub-body">BASE 是 AP 系统的设计指导原则，牺牲强一致性换取高可用：</p>
+      <div class="kv-grid" style="margin-top:0.6rem">
+        <div class="kv-row">
+          <span class="kv-key">BA — 基本可用</span>
+          <span class="kv-val">Basically Available：系统出现故障时，允许损失部分可用性（如延迟增加、降级返回默认值），但核心功能仍可用。</span>
+        </div>
+        <div class="kv-row">
+          <span class="kv-key">S — 软状态</span>
+          <span class="kv-val">Soft state：允许系统中存在中间状态，数据在节点间同步存在延迟，不要求节点时刻一致。</span>
+        </div>
+        <div class="kv-row">
+          <span class="kv-key">E — 最终一致性</span>
+          <span class="kv-val">Eventually consistent：系统保证在没有新的更新操作后，经过一段时间，所有副本最终达到一致状态。</span>
+        </div>
+      </div>
+
+      <!-- CAP vs ACID -->
+      <div class="cmp-table-wrap" style="margin-top:1rem">
+        <table class="cmp-table">
+          <thead><tr><th>维度</th><th>ACID（传统数据库）</th><th>BASE（分布式系统）</th></tr></thead>
+          <tbody>
+            <tr><td>一致性</td><td>强一致性（事务内立即一致）</td><td>最终一致性（允许短暂不一致）</td></tr>
+            <tr><td>可用性</td><td>牺牲可用性保证一致性</td><td>优先可用性</td></tr>
+            <tr><td>适用</td><td>金融、订单（数据强一致要求）</td><td>社交、推荐、购物车（高并发优先）</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#7c3aed;background:rgba(124,58,237,0.05)">
+        <strong>面试要点：</strong>实际系统中 P 不可放弃，真正的选择是 CP 还是 AP。Nacos 默认 AP 模式但可切换 CP；ZooKeeper 是 CP；Eureka 是 AP。"最终一致性"不等于"随便不一致"，需要通过补偿机制（重试、对账）保障。
+      </div>
+    </div>
+
+    <!-- ── 2. 分布式事务 ── -->
+    <div class="subsection" id="dist-transaction">
+      <h3 class="sub-title">
+        <span class="dot" style="background:#7c3aed;box-shadow:0 0 0 3px rgba(124,58,237,0.15)"></span>
+        分布式事务
+      </h3>
+      <p class="sub-body">跨服务 / 跨库操作无法依赖本地事务，需要 2PC、TCC、Saga、本地消息表等方案在一致性与可用性之间取得平衡。</p>
+
+      <!-- 方案对比总表 -->
+      <p class="sub-body" style="margin-top:1rem;font-weight:600;color:var(--text-2)">主流方案对比</p>
+      <div class="cmp-table-wrap" style="margin-top:0.5rem">
+        <table class="cmp-table">
+          <thead><tr><th>方案</th><th>一致性</th><th>性能</th><th>业务侵入</th><th>适用场景</th></tr></thead>
+          <tbody>
+            <tr><td>2PC</td><td>强一致</td><td>低（阻塞）</td><td>低</td><td>数据库层（XA 协议）</td></tr>
+            <tr><td>TCC</td><td>最终一致</td><td>高</td><td>高（需实现 3 接口）</td><td>资金、库存等核心业务</td></tr>
+            <tr><td>Saga</td><td>最终一致</td><td>高</td><td>中（需编写补偿）</td><td>长流程业务（订单、物流）</td></tr>
+            <tr><td>本地消息表</td><td>最终一致</td><td>高</td><td>低</td><td>跨服务异步通知</td></tr>
+            <tr><td>事务消息（MQ）</td><td>最终一致</td><td>高</td><td>低</td><td>生产者与消费者解耦</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 2PC -->
+      <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">2PC（两阶段提交）</p>
+      <div class="arch-box" style="margin-top:0.5rem">
+        <pre class="arch-pre" style="font-size:0.78rem;line-height:1.8">
+  协调者（Coordinator）          参与者（Participant A / B）
+
+  ── Phase 1: Prepare ──────────────────────────────────
+  发送 Prepare 请求  ──────────►  执行本地事务，写 undo/redo log
+                                  返回 Yes / No
+  ── Phase 2: Commit / Rollback ────────────────────────
+  全部 Yes → 发送 Commit ──────►  提交本地事务，释放锁
+  任一 No  → 发送 Rollback ────►  回滚本地事务，释放锁</pre>
+      </div>
+      <p class="sub-body" style="margin-top:0.75rem;font-weight:600;color:var(--text-2)">2PC 缺陷</p>
+      <div class="kv-grid" style="margin-top:0.5rem">
+        <div class="kv-row"><span class="kv-key" style="color:#dc2626">同步阻塞</span><span class="kv-val">Prepare 阶段参与者持有锁等待协调者指令，高并发下锁竞争严重</span></div>
+        <div class="kv-row"><span class="kv-key" style="color:#dc2626">单点故障</span><span class="kv-val">协调者宕机，参与者将永久阻塞（持锁无法释放）</span></div>
+        <div class="kv-row"><span class="kv-key" style="color:#dc2626">数据不一致</span><span class="kv-val">Phase 2 中协调者发送 Commit 后宕机，部分参与者提交、部分未提交</span></div>
+      </div>
+
+      <!-- TCC -->
+      <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">TCC（Try-Confirm-Cancel）</p>
+      <div class="arch-box" style="margin-top:0.5rem">
+        <pre class="arch-pre" style="font-size:0.78rem;line-height:1.8">
+  Try      ── 预留资源（冻结库存 / 冻结余额），检查并预占，不提交
+  Confirm  ── 正式提交，将预留资源转为实际扣减
+  Cancel   ── 释放预留资源，回滚 Try 阶段的操作
+
+  示例：转账 A→B 100元
+    Try:     A 冻结 100，B 预增 100（两者均可回滚）
+    Confirm: A 扣减 100，B 实际到账 100
+    Cancel:  A 解冻 100，B 取消预增</pre>
+      </div>
+      <div class="kv-grid" style="margin-top:0.75rem">
+        <div class="kv-row"><span class="kv-key">优点</span><span class="kv-val">无全局锁，性能好；业务逻辑在应用层，不依赖数据库 XA</span></div>
+        <div class="kv-row"><span class="kv-key" style="color:#dc2626">缺点</span><span class="kv-val">业务侵入性强（必须实现 3 个接口）；需处理空回滚、悬挂、幂等三种异常</span></div>
+      </div>
+
+      <!-- Saga -->
+      <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">Saga（长事务补偿）</p>
+      <div class="arch-box" style="margin-top:0.5rem">
+        <pre class="arch-pre" style="font-size:0.78rem;line-height:1.8">
+  将长事务拆分为一系列本地事务，每个本地事务对应一个补偿事务：
+
+  T1 → T2 → T3 → T4   （正向流程，每步立即提交）
+       ↓ 失败
+  T3 → C2 → C1         （反向补偿，从失败点向前回滚）
+
+  两种编排方式：
+  ① 编排（Choreography）：事件驱动，服务间通过 MQ 触发，去中心化
+  ② 协调（Orchestration）：Saga 协调器统一调度（Seata Saga 模式）</pre>
+      </div>
+
+      <!-- 本地消息表 -->
+      <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">本地消息表（最终一致性经典方案）</p>
+      <div class="arch-box" style="margin-top:0.5rem">
+        <pre class="arch-pre" style="font-size:0.78rem;line-height:1.8">
+  ┌──────────────────────────────────────────────────────┐
+  │  本地事务（原子）                                       │
+  │  1. 执行业务操作（如扣减库存）                           │
+  │  2. 写消息到本地消息表（status=PENDING）                 │
+  └──────────────────────────┬───────────────────────────┘
+                             │ 事务提交成功
+                             ▼
+  定时任务扫描 PENDING 消息 → 发送到 MQ → 消费者处理
+                             │ 消费成功
+                             ▼
+                    更新消息状态 = DONE
+  消费失败 → MQ 重试 → 消费者保证幂等</pre>
+      </div>
+
+      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#7c3aed;background:rgba(124,58,237,0.05)">
+        <strong>面试要点：</strong>TCC 的三种异常必须处理——<strong>空回滚</strong>（Try 未执行就收到 Cancel）、<strong>悬挂</strong>（Cancel 先于 Try 执行）、<strong>幂等</strong>（Confirm/Cancel 被重复调用）。生产中推荐使用 Seata 框架（支持 AT/TCC/Saga/XA 四种模式），AT 模式对业务无侵入，底层自动生成 undo log。
+      </div>
+    </div>
+
+    <!-- ── 3. 分布式锁 ── -->
+    <div class="subsection" id="dist-lock">
+      <h3 class="sub-title">
+        <span class="dot" style="background:#7c3aed;box-shadow:0 0 0 3px rgba(124,58,237,0.15)"></span>
+        分布式锁
+      </h3>
+      <p class="sub-body">多节点并发写同一资源时需要分布式锁协调，主流方案包括基于 Redis（Redisson 看门狗）和 ZooKeeper（临时顺序节点）两种路线。</p>
+    </div>
+
+    <!-- ── 4. 注册中心 ── -->
+    <div class="subsection" id="dist-registry">
+      <h3 class="sub-title">
+        <span class="dot" style="background:#7c3aed;box-shadow:0 0 0 3px rgba(124,58,237,0.15)"></span>
+        注册中心与服务发现
+      </h3>
+      <p class="sub-body">服务注册中心负责维护服务实例列表，支持健康检查和动态上下线。Nacos（AP/CP 可切换）、Eureka（AP）、ZooKeeper（CP）各有取舍。</p>
+    </div>
+
+    <!-- ── 5. 分布式 ID ── -->
+    <div class="subsection" id="dist-id">
+      <h3 class="sub-title">
+        <span class="dot" style="background:#7c3aed;box-shadow:0 0 0 3px rgba(124,58,237,0.15)"></span>
+        分布式 ID
+      </h3>
+      <p class="sub-body">分布式环境下数据库自增 ID 无法保证全局唯一，需要 Snowflake、号段模式、Redis incr 等方案生成全局唯一、趋势递增的 ID。</p>
+    </div>
+
+    <!-- ── 6. 限流与熔断 ── -->
+    <div class="subsection" id="dist-ratelimit">
+      <h3 class="sub-title">
+        <span class="dot" style="background:#7c3aed;box-shadow:0 0 0 3px rgba(124,58,237,0.15)"></span>
+        限流与熔断
+      </h3>
+      <p class="sub-body">限流（令牌桶 / 漏桶 / 滑动窗口）保护服务不被流量压垮，熔断（CLOSED→OPEN→HALF-OPEN 状态机）在下游异常时快速失败，防止级联雪崩。</p>
+    </div>
+
+    <!-- ── 7. 一致性哈希 ── -->
+    <div class="subsection" id="dist-consistent">
+      <h3 class="sub-title">
+        <span class="dot" style="background:#7c3aed;box-shadow:0 0 0 3px rgba(124,58,237,0.15)"></span>
+        一致性哈希
+      </h3>
+      <p class="sub-body">一致性哈希将节点和数据都映射到同一哈希环，节点变动只影响相邻数据，结合虚拟节点解决数据倾斜，广泛用于分布式缓存和负载均衡。</p>
+    </div>
+
+    <!-- ── 8. 面试题 ── -->
+    <div class="subsection" id="dist-qa">
+      <h3 class="sub-title">
+        <span class="dot" style="background:#7c3aed;box-shadow:0 0 0 3px rgba(124,58,237,0.15)"></span>
+        分布式高频面试题
+      </h3>
+      <div class="qa-list">
+
+        <div class="qa-item" id="q-dist-1">
+          <div class="qa-question" onclick="toggleQA('q-dist-1')">
+            <span class="qa-num" style="background:rgba(124,58,237,0.1);color:#7c3aed;border:1px solid rgba(124,58,237,0.25)">Q1</span>
+            <span class="qa-q-text">CAP 理论是什么？分布式系统为什么不能同时满足三者？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner"></div></div>
+        </div>
+
+        <div class="qa-item" id="q-dist-2">
+          <div class="qa-question" onclick="toggleQA('q-dist-2')">
+            <span class="qa-num" style="background:rgba(124,58,237,0.1);color:#7c3aed;border:1px solid rgba(124,58,237,0.25)">Q2</span>
+            <span class="qa-q-text">BASE 理论是什么？和 ACID 有什么区别？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner"></div></div>
+        </div>
+
+        <div class="qa-item" id="q-dist-3">
+          <div class="qa-question" onclick="toggleQA('q-dist-3')">
+            <span class="qa-num" style="background:rgba(124,58,237,0.1);color:#7c3aed;border:1px solid rgba(124,58,237,0.25)">Q3</span>
+            <span class="qa-q-text">分布式事务有哪些解决方案？各自适用什么场景？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner"></div></div>
+        </div>
+
+        <div class="qa-item" id="q-dist-4">
+          <div class="qa-question" onclick="toggleQA('q-dist-4')">
+            <span class="qa-num" style="background:rgba(124,58,237,0.1);color:#7c3aed;border:1px solid rgba(124,58,237,0.25)">Q4</span>
+            <span class="qa-q-text">2PC 的原理是什么？有哪些缺陷？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner"></div></div>
+        </div>
+
+        <div class="qa-item" id="q-dist-5">
+          <div class="qa-question" onclick="toggleQA('q-dist-5')">
+            <span class="qa-num" style="background:rgba(124,58,237,0.1);color:#7c3aed;border:1px solid rgba(124,58,237,0.25)">Q5</span>
+            <span class="qa-q-text">TCC 的原理是什么？和 2PC 相比有什么优缺点？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner"></div></div>
+        </div>
+
+        <div class="qa-item" id="q-dist-6">
+          <div class="qa-question" onclick="toggleQA('q-dist-6')">
+            <span class="qa-num" style="background:rgba(124,58,237,0.1);color:#7c3aed;border:1px solid rgba(124,58,237,0.25)">Q6</span>
+            <span class="qa-q-text">如何用 Redis 实现分布式锁？有哪些常见问题？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner"></div></div>
+        </div>
+
+        <div class="qa-item" id="q-dist-7">
+          <div class="qa-question" onclick="toggleQA('q-dist-7')">
+            <span class="qa-num" style="background:rgba(124,58,237,0.1);color:#7c3aed;border:1px solid rgba(124,58,237,0.25)">Q7</span>
+            <span class="qa-q-text">Redisson 的看门狗机制是什么？如何防止锁提前过期？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner"></div></div>
+        </div>
+
+        <div class="qa-item" id="q-dist-8">
+          <div class="qa-question" onclick="toggleQA('q-dist-8')">
+            <span class="qa-num" style="background:rgba(124,58,237,0.1);color:#7c3aed;border:1px solid rgba(124,58,237,0.25)">Q8</span>
+            <span class="qa-q-text">ZooKeeper 如何实现分布式锁？和 Redis 分布式锁有什么区别？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner"></div></div>
+        </div>
+
+        <div class="qa-item" id="q-dist-9">
+          <div class="qa-question" onclick="toggleQA('q-dist-9')">
+            <span class="qa-num" style="background:rgba(124,58,237,0.1);color:#7c3aed;border:1px solid rgba(124,58,237,0.25)">Q9</span>
+            <span class="qa-q-text">Nacos、Eureka、ZooKeeper 作为注册中心有什么区别？如何选型？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner"></div></div>
+        </div>
+
+        <div class="qa-item" id="q-dist-10">
+          <div class="qa-question" onclick="toggleQA('q-dist-10')">
+            <span class="qa-num" style="background:rgba(124,58,237,0.1);color:#7c3aed;border:1px solid rgba(124,58,237,0.25)">Q10</span>
+            <span class="qa-q-text">Snowflake 算法的原理是什么？有哪些缺陷？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner"></div></div>
+        </div>
+
+        <div class="qa-item" id="q-dist-11">
+          <div class="qa-question" onclick="toggleQA('q-dist-11')">
+            <span class="qa-num" style="background:rgba(124,58,237,0.1);color:#7c3aed;border:1px solid rgba(124,58,237,0.25)">Q11</span>
+            <span class="qa-q-text">如何实现接口限流？令牌桶和漏桶算法有什么区别？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner"></div></div>
+        </div>
+
+        <div class="qa-item" id="q-dist-12">
+          <div class="qa-question" onclick="toggleQA('q-dist-12')">
+            <span class="qa-num" style="background:rgba(124,58,237,0.1);color:#7c3aed;border:1px solid rgba(124,58,237,0.25)">Q12</span>
+            <span class="qa-q-text">什么是服务熔断？熔断器的三种状态是什么？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner"></div></div>
+        </div>
+
+        <div class="qa-item" id="q-dist-13">
+          <div class="qa-question" onclick="toggleQA('q-dist-13')">
+            <span class="qa-num" style="background:rgba(124,58,237,0.1);color:#7c3aed;border:1px solid rgba(124,58,237,0.25)">Q13</span>
+            <span class="qa-q-text">一致性哈希算法是什么？如何解决数据倾斜问题？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner"></div></div>
+        </div>
+
+        <div class="qa-item" id="q-dist-14">
+          <div class="qa-question" onclick="toggleQA('q-dist-14')">
+            <span class="qa-num" style="background:rgba(124,58,237,0.1);color:#7c3aed;border:1px solid rgba(124,58,237,0.25)">Q14</span>
+            <span class="qa-q-text">分布式系统中如何保证接口幂等性？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner"></div></div>
+        </div>
+
+        <div class="qa-item" id="q-dist-15">
+          <div class="qa-question" onclick="toggleQA('q-dist-15')">
+            <span class="qa-num" style="background:rgba(124,58,237,0.1);color:#7c3aed;border:1px solid rgba(124,58,237,0.25)">Q15</span>
+            <span class="qa-q-text">什么是分布式链路追踪？TraceId 如何实现全链路透传？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner"></div></div>
+        </div>
+
+      </div>
+    </div>
+
+  </section>
+</main>
+</div>
+
+<div class="toc-panel" id="toc-panel">
+  <div class="toc-title">ON THIS PAGE</div>
+  <nav id="toc-nav"></nav>
+</div>
+
+<script src="shared.js"></script>
+</body>
+</html>

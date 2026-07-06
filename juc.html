@@ -1,0 +1,1198 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JUC 并发编程 — 线程池 / AQS / synchronized / volatile / CAS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=DM+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<style>
+:root {
+  --bg: #f0f2f5; --bg-1: #f6f8fa; --bg-2: #eaecef;
+  --bg-card: #ffffff; --bg-hi: #eef2ff;
+  --border: rgba(28,25,23,0.09); --border-b: rgba(28,25,23,0.18);
+  --text: #111827; --text-2: #374151; --text-3: #9ca3af;
+  --g1: #15803d; --g1-2: #16a34a;
+  --g1-d: rgba(21,128,61,0.08); --g1-b: rgba(21,128,61,0.28);
+  --zgc: #6d28d9; --zgc-2: #7c3aed;
+  --zgc-d: rgba(109,40,217,0.08); --zgc-b: rgba(109,40,217,0.28);
+  --gold: #92400e; --gold-d: rgba(146,64,14,0.08);
+  --red: #dc2626; --red-d: rgba(220,38,38,0.08);
+  --teal: #0e7490; --purple: #6d28d9; --orange: #c2410c;
+  --juc: #4f46e5; --juc-2: #4338ca;
+  --juc-d: rgba(79,70,229,0.08); --juc-b: rgba(79,70,229,0.28);
+  --accent:     #4f46e5;
+  --accent-nav: #4f46e5; --accent-nav-d: rgba(79,70,229,0.08);
+  --accent-em:  #4338ca; --accent-em-d:  rgba(67,56,202,0.08);
+  --fw: 'Outfit', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --fb: 'Outfit', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --fm: 'DM Mono', 'SF Mono', Consolas, monospace;
+}
+</style>
+</head>
+<body>
+
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <span class="logo-badge" style="background:linear-gradient(135deg,#4f46e5,#4338ca)">JUC</span>
+    <span class="logo-text">并发编程</span>
+  </div>
+  <div class="page-tabs">
+    <a href="gc-principles.html" class="tab">GC 原理</a>
+    <a href="spring.html"        class="tab">Spring</a>
+    <a href="mysql.html"         class="tab">MySQL</a>
+    <a href="redis.html"         class="tab">Redis</a>
+    <a href="mq.html"            class="tab">MQ</a>
+    <a href="juc.html"           class="tab active-juc">JUC</a>
+    <a href="distributed.html"   class="tab">分布式</a>
+  </div>
+  <div class="nav-section-label" style="color:rgba(79,70,229,0.65)">目 录</div>
+  <a href="#juc-jmm"         class="nav-link">Java 内存模型</a>
+  <a href="#juc-sync"        class="nav-link">synchronized 原理</a>
+  <a href="#juc-volatile"    class="nav-link">volatile 原理</a>
+  <a href="#juc-cas"         class="nav-link">CAS 与原子类</a>
+  <a href="#juc-aqs"         class="nav-link">AQS 原理</a>
+  <a href="#juc-locks"       class="nav-link">常用锁</a>
+  <a href="#juc-threadpool"  class="nav-link">线程池</a>
+  <a href="#juc-collections" class="nav-link">并发容器</a>
+  <a href="#juc-vthread"    class="nav-link">虚拟线程（JDK 21）</a>
+  <a href="#juc-qa"          class="nav-link">JUC 面试题</a>
+</nav>
+
+<div class="content-wrap">
+<button class="menu-btn" id="menuBtn" onclick="toggleSidebar()">☰</button>
+<main class="main">
+
+  <!-- ══════════ Hero ══════════ -->
+  <section class="hero" id="overview">
+    <div class="hero-eyebrow" style="color:#4f46e5">JUC · 线程池 / AQS / synchronized / volatile / CAS</div>
+    <h1><span style="color:#4f46e5">并发编程</span> 核心知识</h1>
+    <p class="hero-desc">覆盖 Java 内存模型、synchronized 锁升级、volatile 内存屏障、CAS 与 AQS 底层原理、线程池参数调优、并发容器实现，是 Java 后端面试最高频考点之一。</p>
+  </section>
+
+  <!-- ══════════ 正文 ══════════ -->
+  <section class="gc-section" id="juc-section">
+    <span class="section-badge" style="background:rgba(79,70,229,0.08);color:#4f46e5;border:1px solid rgba(79,70,229,0.25)">● JUC</span>
+    <h2 class="section-title">并发编程核心知识</h2>
+    <p class="section-intro">
+      Java 并发编程涵盖内存可见性、原子操作、锁机制、线程池和并发容器等核心主题。
+      理解底层原理（JMM、AQS、CAS）是写出高性能、线程安全代码的基础，也是面试必考方向。
+    </p>
+
+    <!-- ── 1. Java 内存模型 ── -->
+    <div class="subsection" id="juc-jmm">
+      <h3 class="sub-title">
+        <span class="dot" style="background:#4f46e5;box-shadow:0 0 0 3px rgba(79,70,229,0.15)"></span>
+        Java 内存模型（JMM）
+      </h3>
+      <p class="sub-body">JMM 定义了多线程程序中变量的读写规则，解决可见性、有序性和原子性三大并发问题。</p>
+
+      <!-- 三大问题 -->
+      <div class="kv-grid" style="margin-top:1rem">
+        <div class="kv-row">
+          <span class="kv-key" style="color:#4f46e5">可见性</span>
+          <span class="kv-val">一个线程修改共享变量后，另一个线程不能立即看到最新值。原因：每个线程有自己的工作内存（CPU 缓存），不直接操作主内存。</span>
+        </div>
+        <div class="kv-row">
+          <span class="kv-key" style="color:#4f46e5">有序性</span>
+          <span class="kv-val">JVM 和 CPU 会对指令重排序优化，单线程下结果一致，多线程下可能产生意外行为（如双重检查锁的经典 bug）。</span>
+        </div>
+        <div class="kv-row">
+          <span class="kv-key" style="color:#4f46e5">原子性</span>
+          <span class="kv-val">非 long/double 的基本类型读写是原子的，但复合操作（如 i++）不是。JMM 通过 synchronized / CAS 保证复合操作的原子性。</span>
+        </div>
+      </div>
+
+      <!-- 主内存 vs 工作内存 图 -->
+      <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">主内存 vs 工作内存</p>
+      <div class="arch-box" style="margin-top:0.5rem">
+        <pre class="arch-pre" style="font-size:0.78rem;line-height:1.7">
+  ┌──────────────────────────────────────────────────────┐
+  │                        主内存（Main Memory）           │
+  │   共享变量：int x = 0                                  │
+  └────────────────┬─────────────────┬───────────────────┘
+                   │  read/write      │  read/write
+        ┌──────────▼──────┐  ┌───────▼──────────┐
+        │  Thread-1        │  │  Thread-2         │
+        │  工作内存(Cache) │  │  工作内存(Cache)  │
+        │  x = 0 (副本)   │  │  x = 0 (副本)    │
+        └─────────────────┘  └──────────────────┘</pre>
+      </div>
+
+      <!-- happens-before -->
+      <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">happens-before 规则（8 条）</p>
+      <p class="sub-body">JMM 用 <strong>happens-before</strong> 来描述操作间的内存可见性关系：A happens-before B 意味着 A 的写对 B 可见。</p>
+      <div class="kv-grid" style="margin-top:0.6rem">
+        <div class="kv-row"><span class="kv-key">程序顺序</span><span class="kv-val">同一线程内，前面的操作 happens-before 后面的操作</span></div>
+        <div class="kv-row"><span class="kv-key">监视器锁</span><span class="kv-val">unlock happens-before 随后对同一锁的 lock</span></div>
+        <div class="kv-row"><span class="kv-key">volatile</span><span class="kv-val">对 volatile 变量的写 happens-before 随后对该变量的读</span></div>
+        <div class="kv-row"><span class="kv-key">线程启动</span><span class="kv-val">Thread.start() happens-before 被启动线程的任何操作</span></div>
+        <div class="kv-row"><span class="kv-key">线程终止</span><span class="kv-val">线程所有操作 happens-before 其他线程的 Thread.join() 返回</span></div>
+        <div class="kv-row"><span class="kv-key">线程中断</span><span class="kv-val">interrupt() happens-before 检测到中断的代码</span></div>
+        <div class="kv-row"><span class="kv-key">对象初始化</span><span class="kv-val">对象构造完成（finalizer 除外）happens-before finalize()</span></div>
+        <div class="kv-row"><span class="kv-key">传递性</span><span class="kv-val">A hb B，B hb C → A hb C</span></div>
+      </div>
+
+      <!-- 指令重排序 -->
+      <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">指令重排序 & 内存屏障</p>
+      <div class="kv-grid" style="margin-top:0.6rem">
+        <div class="kv-row"><span class="kv-key">编译器重排</span><span class="kv-val">JIT 编译器在不改变单线程语义的前提下可调整指令顺序</span></div>
+        <div class="kv-row"><span class="kv-key">CPU 乱序</span><span class="kv-val">现代 CPU 为提高流水线效率会乱序执行，写缓冲区延迟可见</span></div>
+        <div class="kv-row"><span class="kv-key">StoreLoad</span><span class="kv-val">最重的屏障，volatile 写后插入，阻止写被重排到后续读之后</span></div>
+        <div class="kv-row"><span class="kv-key">LoadLoad / StoreStore</span><span class="kv-val">volatile 读前/写前分别插入，阻止相应方向的重排</span></div>
+      </div>
+
+      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#4f46e5;background:rgba(79,70,229,0.05)">
+        <strong>面试要点：</strong>JMM 不是具体实现，是规范。<code>volatile</code> 和 <code>synchronized</code> 都是 JMM 规范在 Java 语言层面的实现手段。happens-before 是 JMM 向程序员暴露的最简洁的内存可见性契约。
+      </div>
+    </div>
+
+    <!-- ── 2. synchronized 原理 ── -->
+    <div class="subsection" id="juc-sync">
+      <h3 class="sub-title">
+        <span class="dot" style="background:#4f46e5;box-shadow:0 0 0 3px rgba(79,70,229,0.15)"></span>
+        synchronized 原理
+      </h3>
+      <p class="sub-body">synchronized 基于对象头的 Mark Word 和 Monitor 实现，JDK 6 引入偏向锁→轻量级锁→重量级锁的升级机制显著降低了开销。</p>
+
+      <!-- 对象头结构 -->
+      <p class="sub-body" style="margin-top:1rem;font-weight:600;color:var(--text-2)">对象头 Mark Word（64 位 JVM）</p>
+      <div class="cmp-table-wrap" style="margin-top:0.5rem">
+        <table class="cmp-table" style="font-family:var(--fm);font-size:0.79rem;text-align:center">
+          <thead>
+            <tr>
+              <th>25 bit<br><span style="font-weight:400;color:var(--text-3)">unused</span></th>
+              <th>31 bit<br><span style="font-weight:400;color:var(--text-3)">hashCode</span></th>
+              <th>1 bit<br><span style="font-weight:400;color:var(--text-3)">unused</span></th>
+              <th>4 bit<br><span style="font-weight:400;color:var(--text-3)">GC age</span></th>
+              <th>1 bit<br><span style="font-weight:400;color:var(--text-3)">biased</span></th>
+              <th>2 bit<br><span style="font-weight:400;color:var(--text-3)">lock</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td colspan="6" style="text-align:left;font-size:0.8rem;padding:0.55rem 0.8rem">
+                lock 标志位：<code>00</code> = 轻量级锁 &nbsp;｜&nbsp;
+                <code>01</code> = 无锁 / 偏向锁 &nbsp;｜&nbsp;
+                <code>10</code> = 重量级锁 &nbsp;｜&nbsp;
+                <code>11</code> = GC 标记
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 锁升级流程 -->
+      <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">锁升级流程（单向，不可降级）</p>
+      <div class="arch-box" style="margin-top:0.5rem">
+        <pre class="arch-pre" style="font-size:0.78rem;line-height:1.7">
+  无锁
+   │  第一个线程访问，Mark Word 记录线程 ID
+   ▼
+  偏向锁  ── 同一线程重入无 CAS 开销 ──► 适合单线程反复获取
+   │  第二个线程竞争，CAS 替换 Mark Word
+   ▼
+  轻量级锁 ── CAS 自旋尝试获取 ──────► 适合线程交替执行，竞争短暂
+   │  自旋超过阈值 / 第三个线程等待
+   ▼
+  重量级锁 ── 依赖 OS Mutex，阻塞挂起 ► 高竞争场景</pre>
+      </div>
+
+      <!-- 各锁级别对比 -->
+      <div class="cmp-table-wrap" style="margin-top:1rem">
+        <table class="cmp-table">
+          <thead><tr><th>锁状态</th><th>存储位置</th><th>获取方式</th><th>适用场景</th><th>开销</th></tr></thead>
+          <tbody>
+            <tr><td>无锁</td><td>Mark Word</td><td>—</td><td>无并发</td><td>无</td></tr>
+            <tr><td>偏向锁</td><td>Mark Word 线程ID</td><td>首次 CAS，之后检查ID</td><td>只有一个线程访问</td><td>极低</td></tr>
+            <tr><td>轻量级锁</td><td>线程栈 Lock Record</td><td>CAS 自旋</td><td>多线程交替，竞争短</td><td>低</td></tr>
+            <tr><td>重量级锁</td><td>Monitor 对象</td><td>OS 互斥量</td><td>多线程激烈竞争</td><td>高</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Monitor 结构 -->
+      <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">Monitor 内部结构</p>
+      <div class="kv-grid" style="margin-top:0.6rem">
+        <div class="kv-row"><span class="kv-key">_owner</span><span class="kv-val">持有锁的线程</span></div>
+        <div class="kv-row"><span class="kv-key">_EntryList</span><span class="kv-val">等待获取锁的线程队列（BLOCKED 状态）</span></div>
+        <div class="kv-row"><span class="kv-key">_WaitSet</span><span class="kv-val">调用 wait() 后挂起的线程集合（WAITING 状态）</span></div>
+        <div class="kv-row"><span class="kv-key">_count</span><span class="kv-val">重入次数，支持同一线程多次 lock（可重入性）</span></div>
+      </div>
+
+      <!-- 字节码层面 -->
+      <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">字节码层面</p>
+      <div class="kv-grid" style="margin-top:0.6rem">
+        <div class="kv-row"><span class="kv-key">同步块</span><span class="kv-val">编译为 <code>monitorenter</code> / <code>monitorexit</code> 指令，异常路径也有 monitorexit 保证释放</span></div>
+        <div class="kv-row"><span class="kv-key">同步方法</span><span class="kv-val">方法 flags 设置 <code>ACC_SYNCHRONIZED</code>，调用时隐式获取/释放 Monitor</span></div>
+      </div>
+
+      <div class="callout callout-warn" style="margin-top:1rem">
+        <strong>注意：</strong>JDK 15 起默认禁用偏向锁（<code>-XX:-UseBiasedLocking</code>），JDK 18 彻底移除。高竞争场景下偏向锁的撤销（STW）反而带来额外开销。
+      </div>
+
+      <div class="callout callout-info" style="margin-top:0.75rem;border-left-color:#4f46e5;background:rgba(79,70,229,0.05)">
+        <strong>面试要点：</strong>锁只能升级不能降级（Full GC 后可重置偏向状态）。轻量级锁 CAS 自旋默认自适应（JDK 6+），不是固定次数。重量级锁 wait/notify 依赖 Monitor 的 WaitSet。
+      </div>
+    </div>
+
+    <!-- ── 3. volatile 原理 ── -->
+    <div class="subsection" id="juc-volatile">
+      <h3 class="sub-title">
+        <span class="dot" style="background:#4f46e5;box-shadow:0 0 0 3px rgba(79,70,229,0.15)"></span>
+        volatile 原理
+      </h3>
+      <p class="sub-body">volatile 通过内存屏障保证可见性与有序性，但不保证复合操作的原子性。</p>
+
+      <!-- 两大保证 -->
+      <div class="kv-grid" style="margin-top:1rem">
+        <div class="kv-row">
+          <span class="kv-key" style="color:#4f46e5">可见性</span>
+          <span class="kv-val">写 volatile 变量时强制将工作内存中的值刷回主内存；读 volatile 变量时强制从主内存重新加载，使其他线程的写立即可见。</span>
+        </div>
+        <div class="kv-row">
+          <span class="kv-key" style="color:#4f46e5">有序性</span>
+          <span class="kv-val">通过插入内存屏障禁止特定方向的指令重排序，解决如双重检查锁（DCL）中对象半初始化的问题。</span>
+        </div>
+        <div class="kv-row">
+          <span class="kv-key" style="color:#dc2626">不保证</span>
+          <span class="kv-val">不保证原子性。<code>volatile int i; i++</code> 等价于 read → modify → write 三步，多线程下仍会丢失更新，需用 <code>AtomicInteger</code>。</span>
+        </div>
+      </div>
+
+      <!-- 内存屏障插入规则 -->
+      <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">内存屏障插入规则</p>
+      <div class="cmp-table-wrap" style="margin-top:0.5rem">
+        <table class="cmp-table">
+          <thead><tr><th>位置</th><th>屏障类型</th><th>作用</th></tr></thead>
+          <tbody>
+            <tr><td>volatile 写之前</td><td>StoreStore</td><td>禁止上面的普通写与 volatile 写重排</td></tr>
+            <tr><td>volatile 写之后</td><td>StoreLoad</td><td>禁止 volatile 写与下面的 volatile 读重排（最重屏障）</td></tr>
+            <tr><td>volatile 读之后</td><td>LoadLoad</td><td>禁止 volatile 读与下面的普通读重排</td></tr>
+            <tr><td>volatile 读之后</td><td>LoadStore</td><td>禁止 volatile 读与下面的普通写重排</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- DCL 经典案例 -->
+      <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">经典案例：双重检查锁（DCL）单例</p>
+      <div class="arch-box" style="margin-top:0.5rem">
+        <pre class="arch-pre" style="font-size:0.78rem;line-height:1.8">
+  // 错误写法（没有 volatile，指令重排可能导致其他线程拿到半初始化对象）
+  private static Singleton instance;
+
+  // 正确写法
+  private static volatile Singleton instance;
+
+  public static Singleton getInstance() {
+      if (instance == null) {              // 第一次检查（无锁）
+          synchronized (Singleton.class) {
+              if (instance == null) {      // 第二次检查（加锁）
+                  instance = new Singleton();
+                  // new 分三步：1.分配内存 2.初始化对象 3.赋值引用
+                  // 无 volatile 时 2 和 3 可能被重排 → 其他线程看到非 null 但未初始化的对象
+              }
+          }
+      }
+      return instance;
+  }</pre>
+      </div>
+
+      <!-- volatile vs synchronized -->
+      <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">volatile vs synchronized</p>
+      <div class="cmp-table-wrap" style="margin-top:0.5rem">
+        <table class="cmp-table">
+          <thead><tr><th>维度</th><th>volatile</th><th>synchronized</th></tr></thead>
+          <tbody>
+            <tr><td>可见性</td><td>✅</td><td>✅</td></tr>
+            <tr><td>有序性</td><td>✅（禁止重排）</td><td>✅（加锁保证）</td></tr>
+            <tr><td>原子性</td><td>❌（单次读写原子，复合不是）</td><td>✅</td></tr>
+            <tr><td>阻塞线程</td><td>❌（不阻塞）</td><td>✅（未获锁则阻塞）</td></tr>
+            <tr><td>性能</td><td>低开销</td><td>重量级锁时开销大</td></tr>
+            <tr><td>适用场景</td><td>状态标志位、DCL</td><td>需要互斥的复合操作</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- CPU 层面实现 -->
+      <div class="kv-grid" style="margin-top:1rem">
+        <div class="kv-row"><span class="kv-key">x86 实现</span><span class="kv-val">JIT 编译 volatile 写为带 <code>lock</code> 前缀的汇编指令（如 <code>lock addl $0x0,(%rsp)</code>），触发总线锁或缓存一致性协议（MESI）</span></div>
+        <div class="kv-row"><span class="kv-key">MESI 协议</span><span class="kv-val">Modified / Exclusive / Shared / Invalid 四种缓存行状态，写后将其他 CPU 缓存行置为 Invalid，强制重新读主内存</span></div>
+      </div>
+
+      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#4f46e5;background:rgba(79,70,229,0.05)">
+        <strong>面试要点：</strong>volatile 写插入 StoreLoad 屏障是四种中最重的，会刷新写缓冲区。volatile 适合"一写多读"场景（状态标志、DCL）；需要原子复合操作时用 <code>Atomic*</code> 类或 <code>synchronized</code>。
+      </div>
+    </div>
+
+    <!-- ── 4. CAS 与原子类 ── -->
+    <div class="subsection" id="juc-cas">
+      <h3 class="sub-title">
+        <span class="dot" style="background:#4f46e5;box-shadow:0 0 0 3px rgba(79,70,229,0.15)"></span>
+        CAS 与原子类
+      </h3>
+      <p class="sub-body">CAS（Compare-And-Swap）是乐观锁的底层实现，依赖 CPU 原子指令。<code>java.util.concurrent.atomic</code> 包基于 CAS 提供无锁原子操作。</p>
+
+      <!-- CAS 原理 -->
+      <p class="sub-body" style="margin-top:1rem;font-weight:600;color:var(--text-2)">CAS 原理</p>
+      <div class="arch-box" style="margin-top:0.5rem">
+        <pre class="arch-pre" style="font-size:0.78rem;line-height:1.8">
+  CAS(V, expected, newValue)
+    if V == expected:
+        V = newValue   // 原子操作，由 CPU 指令（x86: CMPXCHG）保证
+        return true
+    else:
+        return false   // 失败则自旋重试
+
+  // AtomicInteger.incrementAndGet() 内部实现
+  do {
+      current = get();       // 读取当前值
+  } while (!compareAndSet(current, current + 1));  // CAS 失败则重试</pre>
+      </div>
+
+      <!-- CAS 三大问题 -->
+      <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">CAS 的三大缺陷</p>
+      <div class="kv-grid" style="margin-top:0.6rem">
+        <div class="kv-row">
+          <span class="kv-key" style="color:#dc2626">ABA 问题</span>
+          <span class="kv-val">变量从 A→B→A，CAS 认为没有变化但实际已被修改。解决：<code>AtomicStampedReference</code> 附加版本号（stamp），每次修改 stamp+1。</span>
+        </div>
+        <div class="kv-row">
+          <span class="kv-key" style="color:#dc2626">自旋开销</span>
+          <span class="kv-val">高并发竞争下 CAS 长时间自旋，大量消耗 CPU。解决：限制自旋次数，或升级为重量级锁（<code>synchronized</code>）。</span>
+        </div>
+        <div class="kv-row">
+          <span class="kv-key" style="color:#dc2626">只能保证单变量</span>
+          <span class="kv-val">CAS 只能保证一个共享变量的原子操作。多变量需用 <code>AtomicReference</code> 封装对象，或用 <code>synchronized</code>。</span>
+        </div>
+      </div>
+
+      <!-- atomic 包分类 -->
+      <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">java.util.concurrent.atomic 类分类</p>
+      <div class="cmp-table-wrap" style="margin-top:0.5rem">
+        <table class="cmp-table">
+          <thead><tr><th>分类</th><th>代表类</th><th>说明</th></tr></thead>
+          <tbody>
+            <tr><td>基本类型</td><td>AtomicInteger / AtomicLong / AtomicBoolean</td><td>原子更新基本类型</td></tr>
+            <tr><td>引用类型</td><td>AtomicReference / AtomicStampedReference / AtomicMarkableReference</td><td>原子更新对象引用，后两者解决 ABA</td></tr>
+            <tr><td>数组类型</td><td>AtomicIntegerArray / AtomicLongArray / AtomicReferenceArray</td><td>原子更新数组元素</td></tr>
+            <tr><td>字段更新</td><td>AtomicIntegerFieldUpdater / AtomicLongFieldUpdater</td><td>原子更新对象的 volatile 字段，无需替换类</td></tr>
+            <tr><td>累加器（JDK 8）</td><td>LongAdder / LongAccumulator / DoubleAdder</td><td>高并发计数器，分段累加后汇总，比 AtomicLong 吞吐量更高</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- LongAdder 原理 -->
+      <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">LongAdder vs AtomicLong</p>
+      <div class="arch-box" style="margin-top:0.5rem">
+        <pre class="arch-pre" style="font-size:0.78rem;line-height:1.7">
+  AtomicLong:  所有线程 CAS 竞争同一个 long 值 → 高并发时自旋严重
+
+  LongAdder:   base（低并发直接 CAS）
+                 + cells[]（高并发时每个线程映射到独立 Cell CAS）
+               sum() = base + Σcells[i]
+
+  代价：sum() 不是实时精确值（统计计数场景可接受，不适合需要强一致的场景）</pre>
+      </div>
+
+      <!-- Unsafe -->
+      <div class="kv-grid" style="margin-top:1rem">
+        <div class="kv-row"><span class="kv-key">Unsafe 类</span><span class="kv-val">所有 Atomic 类底层调用 <code>sun.misc.Unsafe</code> 的 <code>compareAndSwapInt/Long/Object</code>，直接操作内存地址，绕过 JVM 安全检查</span></div>
+        <div class="kv-row"><span class="kv-key">CPU 指令</span><span class="kv-val">x86 下编译为 <code>lock cmpxchg</code>，多核系统加 lock 前缀保证缓存一致性，单核无需 lock</span></div>
+      </div>
+
+      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#4f46e5;background:rgba(79,70,229,0.05)">
+        <strong>面试要点：</strong>ABA 问题用 <code>AtomicStampedReference</code> 解决；高并发计数用 <code>LongAdder</code> 而非 <code>AtomicLong</code>；CAS 是乐观锁，适合读多写少、冲突少的场景，高竞争下不如悲观锁。
+      </div>
+    </div>
+
+    <!-- ── 5. AQS 原理 ── -->
+    <div class="subsection" id="juc-aqs">
+      <h3 class="sub-title">
+        <span class="dot" style="background:#4f46e5;box-shadow:0 0 0 3px rgba(79,70,229,0.15)"></span>
+        AQS 原理
+      </h3>
+      <p class="sub-body">AbstractQueuedSynchronizer 是 JUC 锁和同步组件的核心框架，基于 CLH 变体队列实现线程的阻塞与唤醒。</p>
+
+      <!-- 核心结构 -->
+      <p class="sub-body" style="margin-top:1rem;font-weight:600;color:var(--text-2)">AQS 核心数据结构</p>
+      <div class="arch-box" style="margin-top:0.5rem">
+        <pre class="arch-pre" style="font-size:0.78rem;line-height:1.7">
+  AQS
+  ├── volatile int state          // 同步状态：0=未锁，>0=已锁（可重入计数）
+  ├── Node head                  // CLH 队列头（哨兵节点）
+  ├── Node tail                  // CLH 队列尾
+  └── exclusiveOwnerThread       // 当前持锁线程（继承自 AbstractOwnableSynchronizer）
+
+  CLH 变体等待队列（双向链表）：
+  [head/哨兵] ←→ [Node:Thread-2] ←→ [Node:Thread-3] ←→ [tail:Thread-4]
+       │                │
+    waitStatus        waitStatus: SIGNAL(-1) 表示后继需要被唤醒
+                                  CANCELLED(1) 已取消
+                                  CONDITION(-2) 在条件队列等待
+                                  PROPAGATE(-3) 共享模式传播</pre>
+      </div>
+
+      <!-- 独占锁获取流程 -->
+      <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">独占锁获取流程（以 ReentrantLock 为例）</p>
+      <div class="arch-box" style="margin-top:0.5rem">
+        <pre class="arch-pre" style="font-size:0.78rem;line-height:1.8">
+  lock()
+   │
+   ├─ tryAcquire(1)  ── CAS state: 0→1 成功 ──► 持锁，设置 exclusiveOwnerThread
+   │                    失败（已有线程持锁）
+   │
+   └─ addWaiter(Node.EXCLUSIVE)  // 当前线程封装成 Node 入队尾（CAS）
+       │
+       └─ acquireQueued(node)
+           │
+           ├─ 若前驱是 head → 再次 tryAcquire（避免不必要阻塞）
+           └─ 否则 → LockSupport.park(this)  阻塞当前线程
+
+  unlock()
+   └─ release(1)
+       ├─ tryRelease: state - 1，为 0 则清除 exclusiveOwnerThread
+       └─ unparkSuccessor(head): LockSupport.unpark(head.next.thread)</pre>
+      </div>
+
+      <!-- 独占 vs 共享 -->
+      <div class="cmp-table-wrap" style="margin-top:1rem">
+        <table class="cmp-table">
+          <thead><tr><th>模式</th><th>代表类</th><th>acquire 方法</th><th>特点</th></tr></thead>
+          <tbody>
+            <tr><td>独占（Exclusive）</td><td>ReentrantLock<br>ReentrantReadWriteLock.WriteLock</td><td>acquire / tryAcquire</td><td>同时只有一个线程持锁</td></tr>
+            <tr><td>共享（Shared）</td><td>Semaphore<br>CountDownLatch<br>ReentrantReadWriteLock.ReadLock</td><td>acquireShared / tryAcquireShared</td><td>多线程可同时持锁，state 表示剩余许可数</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 基于 AQS 的组件 -->
+      <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">基于 AQS 实现的同步组件</p>
+      <div class="kv-grid" style="margin-top:0.6rem">
+        <div class="kv-row"><span class="kv-key">ReentrantLock</span><span class="kv-val">独占锁，state=重入次数；公平锁按队列顺序，非公平锁先 CAS 抢占</span></div>
+        <div class="kv-row"><span class="kv-key">Semaphore</span><span class="kv-val">共享锁，state=许可数；acquire 减 1，release 加 1；归零时阻塞</span></div>
+        <div class="kv-row"><span class="kv-key">CountDownLatch</span><span class="kv-val">共享锁，state=计数；countDown 减 1，await 等待归零；不可重用</span></div>
+        <div class="kv-row"><span class="kv-key">CyclicBarrier</span><span class="kv-val">基于 ReentrantLock + Condition 实现，不直接继承 AQS；可重用</span></div>
+        <div class="kv-row"><span class="kv-key">ReadWriteLock</span><span class="kv-val">state 高 16 位=读锁计数，低 16 位=写锁重入数；读读不互斥</span></div>
+      </div>
+
+      <!-- 自定义 AQS -->
+      <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">自定义同步器只需重写</p>
+      <div class="arch-box" style="margin-top:0.5rem">
+        <pre class="arch-pre" style="font-size:0.78rem;line-height:1.8">
+  // 独占锁需重写：
+  protected boolean tryAcquire(int arg)    // 尝试获取锁
+  protected boolean tryRelease(int arg)    // 尝试释放锁
+
+  // 共享锁需重写：
+  protected int  tryAcquireShared(int arg) // 返回负数=失败，0=成功但无剩余，正数=成功且有剩余
+  protected boolean tryReleaseShared(int arg)</pre>
+      </div>
+
+      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#4f46e5;background:rgba(79,70,229,0.05)">
+        <strong>面试要点：</strong>AQS 用 <code>LockSupport.park/unpark</code> 阻塞/唤醒线程（不需要持有监视器，比 wait/notify 更灵活）。CLH 队列是虚拟的，节点代表线程，通过 CAS 入队保证线程安全。公平锁与非公平锁的区别仅在 <code>tryAcquire</code> 中是否先检查队列。
+      </div>
+    </div>
+
+    <!-- ── 6. 常用锁 ── -->
+    <div class="subsection" id="juc-locks">
+      <h3 class="sub-title">
+        <span class="dot" style="background:#4f46e5;box-shadow:0 0 0 3px rgba(79,70,229,0.15)"></span>
+        常用锁
+      </h3>
+      <p class="sub-body">ReentrantLock、ReentrantReadWriteLock、StampedLock 分别适用于不同的并发场景，各有性能与功能取舍。</p>
+
+      <!-- 锁对比总表 -->
+      <div class="cmp-table-wrap" style="margin-top:1rem">
+        <table class="cmp-table">
+          <thead><tr><th>锁类型</th><th>底层</th><th>可重入</th><th>公平锁</th><th>读写分离</th><th>适用场景</th></tr></thead>
+          <tbody>
+            <tr><td>synchronized</td><td>Monitor / 对象头</td><td>✅</td><td>❌</td><td>❌</td><td>简单互斥，JDK 内置优化</td></tr>
+            <tr><td>ReentrantLock</td><td>AQS</td><td>✅</td><td>✅（可选）</td><td>❌</td><td>需要超时、可中断、条件变量</td></tr>
+            <tr><td>ReentrantReadWriteLock</td><td>AQS</td><td>✅</td><td>✅（可选）</td><td>✅</td><td>读多写少（缓存、配置）</td></tr>
+            <tr><td>StampedLock</td><td>自定义 CLH</td><td>❌</td><td>❌</td><td>✅ + 乐观读</td><td>极高并发读，写极少</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- ReentrantLock -->
+      <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">ReentrantLock 相比 synchronized 的额外能力</p>
+      <div class="kv-grid" style="margin-top:0.6rem">
+        <div class="kv-row"><span class="kv-key">可中断获取</span><span class="kv-val"><code>lockInterruptibly()</code> — 等待期间可响应 interrupt()，避免死锁永久阻塞</span></div>
+        <div class="kv-row"><span class="kv-key">超时获取</span><span class="kv-val"><code>tryLock(timeout, unit)</code> — 超时未获锁则返回 false，可做降级处理</span></div>
+        <div class="kv-row"><span class="kv-key">公平锁</span><span class="kv-val"><code>new ReentrantLock(true)</code> — 按 CLH 队列顺序分配，避免饥饿，但吞吐量低于非公平</span></div>
+        <div class="kv-row"><span class="kv-key">多条件变量</span><span class="kv-val"><code>lock.newCondition()</code> 创建多个 Condition，精确唤醒特定等待线程（如生产者/消费者分开 await）</span></div>
+      </div>
+
+      <!-- ReentrantReadWriteLock -->
+      <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">ReentrantReadWriteLock 读写规则</p>
+      <div class="arch-box" style="margin-top:0.5rem">
+        <pre class="arch-pre" style="font-size:0.78rem;line-height:1.7">
+  读-读：不互斥  ✅ 多线程并发读
+  读-写：互斥    ❌ 有线程写时，其他线程读/写都阻塞
+  写-写：互斥    ❌ 同时只能一个写
+
+  state 编码：高 16 位 = 读锁持有数，低 16 位 = 写锁重入数
+
+  注意：写锁可降级为读锁（先获读锁，再释写锁）；但读锁不能升级为写锁（会死锁）</pre>
+      </div>
+
+      <!-- StampedLock -->
+      <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">StampedLock 三种模式</p>
+      <div class="kv-grid" style="margin-top:0.6rem">
+        <div class="kv-row"><span class="kv-key">写锁</span><span class="kv-val"><code>writeLock()</code> → 返回 stamp，操作完后 <code>unlockWrite(stamp)</code></span></div>
+        <div class="kv-row"><span class="kv-key">读锁</span><span class="kv-val"><code>readLock()</code> → 悲观读，与写互斥</span></div>
+        <div class="kv-row"><span class="kv-key">乐观读</span><span class="kv-val"><code>tryOptimisticRead()</code> → 不加锁，读后用 <code>validate(stamp)</code> 检查是否被写过；失败则升级为悲观读锁。适合极短的读操作。</span></div>
+      </div>
+      <div class="arch-box" style="margin-top:0.75rem">
+        <pre class="arch-pre" style="font-size:0.78rem;line-height:1.8">
+  long stamp = lock.tryOptimisticRead();
+  // 读取数据（可能被写线程修改）
+  double x = this.x, y = this.y;
+  if (!lock.validate(stamp)) {       // 期间有写操作，升级为读锁
+      stamp = lock.readLock();
+      try { x = this.x; y = this.y; }
+      finally { lock.unlockRead(stamp); }
+  }</pre>
+      </div>
+
+      <div class="callout callout-warn" style="margin-top:1rem">
+        <strong>注意：</strong>StampedLock 不支持重入，不支持 Condition，且 stamp 用完后不能复用。线程被中断时可能永久阻塞，需用 <code>tryConvertToWriteLock</code> 等带超时的 API。
+      </div>
+      <div class="callout callout-info" style="margin-top:0.75rem;border-left-color:#4f46e5;background:rgba(79,70,229,0.05)">
+        <strong>面试要点：</strong>读写锁适合读多写少，但写锁等待期间读锁积压会导致写饥饿。StampedLock 乐观读性能最佳但使用复杂。日常推荐优先 synchronized，需要高级特性用 ReentrantLock，读多写少用 ReadWriteLock。
+      </div>
+    </div>
+
+    <!-- ── 7. 线程池 ── -->
+    <div class="subsection" id="juc-threadpool">
+      <h3 class="sub-title">
+        <span class="dot" style="background:#4f46e5;box-shadow:0 0 0 3px rgba(79,70,229,0.15)"></span>
+        线程池
+      </h3>
+      <p class="sub-body">ThreadPoolExecutor 是 Java 线程池的核心实现，合理配置核心参数和拒绝策略是高并发系统稳定运行的关键。</p>
+
+      <!-- 7 个核心参数 -->
+      <p class="sub-body" style="margin-top:1rem;font-weight:600;color:var(--text-2)">ThreadPoolExecutor 7 个核心参数</p>
+      <div class="kv-grid" style="margin-top:0.6rem">
+        <div class="kv-row"><span class="kv-key" style="color:#4f46e5">corePoolSize</span><span class="kv-val">核心线程数，常驻线程，空闲也不销毁（除非设置 allowCoreThreadTimeOut）</span></div>
+        <div class="kv-row"><span class="kv-key" style="color:#4f46e5">maximumPoolSize</span><span class="kv-val">最大线程数，队列满后才创建非核心线程，上限为此值</span></div>
+        <div class="kv-row"><span class="kv-key">keepAliveTime</span><span class="kv-val">非核心线程空闲超过此时长则销毁</span></div>
+        <div class="kv-row"><span class="kv-key">unit</span><span class="kv-val">keepAliveTime 的时间单位</span></div>
+        <div class="kv-row"><span class="kv-key" style="color:#4f46e5">workQueue</span><span class="kv-val">任务等待队列：ArrayBlockingQueue（有界）/ LinkedBlockingQueue（无界）/ SynchronousQueue（不存储，直传线程）</span></div>
+        <div class="kv-row"><span class="kv-key">threadFactory</span><span class="kv-val">创建线程的工厂，可自定义线程名、优先级、守护线程等</span></div>
+        <div class="kv-row"><span class="kv-key" style="color:#4f46e5">handler</span><span class="kv-val">拒绝策略，当队列满且线程数达到 maximumPoolSize 时触发</span></div>
+      </div>
+
+      <!-- 任务执行流程 -->
+      <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">任务提交执行流程</p>
+      <div class="arch-box" style="margin-top:0.5rem">
+        <pre class="arch-pre" style="font-size:0.78rem;line-height:1.8">
+  提交任务 execute(task)
+      │
+      ├─ 当前线程数 < corePoolSize  ──► 创建核心线程直接执行
+      │
+      ├─ 当前线程数 ≥ corePoolSize  ──► 尝试入队 workQueue
+      │       │
+      │       ├─ 入队成功 ──► 等待核心线程来取
+      │       │
+      │       └─ 队列已满
+      │               │
+      │               ├─ 线程数 < maximumPoolSize ──► 创建非核心线程执行
+      │               │
+      │               └─ 线程数 = maximumPoolSize ──► 触发拒绝策略 handler</pre>
+      </div>
+
+      <!-- 4 种拒绝策略 -->
+      <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">4 种内置拒绝策略</p>
+      <div class="cmp-table-wrap" style="margin-top:0.5rem">
+        <table class="cmp-table">
+          <thead><tr><th>策略</th><th>行为</th><th>适用场景</th></tr></thead>
+          <tbody>
+            <tr><td>AbortPolicy（默认）</td><td>抛出 RejectedExecutionException</td><td>必须感知任务拒绝的场景</td></tr>
+            <tr><td>CallerRunsPolicy</td><td>由提交任务的线程自己执行</td><td>不允许丢任务，但可降低提交速度（背压）</td></tr>
+            <tr><td>DiscardPolicy</td><td>静默丢弃新任务</td><td>允许丢弃、对任务完整性不敏感</td></tr>
+            <tr><td>DiscardOldestPolicy</td><td>丢弃队列头的最老任务，重试提交</td><td>新任务优先级更高</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 线程池大小公式 -->
+      <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">线程数配置经验公式</p>
+      <div class="kv-grid" style="margin-top:0.6rem">
+        <div class="kv-row"><span class="kv-key">CPU 密集型</span><span class="kv-val"><code>N = CPU 核心数 + 1</code>（+1 防止偶发页缺失等停顿，充分利用 CPU）</span></div>
+        <div class="kv-row"><span class="kv-key">IO 密集型</span><span class="kv-val"><code>N = CPU 核心数 × (1 + 等待时间 / 计算时间)</code>，实践中常用 <code>2 × CPU 核心数</code></span></div>
+        <div class="kv-row"><span class="kv-key">混合型</span><span class="kv-val">拆分为 CPU 密集和 IO 密集两个独立线程池，避免相互影响</span></div>
+      </div>
+
+      <!-- Executors 工厂类 -->
+      <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">Executors 工厂类（生产环境慎用）</p>
+      <div class="cmp-table-wrap" style="margin-top:0.5rem">
+        <table class="cmp-table">
+          <thead><tr><th>工厂方法</th><th>队列类型</th><th>风险</th></tr></thead>
+          <tbody>
+            <tr><td>newFixedThreadPool</td><td>LinkedBlockingQueue（无界）</td><td>队列无限堆积 → OOM</td></tr>
+            <tr><td>newSingleThreadExecutor</td><td>LinkedBlockingQueue（无界）</td><td>同上</td></tr>
+            <tr><td>newCachedThreadPool</td><td>SynchronousQueue</td><td>线程数无上限 → OOM</td></tr>
+            <tr><td>newScheduledThreadPool</td><td>DelayedWorkQueue</td><td>线程数无上限 → OOM</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 线程池状态 -->
+      <div class="kv-grid" style="margin-top:1rem">
+        <div class="kv-row"><span class="kv-key">RUNNING</span><span class="kv-val">正常运行，接受新任务，处理队列任务</span></div>
+        <div class="kv-row"><span class="kv-key">SHUTDOWN</span><span class="kv-val">调用 shutdown()，不再接受新任务，继续处理队列中的任务</span></div>
+        <div class="kv-row"><span class="kv-key">STOP</span><span class="kv-val">调用 shutdownNow()，不接受新任务，中断进行中的任务，清空队列</span></div>
+        <div class="kv-row"><span class="kv-key">TERMINATED</span><span class="kv-val">所有任务执行完毕，线程池彻底终止</span></div>
+      </div>
+
+      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#4f46e5;background:rgba(79,70,229,0.05)">
+        <strong>面试要点：</strong>阿里规约禁止用 Executors 创建线程池，必须用 ThreadPoolExecutor 手动指定有界队列。CallerRunsPolicy 是实现背压的常用手段。线程池监控关注：活跃线程数、队列深度、拒绝次数、任务执行耗时。
+      </div>
+    </div>
+
+    <!-- ── 8. 并发容器 ── -->
+    <div class="subsection" id="juc-collections">
+      <h3 class="sub-title">
+        <span class="dot" style="background:#4f46e5;box-shadow:0 0 0 3px rgba(79,70,229,0.15)"></span>
+        并发容器
+      </h3>
+      <p class="sub-body">JDK 提供了 ConcurrentHashMap、CopyOnWriteArrayList 等线程安全容器，相比 Collections.synchronized* 包装有更细粒度的并发控制。</p>
+
+      <!-- 容器对比 -->
+      <div class="cmp-table-wrap" style="margin-top:1rem">
+        <table class="cmp-table">
+          <thead><tr><th>容器</th><th>线程安全机制</th><th>读性能</th><th>写性能</th><th>适用场景</th></tr></thead>
+          <tbody>
+            <tr><td>HashMap</td><td>❌ 非线程安全</td><td>最高</td><td>最高</td><td>单线程</td></tr>
+            <tr><td>Hashtable</td><td>方法级 synchronized</td><td>低</td><td>低</td><td>已废弃，避免使用</td></tr>
+            <tr><td>Collections.synchronizedMap</td><td>对象锁包装</td><td>低</td><td>低</td><td>遗留代码兼容</td></tr>
+            <tr><td>ConcurrentHashMap</td><td>JDK8: CAS + synchronized 分段</td><td>高（无锁读）</td><td>高</td><td>高并发读写 Map</td></tr>
+            <tr><td>CopyOnWriteArrayList</td><td>写时复制数组</td><td>最高（无锁）</td><td>低（全量复制）</td><td>读多写极少的列表</td></tr>
+            <tr><td>ConcurrentLinkedQueue</td><td>CAS 无锁队列</td><td>高</td><td>高</td><td>高并发非阻塞队列</td></tr>
+            <tr><td>BlockingQueue 系列</td><td>ReentrantLock + Condition</td><td>中</td><td>中</td><td>生产者-消费者模型</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- ConcurrentHashMap JDK8 -->
+      <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">ConcurrentHashMap（JDK 8）实现原理</p>
+      <div class="kv-grid" style="margin-top:0.6rem">
+        <div class="kv-row">
+          <span class="kv-key">数据结构</span>
+          <span class="kv-val">Node 数组 + 链表 + 红黑树（链表长度 ≥ 8 且数组长度 ≥ 64 时树化，提升查询 O(n)→O(logN)）</span>
+        </div>
+        <div class="kv-row">
+          <span class="kv-key">锁粒度</span>
+          <span class="kv-val">桶头节点级别：桶为空用 CAS 插入；桶非空用 synchronized 锁住桶头节点。并发度 = 桶数量，远高于全表锁</span>
+        </div>
+        <div class="kv-row">
+          <span class="kv-key">size()</span>
+          <span class="kv-val">类似 LongAdder，baseCount + CounterCell[] 分段累加，是估算值（非强一致）</span>
+        </div>
+        <div class="kv-row">
+          <span class="kv-key">扩容</span>
+          <span class="kv-val">支持多线程协助迁移（helpTransfer），桶 hash == MOVED(-1) 时触发协助</span>
+        </div>
+      </div>
+      <div class="arch-box" style="margin-top:0.75rem">
+        <pre class="arch-pre" style="font-size:0.78rem;line-height:1.7">
+  JDK 8 put 流程：
+  1. 计算 hash，定位桶位置
+  2. 桶为 null  → CAS 插入 Node，成功则结束
+  3. 桶 hash == MOVED(-1) → 协助扩容（helpTransfer）
+  4. 桶非空  → synchronized(桶头节点) {
+         链表长度 < 8：尾插
+         链表长度 ≥ 8 且数组长度 ≥ 64：转红黑树
+     }
+  5. size + 1（CAS + CounterCell，类似 LongAdder）</pre>
+      </div>
+
+      <!-- CopyOnWriteArrayList -->
+      <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">CopyOnWriteArrayList 原理</p>
+      <div class="kv-grid" style="margin-top:0.6rem">
+        <div class="kv-row"><span class="kv-key">读操作</span><span class="kv-val">直接读 volatile 数组引用，无锁，不阻塞写线程</span></div>
+        <div class="kv-row"><span class="kv-key">写操作</span><span class="kv-val">加 ReentrantLock，复制整个数组，在新数组上修改，最后 volatile 写替换引用</span></div>
+        <div class="kv-row"><span class="kv-key">弱一致性</span><span class="kv-val">迭代器快照创建时的数组，写后新迭代器才能看到变化（不抛 ConcurrentModificationException）</span></div>
+        <div class="kv-row"><span class="kv-key">内存代价</span><span class="kv-val">每次写都复制全量数组，大数据量 + 频繁写时内存和 GC 压力大</span></div>
+      </div>
+
+      <!-- BlockingQueue -->
+      <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">BlockingQueue 主要实现</p>
+      <div class="cmp-table-wrap" style="margin-top:0.5rem">
+        <table class="cmp-table">
+          <thead><tr><th>实现类</th><th>有界</th><th>底层结构</th><th>特点</th></tr></thead>
+          <tbody>
+            <tr><td>ArrayBlockingQueue</td><td>✅ 固定容量</td><td>数组</td><td>一把锁（put/take 共用），公平可选</td></tr>
+            <tr><td>LinkedBlockingQueue</td><td>可选（默认 Integer.MAX_VALUE）</td><td>链表</td><td>put/take 两把锁，吞吐量更高</td></tr>
+            <tr><td>SynchronousQueue</td><td>0（不存储）</td><td>—</td><td>直接交换，CachedThreadPool 使用</td></tr>
+            <tr><td>PriorityBlockingQueue</td><td>❌ 无界</td><td>堆</td><td>按优先级出队</td></tr>
+            <tr><td>DelayQueue</td><td>❌ 无界</td><td>堆</td><td>元素到期后才可取，用于延迟任务</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#4f46e5;background:rgba(79,70,229,0.05)">
+        <strong>面试要点：</strong>ConcurrentHashMap 的 size() 是估算值（非强一致）。CopyOnWrite 适合"读远多于写"场景，不适合实时性要求高的场景。LinkedBlockingQueue 的两把锁（putLock / takeLock）比 ArrayBlockingQueue 的单锁吞吐量更高。
+      </div>
+    </div>
+
+    <!-- ── 9. 虚拟线程 JDK21 ── -->
+    <div class="subsection" id="juc-vthread">
+      <h3 class="sub-title">
+        <span class="dot" style="background:#4f46e5;box-shadow:0 0 0 3px rgba(79,70,229,0.15)"></span>
+        虚拟线程（Virtual Threads，JDK 21）
+      </h3>
+      <p class="sub-body">JEP 444 在 JDK 21 正式落地。虚拟线程是由 JVM 调度的轻量级线程，极大降低了 IO 密集型应用的线程开销，是对传统"一请求一线程"模型的根本性改进。</p>
+
+      <!-- 平台线程 vs 虚拟线程 -->
+      <p class="sub-body" style="margin-top:1rem;font-weight:600;color:var(--text-2)">平台线程 vs 虚拟线程</p>
+      <div class="cmp-table-wrap" style="margin-top:0.5rem">
+        <table class="cmp-table">
+          <thead><tr><th>维度</th><th>平台线程（Platform Thread）</th><th>虚拟线程（Virtual Thread）</th></tr></thead>
+          <tbody>
+            <tr><td>调度者</td><td>操作系统</td><td>JVM（ForkJoinPool 作为载体线程池）</td></tr>
+            <tr><td>内存占用</td><td>~1 MB（OS 栈）</td><td>~几 KB（堆上动态扩展）</td></tr>
+            <tr><td>可创建数量</td><td>千级（受 OS 限制）</td><td>百万级</td></tr>
+            <tr><td>创建成本</td><td>高（系统调用）</td><td>极低</td></tr>
+            <tr><td>适用场景</td><td>CPU 密集型</td><td>IO 密集型（数据库、HTTP、文件）</td></tr>
+            <tr><td>与现有 API 兼容</td><td>✅</td><td>✅（Thread 子类，接口完全兼容）</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 架构原理 -->
+      <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">架构原理：挂载 / 卸载（Mount / Unmount）</p>
+      <div class="arch-box" style="margin-top:0.5rem">
+        <pre class="arch-pre" style="font-size:0.78rem;line-height:1.8">
+  OS Thread ←─── Carrier Thread（平台线程，ForkJoinPool）
+                       │
+              ┌────────┴────────┐
+              │  Virtual Thread  │  ← 挂载（mounted），正在运行
+              └─────────────────┘
+
+  当虚拟线程阻塞在 IO（如 socket.read()）时：
+    → 自动卸载（unmounted），将阻塞状态保存到堆
+    → Carrier Thread 立刻去执行其他虚拟线程
+    → IO 完成后，虚拟线程重新挂载到（可能不同的）Carrier Thread 继续执行</pre>
+      </div>
+
+      <!-- 创建方式 -->
+      <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">创建方式</p>
+      <div class="arch-box" style="margin-top:0.5rem">
+        <pre class="arch-pre" style="font-size:0.78rem;line-height:1.8">
+  // 方式 1：Thread.ofVirtual()
+  Thread vt = Thread.ofVirtual().name("vt-1").start(() -> doWork());
+
+  // 方式 2：ExecutorService（推荐，每个任务一个虚拟线程）
+  try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+      executor.submit(() -> handleRequest());
+  }
+
+  // 方式 3：Thread.startVirtualThread()（快捷）
+  Thread.startVirtualThread(() -> doWork());</pre>
+      </div>
+
+      <!-- 注意事项 -->
+      <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">使用注意事项</p>
+      <div class="kv-grid" style="margin-top:0.6rem">
+        <div class="kv-row">
+          <span class="kv-key" style="color:#dc2626">Pinning（钉住）</span>
+          <span class="kv-val">虚拟线程执行 <code>synchronized</code> 块内发生 IO 阻塞时，会"钉住"载体线程无法卸载，退化为平台线程行为。解决：IO 密集的临界区改用 <code>ReentrantLock</code> 替换 <code>synchronized</code>。JDK 24 已修复此限制。</span>
+        </div>
+        <div class="kv-row">
+          <span class="kv-key" style="color:#dc2626">不要池化</span>
+          <span class="kv-val">虚拟线程创建代价极低，不需要也不应该放入线程池复用（违背设计理念）。使用 <code>newVirtualThreadPerTaskExecutor()</code>，每任务创建一个。</span>
+        </div>
+        <div class="kv-row">
+          <span class="kv-key" style="color:#dc2626">ThreadLocal 慎用</span>
+          <span class="kv-val">百万级虚拟线程各自携带 ThreadLocal 会带来巨大内存压力。JDK 21 引入 <strong>Scoped Values</strong>（JEP 446）作为替代，不可变、作用域明确、性能更好。</span>
+        </div>
+        <div class="kv-row">
+          <span class="kv-key">不适合 CPU 密集</span>
+          <span class="kv-val">虚拟线程解决的是"线程在 IO 上等待"问题，CPU 密集型任务仍应使用平台线程池（如 ForkJoinPool）。</span>
+        </div>
+      </div>
+
+      <!-- 结构化并发 -->
+      <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">配套特性：结构化并发（Structured Concurrency，JEP 453）</p>
+      <div class="arch-box" style="margin-top:0.5rem">
+        <pre class="arch-pre" style="font-size:0.78rem;line-height:1.8">
+  // 传统写法：子任务异常难以传播，容易泄露
+  Future&lt;User&gt;  user  = executor.submit(() -> fetchUser(id));
+  Future&lt;Order&gt; order = executor.submit(() -> fetchOrder(id));
+
+  // 结构化并发：父任务生命周期管理所有子任务，任一失败则取消其他
+  try (var scope = new StructuredTaskScope.ShutdownOnFailure()) {
+      Subtask&lt;User&gt;  user  = scope.fork(() -> fetchUser(id));
+      Subtask&lt;Order&gt; order = scope.fork(() -> fetchOrder(id));
+      scope.join().throwIfFailed();        // 等待全部完成，任一失败抛异常
+      return new Response(user.get(), order.get());
+  }</pre>
+      </div>
+
+      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#4f46e5;background:rgba(79,70,229,0.05)">
+        <strong>面试要点：</strong>虚拟线程不是协程，是 Java 官方的"有栈协程"实现。它与现有 API（JDBC、synchronized、ThreadLocal）完全兼容，但部分场景有性能陷阱（Pinning）。Spring Boot 3.2+ 已支持一键开启虚拟线程：<code>spring.threads.virtual.enabled=true</code>。
+      </div>
+    </div>
+
+    <!-- ── 10. 面试题 ── -->
+    <div class="subsection" id="juc-qa">
+      <h3 class="sub-title">
+        <span class="dot" style="background:#4f46e5;box-shadow:0 0 0 3px rgba(79,70,229,0.15)"></span>
+        JUC 高频面试题
+      </h3>
+      <div class="qa-list">
+
+        <div class="qa-item" id="q-juc-1">
+          <div class="qa-question" onclick="toggleQA('q-juc-1')">
+            <span class="qa-num" style="background:rgba(79,70,229,0.1);color:#4f46e5;border:1px solid rgba(79,70,229,0.25)">Q1</span>
+            <span class="qa-q-text">volatile 的作用是什么？底层原理是什么？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <p><strong>两大作用：可见性 + 有序性（不保证原子性）</strong></p>
+            <p><strong>可见性：</strong>volatile 写强制将工作内存值刷回主内存，volatile 读强制从主内存重新加载，使其他线程的修改立即可见。</p>
+            <p><strong>有序性：</strong>编译器在 volatile 写前后、读后插入内存屏障（StoreStore / StoreLoad / LoadLoad / LoadStore），禁止特定方向的指令重排序。</p>
+            <p><strong>底层原理：</strong>JIT 将 volatile 写编译为带 <code>lock</code> 前缀的汇编指令（如 <code>lock addl</code>），触发 MESI 缓存一致性协议，将其他 CPU 缓存行置为 Invalid 状态，强制重读主内存。</p>
+            <p><strong>不保证原子性：</strong><code>volatile int i; i++</code> 是 read-modify-write 三步，多线程下会丢失更新，需用 <code>AtomicInteger</code>。</p>
+            <p><strong>典型使用场景：</strong>① 状态标志位（<code>volatile boolean running</code>）② DCL 双重检查锁单例中防止对象半初始化。</p>
+          </div></div>
+        </div>
+
+        <div class="qa-item" id="q-juc-2">
+          <div class="qa-question" onclick="toggleQA('q-juc-2')">
+            <span class="qa-num" style="background:rgba(79,70,229,0.1);color:#4f46e5;border:1px solid rgba(79,70,229,0.25)">Q2</span>
+            <span class="qa-q-text">synchronized 的锁升级过程是什么？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <p><strong>四个状态（单向升级，不可降级）：</strong></p>
+            <p><strong>① 无锁</strong>：对象初始状态，Mark Word 存 hashCode + GC 年龄。</p>
+            <p><strong>② 偏向锁</strong>：第一个线程访问时，CAS 将线程 ID 写入 Mark Word，之后同一线程重入只检查 ID，无需 CAS，开销极低。JDK 15 默认禁用，JDK 18 彻底移除。</p>
+            <p><strong>③ 轻量级锁</strong>：第二个线程竞争时，偏向锁撤销（STW），升级为轻量级锁。线程在栈帧创建 Lock Record，CAS 将 Mark Word 替换为 Lock Record 指针，失败则自旋重试（自适应自旋）。</p>
+            <p><strong>④ 重量级锁</strong>：自旋超过阈值或有第三个线程等待时，膨胀为重量级锁，关联 OS Mutex。未获锁线程进入 Monitor 的 EntryList 阻塞（内核态切换），开销最大。</p>
+            <p><strong>升级触发条件：</strong>偏向→轻量（竞争出现）；轻量→重量（自旋失败 或 等待线程数 &gt; 1）。</p>
+          </div></div>
+        </div>
+
+        <div class="qa-item" id="q-juc-3">
+          <div class="qa-question" onclick="toggleQA('q-juc-3')">
+            <span class="qa-num" style="background:rgba(79,70,229,0.1);color:#4f46e5;border:1px solid rgba(79,70,229,0.25)">Q3</span>
+            <span class="qa-q-text">synchronized 和 ReentrantLock 有什么区别？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <p><strong>相同点：</strong>都是可重入的互斥锁，都保证可见性、有序性、原子性。</p>
+            <p><strong>主要区别：</strong></p>
+            <p><strong>① 实现层面：</strong>synchronized 是 JVM 关键字，基于 Monitor；ReentrantLock 是 Java API，基于 AQS。</p>
+            <p><strong>② 额外能力（ReentrantLock 特有）：</strong></p>
+            <ul style="margin:0.4rem 0 0.4rem 1.2rem;line-height:1.8">
+              <li>可中断等待：<code>lockInterruptibly()</code></li>
+              <li>超时等待：<code>tryLock(timeout, unit)</code></li>
+              <li>公平锁：<code>new ReentrantLock(true)</code></li>
+              <li>多条件变量：<code>newCondition()</code>，可精确唤醒</li>
+            </ul>
+            <p><strong>③ 锁释放：</strong>synchronized 自动释放（代码块结束/异常）；ReentrantLock 必须在 finally 中手动调用 <code>unlock()</code>，否则死锁。</p>
+            <p><strong>④ 性能：</strong>JDK 6 后 synchronized 引入锁升级优化，低竞争下性能相当；高竞争下 ReentrantLock 略优（可中断减少无效等待）。</p>
+            <p><strong>选用原则：</strong>优先 synchronized（简单、JVM 优化好）；需要超时/中断/多条件时用 ReentrantLock。</p>
+          </div></div>
+        </div>
+
+        <div class="qa-item" id="q-juc-4">
+          <div class="qa-question" onclick="toggleQA('q-juc-4')">
+            <span class="qa-num" style="background:rgba(79,70,229,0.1);color:#4f46e5;border:1px solid rgba(79,70,229,0.25)">Q4</span>
+            <span class="qa-q-text">CAS 是什么？有什么缺点？如何解决 ABA 问题？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <p><strong>CAS（Compare-And-Swap）：</strong>比较并交换，是一种无锁原子操作。包含三个操作数：内存地址 V、预期值 expected、新值 newValue。当且仅当 V == expected 时，原子地将 V 改为 newValue，否则不修改。底层依赖 CPU 原子指令（x86: <code>lock cmpxchg</code>）。</p>
+            <p><strong>三大缺陷：</strong></p>
+            <p><strong>① ABA 问题：</strong>值从 A→B→A，CAS 认为未变化但实际已被修改两次。<br>解决：<code>AtomicStampedReference</code>，附加 stamp 版本号，每次修改 stamp+1，CAS 同时比较值和版本号。</p>
+            <p><strong>② 自旋开销：</strong>高并发下 CAS 长时间自旋，大量消耗 CPU。<br>解决：<code>LongAdder</code> 分段累加降低竞争；或限制自旋次数后升级为阻塞锁。</p>
+            <p><strong>③ 只能保证单变量原子性：</strong>多个变量需要同时原子更新时 CAS 无法直接实现。<br>解决：将多个变量封装为对象，用 <code>AtomicReference</code> 整体 CAS；或改用 synchronized。</p>
+          </div></div>
+        </div>
+
+        <div class="qa-item" id="q-juc-5">
+          <div class="qa-question" onclick="toggleQA('q-juc-5')">
+            <span class="qa-num" style="background:rgba(79,70,229,0.1);color:#4f46e5;border:1px solid rgba(79,70,229,0.25)">Q5</span>
+            <span class="qa-q-text">AQS 的原理是什么？哪些类基于 AQS 实现？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <p><strong>AQS（AbstractQueuedSynchronizer）：</strong>JUC 同步框架的核心，通过一个 <code>volatile int state</code> 表示同步状态，一个 CLH 变体双向链表队列管理等待线程，使用 <code>LockSupport.park/unpark</code> 阻塞/唤醒线程。</p>
+            <p><strong>核心流程：</strong>线程调用 <code>acquire()</code> → 先 <code>tryAcquire()</code>（子类实现，CAS 修改 state）→ 失败则封装成 Node 入队 → <code>LockSupport.park</code> 阻塞。持锁线程 <code>release()</code> → <code>tryRelease()</code> 恢复 state → <code>unpark</code> 队头后继线程。</p>
+            <p><strong>两种模式：</strong></p>
+            <ul style="margin:0.4rem 0 0.4rem 1.2rem;line-height:1.8">
+              <li><strong>独占模式：</strong>同时只有一个线程持锁，重写 tryAcquire / tryRelease</li>
+              <li><strong>共享模式：</strong>多线程可同时持锁，重写 tryAcquireShared / tryReleaseShared</li>
+            </ul>
+            <p><strong>基于 AQS 实现的类：</strong></p>
+            <ul style="margin:0.4rem 0 0.4rem 1.2rem;line-height:1.8">
+              <li><strong>ReentrantLock</strong>：独占，state = 重入次数</li>
+              <li><strong>ReentrantReadWriteLock</strong>：读共享/写独占，state 高16位=读计数，低16位=写重入数</li>
+              <li><strong>Semaphore</strong>：共享，state = 剩余许可数</li>
+              <li><strong>CountDownLatch</strong>：共享，state = 计数，归零后所有 await 线程被唤醒</li>
+              <li><strong>ThreadPoolExecutor</strong> 的 Worker：独占，用于判断线程是否在执行任务</li>
+            </ul>
+          </div></div>
+        </div>
+
+        <div class="qa-item" id="q-juc-6">
+          <div class="qa-question" onclick="toggleQA('q-juc-6')">
+            <span class="qa-num" style="background:rgba(79,70,229,0.1);color:#4f46e5;border:1px solid rgba(79,70,229,0.25)">Q6</span>
+            <span class="qa-q-text">ThreadPoolExecutor 有哪些核心参数？各自的作用是什么？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <p><strong>7 个核心参数：</strong></p>
+            <ul style="margin:0.4rem 0 0.4rem 1.2rem;line-height:1.9">
+              <li><code>corePoolSize</code>：核心线程数，常驻不销毁（除非设置 allowCoreThreadTimeOut）</li>
+              <li><code>maximumPoolSize</code>：最大线程数，队列满后才扩展到此上限</li>
+              <li><code>keepAliveTime + unit</code>：非核心线程空闲超时时间，超时后销毁</li>
+              <li><code>workQueue</code>：任务等待队列。有界（ArrayBlockingQueue）防止 OOM；无界（LinkedBlockingQueue）注意堆积风险</li>
+              <li><code>threadFactory</code>：线程工厂，可自定义线程名方便排查问题</li>
+              <li><code>handler</code>：拒绝策略，队列满且线程数达上限时触发</li>
+            </ul>
+            <p><strong>执行流程：</strong>提交任务 → 线程数 &lt; core 则创建核心线程 → 否则入队 → 队满则创建非核心线程（直到 max）→ 仍满则执行拒绝策略。</p>
+            <p><strong>四种拒绝策略：</strong>AbortPolicy（抛异常）/ CallerRunsPolicy（调用者执行，实现背压）/ DiscardPolicy（静默丢弃）/ DiscardOldestPolicy（丢最老任务）。</p>
+          </div></div>
+        </div>
+
+        <div class="qa-item" id="q-juc-7">
+          <div class="qa-question" onclick="toggleQA('q-juc-7')">
+            <span class="qa-num" style="background:rgba(79,70,229,0.1);color:#4f46e5;border:1px solid rgba(79,70,229,0.25)">Q7</span>
+            <span class="qa-q-text">线程池的拒绝策略有哪些？分别适用什么场景？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <p><strong>触发时机：</strong>workQueue 已满 <strong>且</strong> 线程数已达 maximumPoolSize。</p>
+            <p><strong>四种内置策略：</strong></p>
+            <ul style="margin:0.4rem 0 0.4rem 1.2rem;line-height:1.9">
+              <li><strong>AbortPolicy（默认）：</strong>抛出 <code>RejectedExecutionException</code>。适合必须感知任务被拒绝的场景，调用方可捕获异常进行补救。</li>
+              <li><strong>CallerRunsPolicy：</strong>由提交任务的线程自己执行该任务。不丢任务，但会阻塞提交线程（如 HTTP 线程），天然实现背压，减缓任务提交速度。</li>
+              <li><strong>DiscardPolicy：</strong>静默丢弃新任务，无任何通知。适合对任务完整性不敏感的统计/日志类场景。</li>
+              <li><strong>DiscardOldestPolicy：</strong>丢弃队头最旧的任务，重新尝试提交新任务。适合新任务优先级高于旧任务的场景（如实时行情推送）。</li>
+            </ul>
+            <p><strong>自定义策略：</strong>实现 <code>RejectedExecutionHandler</code> 接口，可将拒绝任务写入数据库/MQ 以便后续重试，适合不允许丢失的核心业务场景。</p>
+          </div></div>
+        </div>
+
+        <div class="qa-item" id="q-juc-8">
+          <div class="qa-question" onclick="toggleQA('q-juc-8')">
+            <span class="qa-num" style="background:rgba(79,70,229,0.1);color:#4f46e5;border:1px solid rgba(79,70,229,0.25)">Q8</span>
+            <span class="qa-q-text">如何合理设置线程池大小？CPU 密集型和 IO 密集型有何不同？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <p><strong>CPU 密集型任务：</strong>任务主要消耗 CPU（计算、加解密、压缩）。线程过多会导致频繁上下文切换，反而降低性能。</p>
+            <p>公式：<code>N = CPU 核心数 + 1</code>（+1 是为了在偶发页缺失等停顿时仍能保持 CPU 满负荷）</p>
+            <p><strong>IO 密集型任务：</strong>任务大量时间在等待 IO（数据库查询、网络请求、文件读写），线程等待期间 CPU 空闲，可配置更多线程充分利用 CPU。</p>
+            <p>公式：<code>N = CPU 核心数 × (1 + 等待时间 / 计算时间)</code>。实践中常用 <code>2 × CPU 核心数</code> 作为起点，再根据监控调整。</p>
+            <p><strong>混合型任务：</strong>拆分为独立的 CPU 密集线程池和 IO 密集线程池，互不干扰。</p>
+            <p><strong>实践建议：</strong>公式只是起点，最终要通过压测 + 监控（线程活跃数、队列深度、CPU 利用率、RT）动态调整。推荐使用支持动态调参的线程池（如美团 DynamicTp）。</p>
+          </div></div>
+        </div>
+
+        <div class="qa-item" id="q-juc-9">
+          <div class="qa-question" onclick="toggleQA('q-juc-9')">
+            <span class="qa-num" style="background:rgba(79,70,229,0.1);color:#4f46e5;border:1px solid rgba(79,70,229,0.25)">Q9</span>
+            <span class="qa-q-text">ConcurrentHashMap 的实现原理是什么？为什么不允许 null key？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <p><strong>ConcurrentHashMap（JDK 8）：Node 数组 + CAS + synchronized</strong></p>
+            <ul style="margin:0.4rem 0 0.4rem 1.2rem;line-height:1.8">
+              <li><strong>数据结构：</strong>Node 数组 + 链表（长度 ≥ 8 且数组 ≥ 64 转红黑树），查询最坏 O(logN)</li>
+              <li><strong>锁粒度：</strong>桶头节点级别。桶为空用 CAS 插入；桶非空用 synchronized 锁桶头节点，并发度 = 桶数量</li>
+              <li><strong>读操作：</strong>Node 的 value / next 均为 volatile，读无需加锁</li>
+              <li><strong>size()：</strong>baseCount + CounterCell[] 分段累加（类似 LongAdder），是估算值</li>
+              <li><strong>扩容：</strong>支持多线程协助 transfer（helpTransfer），桶 hash == MOVED 时触发</li>
+            </ul>
+            <p><strong>不支持 null key / null value</strong>（HashMap 支持）：多线程下无法区分"key 不存在"和"key 对应 null"。</p>
+          </div></div>
+        </div>
+
+        <div class="qa-item" id="q-juc-10">
+          <div class="qa-question" onclick="toggleQA('q-juc-10')">
+            <span class="qa-num" style="background:rgba(79,70,229,0.1);color:#4f46e5;border:1px solid rgba(79,70,229,0.25)">Q10</span>
+            <span class="qa-q-text">Java 内存模型（JMM）是什么？happens-before 规则有哪些？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <p><strong>JMM：</strong>Java 内存模型（Java Memory Model）是 JVM 规范的一部分，定义了多线程程序中变量的读写可见性规则，屏蔽不同 CPU 架构的内存模型差异，解决并发的三大问题：可见性、有序性、原子性。</p>
+            <p><strong>工作内存 vs 主内存：</strong>每个线程有自己的工作内存（抽象，对应 CPU 缓存），只能操作主内存变量的副本。线程间通信必须经过主内存。</p>
+            <p><strong>happens-before 8 条规则（A hb B 意味着 A 的写对 B 可见）：</strong></p>
+            <ol style="margin:0.4rem 0 0.4rem 1.2rem;line-height:1.9">
+              <li><strong>程序顺序规则：</strong>同一线程内，前面操作 hb 后面操作</li>
+              <li><strong>监视器锁规则：</strong>unlock hb 后续对同一锁的 lock</li>
+              <li><strong>volatile 规则：</strong>volatile 写 hb 后续对该变量的读</li>
+              <li><strong>线程启动规则：</strong>Thread.start() hb 该线程的任何操作</li>
+              <li><strong>线程终止规则：</strong>线程所有操作 hb 其他线程的 Thread.join() 返回</li>
+              <li><strong>线程中断规则：</strong>interrupt() hb 检测到中断的代码</li>
+              <li><strong>对象终结规则：</strong>构造函数结束 hb finalize() 开始</li>
+              <li><strong>传递性：</strong>A hb B，B hb C → A hb C</li>
+            </ol>
+          </div></div>
+        </div>
+
+        <div class="qa-item" id="q-juc-11">
+          <div class="qa-question" onclick="toggleQA('q-juc-11')">
+            <span class="qa-num" style="background:rgba(79,70,229,0.1);color:#4f46e5;border:1px solid rgba(79,70,229,0.25)">Q11</span>
+            <span class="qa-q-text">CountDownLatch、CyclicBarrier、Semaphore 分别适用什么场景？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <p><strong>CountDownLatch（倒计时门闩）：</strong></p>
+            <ul style="margin:0.4rem 0 0.4rem 1.2rem;line-height:1.8">
+              <li>用法：<code>new CountDownLatch(N)</code>，工作线程完成后调 <code>countDown()</code>，主线程 <code>await()</code> 等待 N 归零</li>
+              <li>特点：<strong>一次性</strong>，不可重置；基于 AQS 共享模式</li>
+              <li>场景：主线程等待多个子任务全部完成（如并行查询后汇总结果）</li>
+            </ul>
+            <p><strong>CyclicBarrier（循环屏障）：</strong></p>
+            <ul style="margin:0.4rem 0 0.4rem 1.2rem;line-height:1.8">
+              <li>用法：<code>new CyclicBarrier(N, barrierAction)</code>，所有线程调 <code>await()</code> 到达屏障点后一起继续，可触发 barrierAction</li>
+              <li>特点：<strong>可重置/复用</strong>（cyclic），基于 ReentrantLock + Condition</li>
+              <li>场景：多线程分阶段计算（每轮结束后同步，再开始下一轮，如并行数值模拟）</li>
+            </ul>
+            <p><strong>Semaphore（信号量）：</strong></p>
+            <ul style="margin:0.4rem 0 0.4rem 1.2rem;line-height:1.8">
+              <li>用法：<code>new Semaphore(permits)</code>，<code>acquire()</code> 消耗许可，<code>release()</code> 归还许可</li>
+              <li>特点：控制同时访问资源的线程数量；基于 AQS 共享模式</li>
+              <li>场景：限流（如数据库连接池限制最大并发连接数）、资源池控制</li>
+            </ul>
+            <p><strong>核心区别：</strong>CountDownLatch 是"等待事件完成"；CyclicBarrier 是"等待所有参与者到齐"；Semaphore 是"限制并发数量"。</p>
+          </div></div>
+        </div>
+
+        <div class="qa-item" id="q-juc-12">
+          <div class="qa-question" onclick="toggleQA('q-juc-12')">
+            <span class="qa-num" style="background:rgba(79,70,229,0.1);color:#4f46e5;border:1px solid rgba(79,70,229,0.25)">Q12</span>
+            <span class="qa-q-text">ThreadLocal 的原理是什么？如何避免内存泄漏？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <p><strong>原理：</strong>每个 Thread 对象内部持有一个 <code>ThreadLocalMap</code>（Entry 数组），key 是 ThreadLocal 实例的<strong>弱引用</strong>，value 是线程本地值。调用 <code>ThreadLocal.get/set</code> 时，实际操作的是当前线程的 ThreadLocalMap。</p>
+            <p><strong>内存泄漏原因：</strong></p>
+            <ul style="margin:0.4rem 0 0.4rem 1.2rem;line-height:1.8">
+              <li>ThreadLocalMap 的 Entry key 是弱引用，GC 时 ThreadLocal 对象可被回收，key 变为 null</li>
+              <li>但 value 是强引用，只要线程存活（如线程池复用），value 就无法被 GC 回收</li>
+              <li>Thread → ThreadLocalMap → Entry → value，形成强引用链，导致内存泄漏</li>
+            </ul>
+            <p><strong>避免内存泄漏：</strong>使用完后必须调用 <code>ThreadLocal.remove()</code> 手动清除 Entry，尤其是在线程池场景下。</p>
+            <p><strong>ThreadLocalMap 的补救机制：</strong>get/set 时会扫描 key 为 null 的 Entry 并清理（expungeStaleEntry），但不保证及时，不能替代显式 remove()。</p>
+            <p><strong>典型应用：</strong>数据库连接、用户登录信息（Token/UserId）、Spring 事务的 ConnectionHolder、MDC 日志追踪。</p>
+          </div></div>
+        </div>
+
+        <div class="qa-item" id="q-juc-13">
+          <div class="qa-question" onclick="toggleQA('q-juc-13')">
+            <span class="qa-num" style="background:rgba(79,70,229,0.1);color:#4f46e5;border:1px solid rgba(79,70,229,0.25)">Q13</span>
+            <span class="qa-q-text">什么是死锁？产生的四个必要条件是什么？如何预防和检测？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <p><strong>死锁：</strong>两个或多个线程互相持有对方需要的锁，均在等待对方释放，导致永久阻塞。</p>
+            <p><strong>四个必要条件（缺一不可）：</strong></p>
+            <ol style="margin:0.4rem 0 0.4rem 1.2rem;line-height:1.9">
+              <li><strong>互斥：</strong>资源同时只能被一个线程持有</li>
+              <li><strong>持有并等待：</strong>线程持有已有资源，等待获取其他资源</li>
+              <li><strong>不可剥夺：</strong>已持有的资源不能被强制剥夺，只能主动释放</li>
+              <li><strong>循环等待：</strong>线程间形成环形等待链（T1 等 T2，T2 等 T1）</li>
+            </ol>
+            <p><strong>预防（破坏必要条件）：</strong></p>
+            <ul style="margin:0.4rem 0 0.4rem 1.2rem;line-height:1.8">
+              <li>破坏持有并等待：一次性申请所有资源，或申请新资源前释放已有资源</li>
+              <li>破坏循环等待：对所有锁统一编号，按序申请（如先锁 A 再锁 B，不允许反向）</li>
+              <li>破坏不可剥夺：使用 <code>tryLock(timeout)</code> 超时失败后释放已持有的锁</li>
+            </ul>
+            <p><strong>检测：</strong></p>
+            <ul style="margin:0.4rem 0 0.4rem 1.2rem;line-height:1.8">
+              <li><code>jstack &lt;pid&gt;</code> 打印线程堆栈，搜索 "deadlock" 关键字</li>
+              <li>JConsole / VisualVM 的线程面板可直接检测死锁</li>
+              <li>代码层：<code>ThreadMXBean.findDeadlockedThreads()</code></li>
+            </ul>
+          </div></div>
+        </div>
+
+        <div class="qa-item" id="q-juc-14">
+          <div class="qa-question" onclick="toggleQA('q-juc-14')">
+            <span class="qa-num" style="background:rgba(79,70,229,0.1);color:#4f46e5;border:1px solid rgba(79,70,229,0.25)">Q14</span>
+            <span class="qa-q-text">ReentrantReadWriteLock 的适用场景和注意事项？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <p><strong>适用场景：读多写少</strong>，如本地缓存、配置中心、路由表等。读操作并发执行，写操作独占，比全程 synchronized 吞吐量高。</p>
+            <p><strong>读写规则：</strong>读-读不互斥；读-写互斥；写-写互斥。</p>
+            <p><strong>锁降级（支持）：</strong>持有写锁时可以再获取读锁，然后释放写锁（写锁降级为读锁）。常用于"更新缓存后立刻读取"，保证不被其他写线程打断。</p>
+            <p><strong>锁升级（不支持，会死锁）：</strong>持有读锁时不能直接获取写锁。因为写锁需要等所有读锁释放，而当前线程持有读锁又在等写锁 → 死锁。</p>
+            <p><strong>写饥饿问题：</strong>读锁持续到来时，写锁可能长期无法获取。非公平模式下更严重；使用公平模式（<code>new ReentrantReadWriteLock(true)</code>）可缓解，但降低吞吐量。</p>
+            <p><strong>更高性能替代：</strong>极高并发读场景可用 <code>StampedLock</code> 的乐观读模式，但不支持重入和 Condition，使用更复杂。</p>
+          </div></div>
+        </div>
+
+        <div class="qa-item" id="q-juc-15">
+          <div class="qa-question" onclick="toggleQA('q-juc-15')">
+            <span class="qa-num" style="background:rgba(79,70,229,0.1);color:#4f46e5;border:1px solid rgba(79,70,229,0.25)">Q15</span>
+            <span class="qa-q-text">CompletableFuture 相比 Future 有哪些改进？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <p><strong>Future 的缺陷：</strong></p>
+            <ul style="margin:0.4rem 0 0.4rem 1.2rem;line-height:1.8">
+              <li>get() 是阻塞调用，无法在结果就绪时自动回调</li>
+              <li>不支持链式组合多个异步任务</li>
+              <li>无法手动完成（无法从外部设置结果）</li>
+              <li>异常处理不便（只能在 get() 处 try-catch）</li>
+            </ul>
+            <p><strong>CompletableFuture 的改进（JDK 8+）：</strong></p>
+            <ul style="margin:0.4rem 0 0.4rem 1.2rem;line-height:1.8">
+              <li><strong>异步回调：</strong><code>thenApply / thenAccept / thenRun</code> — 结果就绪后自动触发，非阻塞</li>
+              <li><strong>链式组合：</strong><code>thenCompose</code>（串行）/ <code>thenCombine</code>（并行合并两个结果）</li>
+              <li><strong>聚合等待：</strong><code>allOf()</code> 等全部完成 / <code>anyOf()</code> 等任意一个完成</li>
+              <li><strong>异常处理：</strong><code>exceptionally()</code> / <code>handle()</code> 在链中优雅处理异常</li>
+              <li><strong>手动完成：</strong><code>complete(value)</code> / <code>completeExceptionally(ex)</code></li>
+              <li><strong>自定义线程池：</strong>各回调方法可传入 Executor，避免使用默认 ForkJoinPool.commonPool</li>
+            </ul>
+            <p><strong>注意事项：</strong>默认使用 ForkJoinPool.commonPool()，IO 密集型任务应传入自定义线程池，否则会阻塞公共池影响其他任务。<code>get()</code> 仍会阻塞，生产中应优先用 <code>join()</code> 或回调，避免嵌套阻塞。</p>
+          </div></div>
+        </div>
+
+        <div class="qa-item" id="q-juc-16">
+          <div class="qa-question" onclick="toggleQA('q-juc-16')">
+            <span class="qa-num" style="background:rgba(79,70,229,0.1);color:#4f46e5;border:1px solid rgba(79,70,229,0.25)">Q16</span>
+            <span class="qa-q-text">JDK 21 虚拟线程是什么？和平台线程有什么区别？有哪些使用陷阱？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <p><strong>虚拟线程（Virtual Thread，JEP 444）：</strong>由 JVM 调度的轻量级线程，挂载在少量平台线程（Carrier Thread）上运行。当虚拟线程阻塞于 IO 时，自动从载体线程卸载，载体线程可立即执行其他虚拟线程，从而用少量 OS 线程支撑百万级并发。</p>
+            <p><strong>核心差异：</strong>平台线程由 OS 调度，内存约 1 MB；虚拟线程由 JVM 调度，内存仅几 KB，创建成本极低，适合 IO 密集型场景。</p>
+            <p><strong>三大使用陷阱：</strong></p>
+            <ul style="margin:0.4rem 0 0.4rem 1.2rem;line-height:1.9">
+              <li><strong>Pinning（钉住）：</strong>虚拟线程在 <code>synchronized</code> 块内发生 IO 阻塞时，无法卸载，会一直占用载体线程，退化为平台线程行为。解决：将 IO 密集临界区的 <code>synchronized</code> 换成 <code>ReentrantLock</code>（JDK 24 已修复）。</li>
+              <li><strong>不要池化：</strong>虚拟线程创建极廉价，池化反而浪费。应使用 <code>Executors.newVirtualThreadPerTaskExecutor()</code>，每任务一个虚拟线程。</li>
+              <li><strong>ThreadLocal 内存压力：</strong>百万虚拟线程各自持有 ThreadLocal 会消耗大量堆内存。推荐改用 JDK 21 的 <strong>Scoped Values</strong>（JEP 446），不可变、生命周期明确。</li>
+            </ul>
+            <p><strong>不适合场景：</strong>CPU 密集型计算（虚拟线程无法在计算途中卸载，不带来吞吐提升）。</p>
+            <p><strong>Spring Boot 接入：</strong><code>spring.threads.virtual.enabled=true</code>（Spring Boot 3.2+），Tomcat/Jetty 请求处理线程自动切换为虚拟线程。</p>
+          </div></div>
+        </div>
+
+      </div><!-- end qa-list -->
+    </div><!-- end juc-qa -->
+
+  </section>
+</main>
+</div>
+
+<div class="toc-panel" id="toc-panel">
+  <div class="toc-title">ON THIS PAGE</div>
+  <nav id="toc-nav"></nav>
+</div>
+
+<script src="shared.js"></script>
+</body>
+</html>

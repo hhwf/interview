@@ -103,3 +103,55 @@ const tocObserver = new IntersectionObserver((entries) => {
 }, { rootMargin: '-15% 0px -75% 0px' });
 
 document.querySelectorAll('.gc-section[id], .subsection[id]').forEach(s => tocObserver.observe(s));
+
+/* ── 3. Code block copy button ── */
+document.querySelectorAll('.arch-box').forEach(box => {
+  const pre = box.querySelector('pre');
+  if (!pre) return;
+  const btn = document.createElement('button');
+  btn.className = 'arch-copy-btn';
+  btn.textContent = 'COPY';
+  btn.addEventListener('click', () => {
+    navigator.clipboard.writeText(pre.textContent.trim()).then(() => {
+      btn.textContent = 'COPIED';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'COPY'; btn.classList.remove('copied'); }, 1600);
+    }).catch(() => {
+      // fallback for non-https / older browsers
+      const ta = document.createElement('textarea');
+      ta.value = pre.textContent.trim();
+      ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      btn.textContent = 'COPIED'; btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'COPY'; btn.classList.remove('copied'); }, 1600);
+    });
+  });
+  box.appendChild(btn);
+});
+
+/* ── 1. Back to top button ── */
+(function () {
+  const btn = document.createElement('button');
+  btn.id = 'back-top-btn';
+  btn.title = '返回顶部';
+  btn.innerHTML = '&#8679;'; // ↑
+  document.body.appendChild(btn);
+  window.addEventListener('scroll', () => {
+    btn.classList.toggle('visible', window.scrollY > window.innerHeight * 0.7);
+  }, { passive: true });
+  btn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+})();
+
+/* ── 4. Reading progress bar ── */
+(function () {
+  const bar = document.createElement('div');
+  bar.id = 'read-progress';
+  document.body.appendChild(bar);
+  window.addEventListener('scroll', () => {
+    const scrolled = window.scrollY;
+    const total = document.documentElement.scrollHeight - window.innerHeight;
+    bar.style.width = (total > 0 ? (scrolled / total) * 100 : 0) + '%';
+  }, { passive: true });
+})();

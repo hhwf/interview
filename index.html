@@ -60,9 +60,9 @@ h1 {
 
 .cards {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(4, 1fr);
   gap: 20px;
-  max-width: 960px;
+  max-width: 1280px;
   margin: 32px auto 48px;
   padding: 0 40px;
 }
@@ -105,6 +105,8 @@ h1 {
 .card.mysql  .card-icon { background: #f0fdfa; color: #0891b2; border-color: rgba(8,145,178,0.2); }
 .card.redis  .card-icon { background: #fff1f2; color: #dc2626; border-color: rgba(220,38,38,0.2); }
 .card.mq     .card-icon { background: #fffbeb; color: #d97706; border-color: rgba(217,119,6,0.2); }
+.card.juc    .card-icon { background: #eef2ff; color: #4f46e5; border-color: rgba(79,70,229,0.2); }
+.card.dist   .card-icon { background: #f5f3ff; color: #7c3aed; border-color: rgba(124,58,237,0.2); }
 
 .card-title {
   font-size: 18px;
@@ -154,8 +156,43 @@ h1 {
 .card.mysql  .card-cta { color: #0891b2; }
 .card.redis  .card-cta { color: #dc2626; }
 .card.mq     .card-cta { color: #d97706; }
+.card.juc    .card-cta { color: #4f46e5; }
+.card.dist   .card-cta { color: #7c3aed; }
 
 .card:hover .card-cta { gap: 10px; }
+
+/* ── Card hover preview panel ── */
+.card { position: relative; overflow: hidden; }
+.card-preview {
+  position: absolute; inset: 0;
+  background: #fff;
+  border-radius: inherit;
+  padding: 20px 22px 18px;
+  display: flex; flex-direction: column;
+  transform: translateY(105%);
+  transition: transform 0.28s cubic-bezier(0.34,1.1,0.64,1);
+  z-index: 5;
+}
+.card:hover .card-preview { transform: translateY(0); }
+.preview-heading {
+  font-family: var(--fm); font-size: 10px; font-weight: 600;
+  letter-spacing: 0.12em; color: #b0b8c1; margin-bottom: 10px;
+}
+.preview-list {
+  list-style: none; padding: 0; margin: 0;
+  display: flex; flex-direction: column; gap: 5px; flex: 1;
+}
+.preview-list li {
+  font-family: var(--fb); font-size: 12px; color: #374151;
+  padding-left: 13px; position: relative; line-height: 1.4;
+}
+.preview-list li::before {
+  content: '▸'; position: absolute; left: 0;
+  font-size: 9px; color: #c4cad4; top: 3px;
+}
+.preview-cta {
+  margin-top: 12px; font-size: 12px; font-weight: 600; letter-spacing: 0.02em;
+}
 
 .footer {
   margin-top: auto;
@@ -166,11 +203,17 @@ h1 {
   color: #9ca3af;
 }
 
+@media (max-width: 1024px) {
+  .cards { grid-template-columns: repeat(3, 1fr); }
+}
 @media (max-width: 768px) {
   .header { padding: 48px 20px 36px; }
-  .cards { margin: 24px auto 40px; padding: 0 16px; grid-template-columns: 1fr; }
+  .cards { margin: 24px auto 40px; padding: 0 16px; grid-template-columns: repeat(2, 1fr); }
   .footer { padding: 20px 16px; }
   .card:hover { box-shadow: var(--shadow-md); transform: none; }
+}
+@media (max-width: 480px) {
+  .cards { grid-template-columns: 1fr; }
 }
 </style>
 </head>
@@ -197,6 +240,19 @@ h1 {
       <span class="tag">面试题 ×21</span>
     </div>
     <div class="card-cta">进入学习 →</div>
+    <div class="card-preview">
+      <div class="preview-heading">目 录</div>
+      <ul class="preview-list">
+        <li>G1 堆分区模型 &amp; Region</li>
+        <li>G1 并发标记（SATB）</li>
+        <li>G1 CSet 与垃圾收集</li>
+        <li>ZGC 染色指针</li>
+        <li>ZGC 并发流程</li>
+        <li>GC 调优 &amp; 参数</li>
+        <li>CMS 对比</li>
+      </ul>
+      <div class="preview-cta" style="color:#16a34a">进入学习 →</div>
+    </div>
   </a>
 
   <a class="card spring" href="spring.html">
@@ -212,6 +268,17 @@ h1 {
       <span class="tag">面试题 ×17</span>
     </div>
     <div class="card-cta">进入学习 →</div>
+    <div class="card-preview">
+      <div class="preview-heading">目 录</div>
+      <ul class="preview-list">
+        <li>IoC &amp; Bean 容器</li>
+        <li>Bean 生命周期</li>
+        <li>AOP 代理原理</li>
+        <li>声明式事务</li>
+        <li>三级缓存 &amp; 循环依赖</li>
+      </ul>
+      <div class="preview-cta" style="color:#0369a1">进入学习 →</div>
+    </div>
   </a>
 
   <a class="card mysql" href="mysql.html">
@@ -227,6 +294,18 @@ h1 {
       <span class="tag">面试题 ×15</span>
     </div>
     <div class="card-cta">进入学习 →</div>
+    <div class="card-preview">
+      <div class="preview-heading">目 录</div>
+      <ul class="preview-list">
+        <li>核心架构 &amp; 存储引擎</li>
+        <li>B+ Tree 索引原理</li>
+        <li>事务与 ACID</li>
+        <li>MVCC 多版本并发</li>
+        <li>锁机制 &amp; Next-Key Lock</li>
+        <li>日志体系 &amp; 主从复制</li>
+      </ul>
+      <div class="preview-cta" style="color:#0e7490">进入学习 →</div>
+    </div>
   </a>
 
   <a class="card redis" href="redis.html">
@@ -242,6 +321,18 @@ h1 {
       <span class="tag">面试题 ×10</span>
     </div>
     <div class="card-cta">进入学习 →</div>
+    <div class="card-preview">
+      <div class="preview-heading">目 录</div>
+      <ul class="preview-list">
+        <li>数据结构与底层编码</li>
+        <li>RDB / AOF 持久化</li>
+        <li>内存淘汰策略</li>
+        <li>缓存穿透 / 击穿 / 雪崩</li>
+        <li>分布式锁</li>
+        <li>哨兵 &amp; Cluster 集群</li>
+      </ul>
+      <div class="preview-cta" style="color:#dc2626">进入学习 →</div>
+    </div>
   </a>
 
   <a class="card mq" href="mq.html">
@@ -257,6 +348,74 @@ h1 {
       <span class="tag">面试题 ×15</span>
     </div>
     <div class="card-cta">进入学习 →</div>
+    <div class="card-preview">
+      <div class="preview-heading">目 录</div>
+      <ul class="preview-list">
+        <li>Kafka 核心架构</li>
+        <li>ISR / HW / LEO</li>
+        <li>RocketMQ 事务消息</li>
+        <li>消息可靠性三段保障</li>
+        <li>消息顺序 &amp; 幂等</li>
+        <li>死信队列 &amp; 延迟消息</li>
+      </ul>
+      <div class="preview-cta" style="color:#d97706">进入学习 →</div>
+    </div>
+  </a>
+
+  <a class="card juc" href="juc.html">
+    <div class="card-icon">JUC</div>
+    <div class="card-title">并发编程</div>
+    <p class="card-desc">Java 内存模型、synchronized 锁升级、volatile 内存屏障、CAS 与 AQS 底层原理、线程池参数调优、并发容器实现。</p>
+    <div class="card-tags">
+      <span class="tag">线程池</span>
+      <span class="tag">AQS</span>
+      <span class="tag">synchronized</span>
+      <span class="tag">volatile</span>
+      <span class="tag">CAS</span>
+      <span class="tag">面试题 ×15</span>
+    </div>
+    <div class="card-cta">进入学习 →</div>
+    <div class="card-preview">
+      <div class="preview-heading">目 录</div>
+      <ul class="preview-list">
+        <li>Java 内存模型（JMM）</li>
+        <li>synchronized 锁升级</li>
+        <li>volatile &amp; 内存屏障</li>
+        <li>CAS &amp; 原子类</li>
+        <li>AQS 原理</li>
+        <li>线程池 &amp; 并发容器</li>
+        <li>虚拟线程（JDK 21）</li>
+      </ul>
+      <div class="preview-cta" style="color:#4f46e5">进入学习 →</div>
+    </div>
+  </a>
+
+  <a class="card dist" href="distributed.html">
+    <div class="card-icon">DST</div>
+    <div class="card-title">分布式系统</div>
+    <p class="card-desc">CAP/BASE 理论、分布式事务（2PC/TCC/Saga）、Redis 与 ZK 分布式锁、注册中心选型、Snowflake ID、令牌桶限流与熔断、一致性哈希。</p>
+    <div class="card-tags">
+      <span class="tag">CAP</span>
+      <span class="tag">分布式事务</span>
+      <span class="tag">分布式锁</span>
+      <span class="tag">限流熔断</span>
+      <span class="tag">Snowflake</span>
+      <span class="tag">面试题 ×15</span>
+    </div>
+    <div class="card-cta">进入学习 →</div>
+    <div class="card-preview">
+      <div class="preview-heading">目 录</div>
+      <ul class="preview-list">
+        <li>CAP &amp; BASE 理论</li>
+        <li>分布式事务（2PC/TCC/Saga）</li>
+        <li>分布式锁</li>
+        <li>注册中心选型</li>
+        <li>Snowflake ID</li>
+        <li>限流与熔断</li>
+        <li>一致性哈希</li>
+      </ul>
+      <div class="preview-cta" style="color:#7c3aed">进入学习 →</div>
+    </div>
   </a>
 
 </div>
