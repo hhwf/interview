@@ -7,11 +7,12 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=DM+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
+@import url("https://fontsapi.zeoseven.com/161/main/result.css");
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { scroll-behavior: smooth; }
 :root {
-  --fw: 'Outfit', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-  --fb: 'Outfit', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --fw: 'Sarasa Gothic SC', '更纱黑体 SC', 'Outfit', 'PingFang SC', 'Microsoft YaHei', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --fb: 'Sarasa Gothic SC', '更纱黑体 SC', 'Outfit', 'PingFang SC', 'Microsoft YaHei', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   --fm: 'DM Mono', 'SF Mono', Consolas, monospace;
   --shadow-sm: 0 1px 3px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04);
   --shadow-md: 0 4px 12px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.05);
@@ -77,6 +78,7 @@ h1 {
   flex-direction: column;
   box-shadow: var(--shadow-md);
   border: 1px solid rgba(0,0,0,0.06);
+  border-left: 4px solid;
   transition: box-shadow 0.2s, transform 0.2s;
 }
 
@@ -84,6 +86,14 @@ h1 {
   box-shadow: var(--shadow-lg);
   transform: translateY(-3px);
 }
+
+.card.gc     { border-left-color: #16a34a; }
+.card.spring { border-left-color: #2563eb; }
+.card.mysql  { border-left-color: #0891b2; }
+.card.redis  { border-left-color: #dc2626; }
+.card.mq     { border-left-color: #d97706; }
+.card.juc    { border-left-color: #4f46e5; }
+.card.dist   { border-left-color: #7c3aed; }
 
 .card-icon {
   width: 40px; height: 40px;
@@ -211,10 +221,67 @@ h1 {
   .cards { margin: 24px auto 40px; padding: 0 16px; grid-template-columns: repeat(2, 1fr); }
   .footer { padding: 20px 16px; }
   .card:hover { box-shadow: var(--shadow-md); transform: none; }
+
+  /* Mobile: show preview always-visible below card content */
+  .card { overflow: visible; }
+  .card-preview {
+    position: static; transform: none;
+    background: transparent; padding: 14px 0 0;
+    border-top: 1px solid rgba(0,0,0,0.06); margin-top: 8px;
+    z-index: auto; opacity: 1;
+  }
+  .card:hover .card-preview { transform: none; }
+  .preview-heading { margin-bottom: 6px; }
+  .preview-cta { display: none; }
 }
 @media (max-width: 480px) {
   .cards { grid-template-columns: 1fr; }
 }
+
+/* ── Dark Mode ── */
+[data-theme="dark"] body { background: #0f1117; }
+[data-theme="dark"] h1 { color: #e6edf3; }
+[data-theme="dark"] .subtitle { color: #636e7b; }
+[data-theme="dark"] .eyebrow { color: #58a6ff; }
+[data-theme="dark"] .card {
+  background: #161b22; border-color: rgba(255,255,255,0.06);
+  border-left-color: inherit; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+[data-theme="dark"] .card:hover { box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
+[data-theme="dark"] .card-title { color: #e6edf3; }
+[data-theme="dark"] .card-desc { color: #8b949e; }
+[data-theme="dark"] .card-preview { background: #161b22; }
+[data-theme="dark"] .preview-list li { color: #adbac7; }
+[data-theme="dark"] .preview-list li::before { color: #636e7b; }
+[data-theme="dark"] .preview-heading { color: #636e7b; }
+[data-theme="dark"] .card-preview { border-top-color: rgba(255,255,255,0.06); }
+[data-theme="dark"] .tag {
+  background: #21262d; color: #8b949e;
+  border-color: rgba(255,255,255,0.06);
+}
+[data-theme="dark"] .footer { color: #484f58; }
+[data-theme="dark"] .card.gc     { border-left-color: #16a34a; }
+[data-theme="dark"] .card.spring { border-left-color: #2563eb; }
+[data-theme="dark"] .card.mysql  { border-left-color: #0891b2; }
+[data-theme="dark"] .card.redis  { border-left-color: #dc2626; }
+[data-theme="dark"] .card.mq     { border-left-color: #d97706; }
+[data-theme="dark"] .card.juc    { border-left-color: #4f46e5; }
+[data-theme="dark"] .card.dist   { border-left-color: #7c3aed; }
+
+#dark-toggle-index {
+  position: fixed; top: 20px; right: 24px; z-index: 100;
+  background: #fff; border: 1px solid rgba(0,0,0,0.08);
+  border-radius: 8px; padding: 6px 10px; cursor: pointer;
+  font-size: 15px; color: #6b7280; line-height: 1;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+#dark-toggle-index:hover { background: #f6f8fa; color: #111827; }
+[data-theme="dark"] #dark-toggle-index {
+  background: #161b22; border-color: rgba(255,255,255,0.1);
+  color: #8b949e; box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+[data-theme="dark"] #dark-toggle-index:hover { background: #21262d; color: #e6edf3; }
 </style>
 </head>
 <body>
@@ -419,6 +486,26 @@ h1 {
   </a>
 
 </div>
+
+<script>
+(function() {
+  var K = 'interview-dark', h = document.documentElement;
+  var s = localStorage.getItem(K);
+  if (s === 'dark') h.setAttribute('data-theme', 'dark');
+  var btn = document.createElement('button');
+  btn.id = 'dark-toggle-index';
+  btn.title = '切换深色模式';
+  var isD = function() { return h.getAttribute('data-theme') === 'dark'; };
+  btn.textContent = isD() ? '☀' : '☽';
+  btn.addEventListener('click', function() {
+    var d = !isD();
+    h.setAttribute('data-theme', d ? 'dark' : 'light');
+    localStorage.setItem(K, d ? 'dark' : 'light');
+    btn.textContent = d ? '☀' : '☽';
+  });
+  document.body.appendChild(btn);
+})();
+</script>
 
 <div class="footer">
   Java Backend Interview Notes &nbsp;·&nbsp; 双击文件直接打开，无需服务器

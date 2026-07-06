@@ -61,6 +61,17 @@ navLinks.forEach(link => {
   link.addEventListener('click', closeSidebar);
 });
 
+/* ── Sidebar home link ── */
+(function () {
+  var pt = document.querySelector('.page-tabs');
+  if (!pt || document.querySelector('.sidebar-home')) return;
+  var h = document.createElement('a');
+  h.href = 'index.html';
+  h.className = 'sidebar-home';
+  h.innerHTML = '<span style="font-size:14px">&#8962;</span> 返回首页';
+  pt.parentNode.insertBefore(h, pt);
+})();
+
 const subObserver = new IntersectionObserver((entries) => {
   entries.forEach(entry => {
     if (entry.isIntersecting) {
@@ -114,7 +125,7 @@ const tocObserver = new IntersectionObserver((entries) => {
 
 document.querySelectorAll('.gc-section[id], .subsection[id]').forEach(s => tocObserver.observe(s));
 
-/* ── 3. Code block copy button ── */
+/* ── 3. Code block copy button + language label ── */
 document.querySelectorAll('.arch-box').forEach(box => {
   const pre = box.querySelector('pre');
   if (!pre) return;
@@ -139,6 +150,18 @@ document.querySelectorAll('.arch-box').forEach(box => {
     });
   });
   box.appendChild(btn);
+
+  // Language label
+  const isJava = /\b(public|class|void|return|synchronized|new |import )\b/.test(pre.textContent);
+  const isShell = /^\s*\$\s|^\s*sudo\s|^\s*apt-get\s|^\s*brew\s|^\s*curl\s/m.test(pre.textContent);
+  const lang = pre.className.match(/language-(\w+)/);
+  const label = lang ? lang[1].toUpperCase() : (isJava ? 'JAVA' : (isShell ? 'SHELL' : ''));
+  if (label) {
+    const el = document.createElement('span');
+    el.className = 'code-lang-label';
+    el.textContent = label;
+    box.appendChild(el);
+  }
 });
 
 /* ── 1. Back to top button ── */
@@ -164,6 +187,38 @@ document.querySelectorAll('.arch-box').forEach(box => {
     const total = document.documentElement.scrollHeight - window.innerHeight;
     bar.style.width = (total > 0 ? (scrolled / total) * 100 : 0) + '%';
   }, { passive: true });
+})();
+
+/* ── 5. QA Expand / Collapse All ── */
+(function () {
+  var lists = document.querySelectorAll('.qa-list');
+  lists.forEach(function (list) {
+    var items = list.querySelectorAll('.qa-item');
+    if (items.length < 3) return;
+    var btn = document.createElement('button');
+    btn.className = 'qa-toggle-all';
+    btn.innerHTML = '<span class="toggle-icon">&#9654;</span> 全部展开';
+    btn.addEventListener('click', function () {
+      var anyClosed = Array.from(items).some(function (item) { return !item.classList.contains('open'); });
+      items.forEach(function (item) {
+        var answer = item.querySelector('.qa-answer');
+        if (!answer) return;
+        var inner = answer.querySelector('.qa-answer-inner');
+        if (anyClosed) {
+          item.classList.add('open');
+          answer.style.maxHeight = (inner ? inner.scrollHeight : answer.scrollHeight) + 'px';
+        } else {
+          item.classList.remove('open');
+          answer.style.maxHeight = '0';
+        }
+      });
+      btn.classList.toggle('expanded', anyClosed);
+      btn.innerHTML = anyClosed
+        ? '<span class="toggle-icon">&#9654;</span> 全部收起'
+        : '<span class="toggle-icon">&#9654;</span> 全部展开';
+    });
+    list.parentNode.insertBefore(btn, list);
+  });
 })();
 
 /* ── Dark mode toggle ── */
@@ -318,4 +373,26 @@ document.querySelectorAll('.arch-box').forEach(box => {
     };
   };
   document.head.appendChild(script);
+})();
+
+/* ── 6. Floating TOC toggle button (tablet / mobile) ── */
+(function () {
+  var tocNav = document.getElementById('toc-nav');
+  if (!tocNav) return;
+  var btn = document.createElement('button');
+  btn.id = 'toc-toggle-btn';
+  btn.title = '目录';
+  btn.innerHTML = '&#9776;';
+  btn.addEventListener('click', function (e) {
+    e.stopPropagation();
+    document.body.classList.toggle('toc-open');
+  });
+  document.body.appendChild(btn);
+  document.addEventListener('click', function (e) {
+    if (!document.body.classList.contains('toc-open')) return;
+    var panel = document.querySelector('.toc-panel');
+    if (panel && !panel.contains(e.target) && e.target !== btn) {
+      document.body.classList.remove('toc-open');
+    }
+  });
 })();

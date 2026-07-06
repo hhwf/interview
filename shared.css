@@ -1,6 +1,32 @@
+@import url("https://fontsapi.zeoseven.com/161/main/result.css");
+
 /* ── Reset ── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { scroll-behavior: smooth; font-size: 16px; }
+
+/* ── Design Tokens (centralized — pages only override accent colors) ── */
+:root {
+  --bg: #f0f2f5; --bg-1: #f6f8fa; --bg-2: #eaecef;
+  --bg-card: #ffffff; --bg-hi: #f0f4ff;
+  --border: rgba(28,25,23,0.09); --border-b: rgba(28,25,23,0.18);
+  --text: #111827; --text-2: #374151; --text-3: #9ca3af;
+  --g1: #15803d; --g1-2: #16a34a;
+  --g1-d: rgba(21,128,61,0.08); --g1-b: rgba(21,128,61,0.28);
+  --zgc: #6d28d9; --zgc-2: #7c3aed;
+  --zgc-d: rgba(109,40,217,0.08); --zgc-b: rgba(109,40,217,0.28);
+  --gold: #92400e; --gold-d: rgba(146,64,14,0.08);
+  --red: #dc2626; --red-d: rgba(220,38,38,0.08);
+  --teal: #0e7490; --purple: #6d28d9; --orange: #c2410c;
+  --accent: #2563eb;
+  --accent-nav: #16a34a; --accent-nav-d: rgba(22,163,74,0.08);
+  --accent-em: #6d28d9; --accent-em-d: rgba(109,40,217,0.08);
+  --fw: 'Sarasa Gothic SC', '更纱黑体 SC', 'Outfit', 'PingFang SC', 'Microsoft YaHei', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --fb: 'Sarasa Gothic SC', '更纱黑体 SC', 'Outfit', 'PingFang SC', 'Microsoft YaHei', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --fm: 'DM Mono', 'SF Mono', Consolas, monospace;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.05);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.10), 0 4px 8px rgba(0,0,0,0.06);
+}
 
 body {
   background: var(--bg);
@@ -52,7 +78,7 @@ body {
 }
 
 .sidebar-logo {
-  padding: 0 8px 14px; border-bottom: 1px solid #eaecef;
+  padding: 0 8px 14px; border-bottom: 1px solid var(--border);
   margin-bottom: 4px; display: flex; align-items: center; gap: 10px;
 }
 .logo-badge {
@@ -143,7 +169,7 @@ body {
 .sidebar-overlay.open { display: block; }
 
 /* ── Hero ── */
-.hero { padding: 40px 0 32px; border-bottom: 1px solid #e1e4e8; }
+.hero { padding: 40px 0 32px; border-bottom: 1px solid var(--border); }
 .hero-eyebrow {
   font-family: var(--fb); font-size: 11px; color: var(--accent);
   letter-spacing: 0.2em; margin-bottom: 16px;
@@ -159,7 +185,7 @@ body {
 .hero-desc { font-size: 14.5px; line-height: 1.85; color: var(--text-2); max-width: 580px; font-weight: 400; }
 
 /* ── Sections ── */
-.gc-section { padding: 56px 0 36px; border-bottom: 1px solid #e1e4e8; }
+.gc-section { padding: 56px 0 36px; border-bottom: 1px solid var(--border); }
 .gc-section:last-child { border-bottom: none; }
 .section-badge {
   display: inline-flex; align-items: center; gap: 8px;
@@ -187,7 +213,7 @@ body {
 .sub-body em { color: var(--accent-em); font-style: normal; font-weight: 500; }
 .sub-body code {
   font-family: var(--fm); font-size: 12.5px; background: var(--bg-2);
-  border: 1px solid #e1e4e8; padding: 1px 6px; border-radius: 4px; color: var(--accent);
+  border: 1px solid var(--border); padding: 1px 6px; border-radius: 4px; color: var(--accent);
 }
 
 /* ── Diagram ── */
@@ -237,7 +263,7 @@ body {
 /* ── RSet Diagram ── */
 .rset-diagram { display: flex; align-items: flex-start; gap: 20px; flex-wrap: wrap; }
 .region-box   { background: var(--bg-2); border-radius: 6px; padding: 16px; min-width: 140px; flex: 1; }
-.region-box-title { font-family: var(--fb); font-size: 10px; letter-spacing: 0.1em; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #e1e4e8; }
+.region-box-title { font-family: var(--fb); font-size: 10px; letter-spacing: 0.1em; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
 .rset-entries { font-family: var(--fm); font-size: 11px; color: var(--text-2); line-height: 2; }
 .rset-arrow   { color: var(--zgc); font-size: 12px; }
 .obj-ref { display: inline-block; background: var(--bg-hi); border: 1px solid var(--border-b); border-radius: 4px; padding: 1px 6px; font-size: 11px; font-family: var(--fb); }
@@ -303,7 +329,7 @@ body {
 .cmp-table th:nth-child(2) { color: var(--g1); }
 .cmp-table th:nth-child(3) { color: var(--zgc); }
 .cmp-table td {
-  padding: 11px 16px; border-bottom: 1px solid #e1e4e8; vertical-align: top;
+  padding: 11px 16px; border-bottom: 1px solid var(--border); vertical-align: top;
   line-height: 1.65; color: var(--text-2); font-family: var(--fb); font-size: 12.5px;
 }
 .cmp-table td:first-child { color: var(--text-3); font-size: 11px; font-weight: 600; }
@@ -324,13 +350,13 @@ body {
 .callout-body strong { color: var(--text); font-weight: 600; }
 .callout-body code {
   font-family: var(--fm); font-size: 12px; background: var(--bg-2);
-  border: 1px solid #e1e4e8; padding: 1px 6px; border-radius: 4px; color: var(--accent);
+  border: 1px solid var(--border); padding: 1px 6px; border-radius: 4px; color: var(--accent);
 }
 
 /* ── KV Grid ── */
 .kv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px,1fr)); gap: 10px; margin: 16px 0; }
 .kv-item {
-  background: var(--bg-card); border: 1px solid #e1e4e8; border-radius: 6px;
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px;
   padding: 14px 16px; transition: box-shadow 0.2s, border-color 0.2s;
 }
 .kv-item:hover { border-color: var(--border-b); box-shadow: 0 3px 12px rgba(0,0,0,0.1); }
@@ -354,7 +380,7 @@ body {
 
 /* ── Interview Q&A ── */
 .qa-list { display: flex; flex-direction: column; gap: 12px; }
-.qa-item { background: var(--bg-card); border: 1px solid #e1e4e8; border-radius: 6px; overflow: hidden; transition: border-color 0.2s, box-shadow 0.2s; }
+.qa-item { background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; transition: border-color 0.2s, box-shadow 0.2s; }
 .qa-item:hover, .qa-item.open { border-color: var(--border-b); box-shadow: 0 3px 16px rgba(0,0,0,0.1); }
 .qa-question {
   display: flex; align-items: flex-start; gap: 14px; padding: 16px 18px;
@@ -389,7 +415,7 @@ body {
 .qa-answer-inner em     { color: var(--accent-em); font-style: normal; font-weight: 500; }
 .qa-answer-inner code {
   font-family: var(--fm); font-size: 12px; background: var(--bg-2);
-  border: 1px solid #e1e4e8; padding: 1px 6px; border-radius: 4px; color: var(--accent);
+  border: 1px solid var(--border); padding: 1px 6px; border-radius: 4px; color: var(--accent);
 }
 .qa-answer-inner ul { list-style: none; margin: 10px 0 4px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .qa-answer-inner ul li { padding-left: 18px; position: relative; }
@@ -510,6 +536,11 @@ body {
 .arch-copy-btn:hover { background: rgba(255,255,255,0.14); color: #e0e0e0; }
 .arch-copy-btn.copied { color: #9ece6a; border-color: rgba(158,206,106,0.3); }
 
+/* Touch devices: always show copy button (no hover) */
+@media (hover: none) {
+  .arch-copy-btn { opacity: 1; }
+}
+
 /* ══════════════════════════════════════════════════
    ── 1. Back to Top Button ─────────────────────────
    ══════════════════════════════════════════════════ */
@@ -528,7 +559,11 @@ body {
 #back-top-btn:hover { background: var(--accent-nav-d); }
 /* When TOC is hidden, move to bottom-right */
 @media (max-width: 1280px) { #back-top-btn { right: 20px; } }
-@media (max-width: 768px)  { #back-top-btn { right: 16px; bottom: 20px; } }
+/* On mobile, move back-to-top to left to avoid overlap with TOC toggle */
+@media (max-width: 768px) {
+  #back-top-btn { left: 16px; right: auto; bottom: 20px; }
+  #toc-toggle-btn { right: 16px; bottom: 20px; }
+}
 
 /* ══════════════════════════════════════════════════
    ── 4. Reading Progress Bar ───────────────────────
@@ -670,3 +705,94 @@ body {
   background: var(--bg-2); border: 1px solid var(--border-b);
   border-radius: 3px; padding: 1px 5px; font-size: 10px; font-family: var(--fm);
 }
+
+/* ══════════════════════════════════════════════════
+   ── QA Expand / Collapse All ──────────────────────
+   ══════════════════════════════════════════════════ */
+.qa-toggle-all {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: var(--fm); font-size: 11px; color: var(--text-3);
+  background: var(--bg-1); border: 1px solid var(--border);
+  border-radius: 6px; padding: 5px 14px; cursor: pointer;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+  margin-bottom: 14px;
+}
+.qa-toggle-all:hover { color: var(--text); background: var(--bg-2); border-color: var(--border-b); }
+.qa-toggle-all .toggle-icon {
+  display: inline-block; transition: transform 0.25s; font-size: 10px;
+}
+.qa-toggle-all.expanded .toggle-icon { transform: rotate(90deg); }
+
+/* ── QA num default base (pages without specific color class) ── */
+.qa-num:not(.g1):not(.zgc):not(.cmp) {
+  background: var(--accent-nav-d); color: var(--accent-nav);
+  border: 1px solid rgba(0,0,0,0.1);
+}
+
+/* ── QA question arrow indicator ── */
+.qa-question::before {
+  content: ''; width: 3px; height: 0; border-radius: 2px;
+  background: var(--accent-nav); flex-shrink: 0;
+  transition: height 0.2s; align-self: stretch; margin: -16px 0;
+}
+.qa-item.open .qa-question::before { height: auto; }
+
+/* ══════════════════════════════════════════════════
+   ── Code Block Language Label ─────────────────────
+   ══════════════════════════════════════════════════ */
+.code-lang-label {
+  position: absolute; top: 0; left: 0;
+  font-family: var(--fm); font-size: 10px; font-weight: 600;
+  color: rgba(255,255,255,0.3); letter-spacing: 0.08em;
+  padding: 6px 14px; pointer-events: none;
+  border-bottom-right-radius: 6px;
+  background: rgba(255,255,255,0.04);
+}
+
+/* ══════════════════════════════════════════════════
+   ── Floating TOC Button (tablet / mobile) ─────────
+   ══════════════════════════════════════════════════ */
+#toc-toggle-btn {
+  display: none; position: fixed; bottom: 32px; right: 20px; z-index: 300;
+  width: 40px; height: 40px; border-radius: 50%;
+  background: var(--bg-card); color: var(--text-2);
+  border: 1px solid var(--border); cursor: pointer;
+  font-size: 16px; line-height: 1;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+  transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+  align-items: center; justify-content: center;
+}
+#toc-toggle-btn:hover { background: var(--bg-1); color: var(--text); box-shadow: 0 4px 16px rgba(0,0,0,0.15); }
+
+@media (max-width: 1280px) {
+  #toc-toggle-btn { display: flex; }
+  .toc-panel {
+    display: none; position: fixed;
+    top: auto; bottom: 80px; right: 16px;
+    width: min(280px, 85vw); max-height: 60vh;
+    border-radius: 12px; z-index: 350;
+  }
+  body.toc-open .toc-panel { display: block; }
+}
+@media (max-width: 768px) {
+  #toc-toggle-btn { bottom: 20px; right: 16px; }
+  .toc-panel { bottom: 68px; right: 12px; max-height: 50vh; }
+}
+
+/* ── Sidebar Home Link ── */
+.sidebar-home {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 10px; font-family: var(--fb); font-size: 12.5px;
+  color: var(--text-3); text-decoration: none; border-radius: 6px;
+  margin: 0 0 4px; transition: color 0.15s, background 0.15s;
+  border-left: 2px solid transparent;
+}
+.sidebar-home:hover { color: var(--text); background: rgba(28,25,23,0.05); }
+
+/* ── Additional Dark Mode (new components) ── */
+[data-theme="dark"] .qa-toggle-all { background: #1c2128; border-color: rgba(255,255,255,0.08); color: #636e7b; }
+[data-theme="dark"] .qa-toggle-all:hover { color: #e6edf3; background: #21262d; }
+[data-theme="dark"] .qa-num:not(.g1):not(.zgc):not(.cmp) { border-color: rgba(255,255,255,0.1); }
+[data-theme="dark"] #toc-toggle-btn { background: #161b22; border-color: rgba(255,255,255,0.1); color: #636e7b; box-shadow: 0 2px 12px rgba(0,0,0,0.3); }
+[data-theme="dark"] #toc-toggle-btn:hover { background: #1c2128; color: #adbac7; }
+[data-theme="dark"] .sidebar-home:hover { background: rgba(255,255,255,0.05); }

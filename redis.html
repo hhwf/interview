@@ -7,26 +7,14 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=DM+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="shared.css">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism-tomorrow.min.css">
 <style>
 :root {
-  --bg: #f0f2f5; --bg-1: #f6f8fa; --bg-2: #eaecef;
-  --bg-card: #ffffff; --bg-hi: #fff5f5;
-  --border: rgba(28,25,23,0.09); --border-b: rgba(28,25,23,0.18);
-  --text: #111827; --text-2: #374151; --text-3: #9ca3af;
   --redis: #dc2626; --redis-2: #b91c1c;
   --redis-d: rgba(220,38,38,0.08); --redis-b: rgba(220,38,38,0.28);
-  --g1: #15803d; --g1-d: rgba(21,128,61,0.08); --g1-b: rgba(21,128,61,0.28);
-  --zgc: #6d28d9; --zgc-d: rgba(109,40,217,0.08); --zgc-b: rgba(109,40,217,0.28);
-  --gold: #92400e; --gold-d: rgba(146,64,14,0.08);
-  --red: #dc2626; --red-d: rgba(220,38,38,0.08);
-  --teal: #0e7490; --orange: #c2410c;
+  --bg-hi: #fff5f5;
   --accent:     #dc2626;
   --accent-nav: #dc2626; --accent-nav-d: rgba(220,38,38,0.08);
   --accent-em:  #dc2626; --accent-em-d:  rgba(220,38,38,0.08);
-  --fw: 'Outfit', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-  --fb: 'Outfit', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-  --fm: 'DM Mono', 'SF Mono', Consolas, monospace;
 }
 .logo-badge { background: linear-gradient(135deg, #dc2626, #b91c1c); }
 </style>
@@ -848,7 +836,7 @@
           </div>
           <div class="qa-answer"><div class="qa-answer-inner">
             <table style="width:100%;border-collapse:collapse;font-size:13px">
-              <thead><tr style="border-bottom:1px solid #e1e4e8">
+              <thead><tr style="border-bottom:1px solid var(--border)">
                 <th style="padding:8px 12px;text-align:left;font-size:11px;color:var(--text-3)">阻塞操作</th>
                 <th style="padding:8px 12px;text-align:left;font-size:11px;color:#dc2626">原因</th>
                 <th style="padding:8px 12px;text-align:left;font-size:11px;color:var(--g1)">替代方案</th>
@@ -917,7 +905,7 @@
           </div>
           <div class="qa-answer"><div class="qa-answer-inner">
             <table style="width:100%;border-collapse:collapse;font-size:13px">
-              <thead><tr style="border-bottom:1px solid #e1e4e8">
+              <thead><tr style="border-bottom:1px solid var(--border)">
                 <th style="padding:8px 12px;text-align:left;font-size:11px;color:var(--text-3)">维度</th>
                 <th style="padding:8px 12px;text-align:left;font-size:11px;color:var(--zgc)">MULTI/EXEC 事务</th>
                 <th style="padding:8px 12px;text-align:left;font-size:11px;color:#dc2626">Lua 脚本</th>
@@ -971,8 +959,6 @@
   <nav id="toc-nav"></nav>
 </aside>
 
-<script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-core.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
 <script src="shared.js"></script>
 </body>
 </html>
