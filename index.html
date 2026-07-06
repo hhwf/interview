@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Java 面试知识库</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=DM+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+:root {
+  --fw: 'Outfit', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --fb: 'Outfit', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --fm: 'DM Mono', 'SF Mono', Consolas, monospace;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.05);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.10), 0 4px 8px rgba(0,0,0,0.06);
+}
+
+body {
+  background: #f0f2f5;
+  color: #111827;
+  font-family: var(--fb);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  padding: 72px 40px 48px;
+  text-align: center;
+}
+
+.eyebrow {
+  font-family: var(--fm);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #2563eb;
+  margin-bottom: 16px;
+  font-weight: 500;
+}
+
+h1 {
+  font-size: clamp(28px, 4vw, 44px);
+  font-weight: 700;
+  line-height: 1.15;
+  margin-bottom: 12px;
+  color: #111827;
+  letter-spacing: -0.02em;
+}
+
+.subtitle {
+  font-size: 15px;
+  color: #6b7280;
+  margin-bottom: 0;
+  line-height: 1.6;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+  max-width: 960px;
+  margin: 32px auto 48px;
+  padding: 0 40px;
+}
+
+.card {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 28px 24px;
+  text-decoration: none;
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-md);
+  border: 1px solid rgba(0,0,0,0.06);
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+
+.card:hover {
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-3px);
+}
+
+.card-icon {
+  width: 40px; height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--fm);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  margin-bottom: 18px;
+  border: 1px solid;
+  box-shadow: var(--shadow-sm);
+}
+
+.card.gc     .card-icon { background: #f0fdf4; color: #16a34a; border-color: rgba(22,163,74,0.2); }
+.card.spring .card-icon { background: #eff6ff; color: #2563eb; border-color: rgba(37,99,235,0.2); }
+.card.mysql  .card-icon { background: #f0fdfa; color: #0891b2; border-color: rgba(8,145,178,0.2); }
+.card.redis  .card-icon { background: #fff1f2; color: #dc2626; border-color: rgba(220,38,38,0.2); }
+
+.card-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: #111827;
+}
+
+.card-desc {
+  font-size: 13px;
+  color: #6b7280;
+  line-height: 1.7;
+  margin-bottom: 20px;
+  flex: 1;
+}
+
+.card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 20px;
+}
+
+.tag {
+  font-family: var(--fm);
+  font-size: 10px;
+  padding: 3px 9px;
+  border-radius: 20px;
+  font-weight: 500;
+  background: #f4f5f7;
+  color: #57606a;
+  border: 1px solid rgba(0,0,0,0.06);
+}
+
+.card-cta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  transition: gap 0.15s;
+}
+
+.card.gc     .card-cta { color: #16a34a; }
+.card.spring .card-cta { color: #2563eb; }
+.card.mysql  .card-cta { color: #0891b2; }
+.card.redis  .card-cta { color: #dc2626; }
+
+.card:hover .card-cta { gap: 10px; }
+
+.footer {
+  margin-top: auto;
+  padding: 20px 40px;
+  text-align: center;
+  font-family: var(--fm);
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+@media (max-width: 768px) {
+  .header { padding: 48px 20px 36px; }
+  .cards { margin: 24px auto 40px; padding: 0 16px; grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="eyebrow">Java Backend Interview</div>
+  <h1>面试知识库</h1>
+  <p class="subtitle">JVM 垃圾收集 · Spring 框架原理 · MySQL 核心知识 · Redis 原理</p>
+</div>
+
+<div class="cards">
+
+  <a class="card gc" href="gc-principles.html">
+    <div class="card-icon">JVM</div>
+    <div class="card-title">GC 原理</div>
+    <p class="card-desc">深入剖析 G1 / ZGC / CMS 的核心设计——堆分区模型、并发标记算法、内存屏障、染色指针。</p>
+    <div class="card-tags">
+      <span class="tag">G1 GC</span>
+      <span class="tag">ZGC</span>
+      <span class="tag">CMS</span>
+      <span class="tag">SATB</span>
+      <span class="tag">染色指针</span>
+      <span class="tag">面试题 ×21</span>
+    </div>
+    <div class="card-cta">进入学习 →</div>
+  </a>
+
+  <a class="card spring" href="spring.html">
+    <div class="card-icon">SPR</div>
+    <div class="card-title">Spring 原理</div>
+    <p class="card-desc">IoC 容器与依赖注入、Bean 生命周期、AOP 代理机制、声明式事务与三级缓存循环依赖。</p>
+    <div class="card-tags">
+      <span class="tag">IoC / DI</span>
+      <span class="tag">Bean 生命周期</span>
+      <span class="tag">AOP</span>
+      <span class="tag">事务传播</span>
+      <span class="tag">三级缓存</span>
+      <span class="tag">面试题 ×17</span>
+    </div>
+    <div class="card-cta">进入学习 →</div>
+  </a>
+
+  <a class="card mysql" href="mysql.html">
+    <div class="card-icon">SQL</div>
+    <div class="card-title">MySQL 知识</div>
+    <p class="card-desc">B+ Tree 索引、MVCC 多版本并发控制、Next-Key Lock、日志体系与两阶段提交、主从复制。</p>
+    <div class="card-tags">
+      <span class="tag">B+ Tree</span>
+      <span class="tag">MVCC</span>
+      <span class="tag">事务隔离</span>
+      <span class="tag">锁机制</span>
+      <span class="tag">主从复制</span>
+      <span class="tag">面试题 ×15</span>
+    </div>
+    <div class="card-cta">进入学习 →</div>
+  </a>
+
+  <a class="card redis" href="redis.html">
+    <div class="card-icon">RDS</div>
+    <div class="card-title">Redis 原理</div>
+    <p class="card-desc">数据类型与底层编码、RDB/AOF 持久化、内存淘汰策略、缓存三大问题、哨兵与 Cluster 集群、分布式锁。</p>
+    <div class="card-tags">
+      <span class="tag">跳表</span>
+      <span class="tag">持久化</span>
+      <span class="tag">缓存穿透</span>
+      <span class="tag">分布式锁</span>
+      <span class="tag">Cluster</span>
+      <span class="tag">面试题 ×10</span>
+    </div>
+    <div class="card-cta">进入学习 →</div>
+  </a>
+
+</div>
+
+<div class="footer">
+  Java Backend Interview Notes &nbsp;·&nbsp; 双击文件直接打开，无需服务器
+</div>
+
+</body>
+</html>
