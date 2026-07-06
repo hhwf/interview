@@ -19,8 +19,27 @@ const observer = new IntersectionObserver((entries) => {
 
 sections.forEach(s => observer.observe(s));
 
+function getOverlay() {
+  let el = document.getElementById('sidebar-overlay');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'sidebar-overlay';
+    el.className = 'sidebar-overlay';
+    el.addEventListener('click', closeSidebar);
+    document.body.appendChild(el);
+  }
+  return el;
+}
+
 function toggleSidebar() {
-  document.getElementById('sidebar').classList.toggle('open');
+  const sidebar = document.getElementById('sidebar');
+  const isOpen = sidebar.classList.toggle('open');
+  getOverlay().classList.toggle('open', isOpen);
+}
+
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  getOverlay().classList.remove('open');
 }
 
 function toggleQA(id) {
@@ -29,9 +48,7 @@ function toggleQA(id) {
 }
 
 navLinks.forEach(link => {
-  link.addEventListener('click', () => {
-    document.getElementById('sidebar').classList.remove('open');
-  });
+  link.addEventListener('click', closeSidebar);
 });
 
 const subObserver = new IntersectionObserver((entries) => {

@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>消息队列 MQ — Kafka / RocketMQ / 可靠性 / 幂等 / 顺序</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=DM+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<style>
+:root {
+  --bg: #f0f2f5; --bg-1: #f6f8fa; --bg-2: #eaecef;
+  --bg-card: #ffffff; --bg-hi: #fffbeb;
+  --border: rgba(28,25,23,0.09); --border-b: rgba(28,25,23,0.18);
+  --text: #111827; --text-2: #374151; --text-3: #9ca3af;
+  --g1: #15803d; --g1-2: #16a34a;
+  --g1-d: rgba(21,128,61,0.08); --g1-b: rgba(21,128,61,0.28);
+  --zgc: #6d28d9; --zgc-2: #7c3aed;
+  --zgc-d: rgba(109,40,217,0.08); --zgc-b: rgba(109,40,217,0.28);
+  --gold: #92400e; --gold-d: rgba(146,64,14,0.08);
+  --red: #dc2626; --red-d: rgba(220,38,38,0.08);
+  --teal: #0e7490; --purple: #6d28d9; --orange: #c2410c;
+  --mq: #d97706; --mq-2: #b45309;
+  --mq-d: rgba(217,119,6,0.08); --mq-b: rgba(217,119,6,0.28);
+  --accent:     #d97706;
+  --accent-nav: #d97706; --accent-nav-d: rgba(217,119,6,0.08);
+  --accent-em:  #b45309; --accent-em-d:  rgba(180,83,9,0.08);
+  --fw: 'Outfit', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --fb: 'Outfit', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --fm: 'DM Mono', 'SF Mono', Consolas, monospace;
+}
+</style>
+</head>
+<body>
+
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <span class="logo-badge" style="background:linear-gradient(135deg,#d97706,#b45309)">MQ</span>
+    <span class="logo-text">消息队列</span>
+  </div>
+  <div class="page-tabs">
+    <a href="gc-principles.html" class="tab">GC 原理</a>
+    <a href="spring.html"        class="tab">Spring</a>
+    <a href="mysql.html"         class="tab">MySQL</a>
+    <a href="redis.html"         class="tab">Redis</a>
+    <a href="mq.html"            class="tab active-mq">MQ</a>
+  </div>
+  <div class="nav-section-label" style="color:rgba(217,119,6,0.65)">消息队列</div>
+  <a href="#mq-why"         class="nav-link">为什么用 MQ</a>
+  <a href="#mq-compare"     class="nav-link">主流 MQ 对比</a>
+  <a href="#mq-kafka"       class="nav-link">Kafka 核心原理</a>
+  <a href="#mq-rocketmq"   class="nav-link">RocketMQ 核心原理</a>
+  <a href="#mq-reliability" class="nav-link">消息可靠性</a>
+  <a href="#mq-order"       class="nav-link">消息顺序性</a>
+  <a href="#mq-idempotent"  class="nav-link">消息幂等</a>
+  <a href="#mq-advanced"    class="nav-link">高级特性</a>
+  <a href="#mq-qa"          class="nav-link">MQ 面试题</a>
+</nav>
+
+<div class="content-wrap">
+<button class="menu-btn" id="menuBtn" onclick="toggleSidebar()">☰</button>
+<main class="main">
+
+  <!-- ══════════ Hero ══════════ -->
+  <section class="hero" id="overview">
+    <div class="hero-eyebrow" style="color:#d97706">MQ · Kafka / RocketMQ / 可靠性 / 幂等 / 顺序</div>
+    <h1><span style="color:#d97706">消息队列</span> 核心知识</h1>
+    <p class="hero-desc">覆盖为什么用 MQ、主流 MQ 横向对比、Kafka 高性能原理、RocketMQ 事务消息、消息可靠性三段保障、消息顺序与幂等，是分布式系统面试的高频考点。</p>
+  </section>
+
+  <!-- ══════════ 正文 ══════════ -->
+  <section class="gc-section" id="mq-section">
+    <span class="section-badge" style="background:rgba(217,119,6,0.08);color:#d97706;border:1px solid rgba(217,119,6,0.25)">● 消息队列</span>
+    <h2 class="section-title">消息队列核心知识</h2>
+    <p class="section-intro">
+      MQ 是分布式系统中实现服务解耦、异步处理和流量削峰的关键中间件。
+      掌握 Kafka 和 RocketMQ 的底层原理、可靠性保障机制，是后端面试必考内容。
+    </p>
+
+    <!-- ── 1. 为什么用 MQ ── -->
+    <div class="subsection" id="mq-why">
+      <h3 class="sub-title">
+        <span class="dot" style="background:#d97706;box-shadow:0 0 0 3px rgba(217,119,6,0.15)"></span>
+        为什么用 MQ
+      </h3>
+      <p class="sub-body">MQ 的核心价值体现在三个典型场景，同时引入也带来额外复杂度：</p>
+      <div class="kv-grid">
+        <div class="kv-item">
+          <div class="kv-key" style="color:#d97706">解耦</div>
+          <div class="kv-val">服务 A 只负责发消息，B / C / D 各自订阅独立消费，互不依赖。新增消费方无需改动 A；B 故障也不影响 A 的主链路。</div>
+        </div>
+        <div class="kv-item">
+          <div class="kv-key" style="color:#d97706">异步</div>
+          <div class="kv-val">主流程不等待耗时操作（发短信、发邮件、更新积分），发完消息即返回。接口响应时间可从数百 ms 降至个位数 ms。</div>
+        </div>
+        <div class="kv-item">
+          <div class="kv-key" style="color:#d97706">削峰</div>
+          <div class="kv-val">秒杀 / 大促洪峰流量写入 MQ 缓冲，消费者按自身速率平稳消费，避免瞬时高并发直接打垮数据库。</div>
+        </div>
+      </div>
+      <div class="callout callout-warn" style="margin-top:16px">
+        <span class="callout-icon">⚠</span>
+        <div class="callout-body">
+          <strong>引入 MQ 的代价：</strong>
+          ①&nbsp;<em>可用性降低</em>——MQ 挂了整条链路受影响，需高可用部署；
+          ②&nbsp;<em>复杂度增加</em>——消息丢失、重复消费、消息顺序都需单独处理；
+          ③&nbsp;<em>一致性挑战</em>——消费失败的补偿逻辑必须设计好，否则数据会不一致。
+        </div>
+      </div>
+    </div>
+
+    <!-- ── 2. 主流 MQ 对比 ── -->
+    <div class="subsection" id="mq-compare">
+      <h3 class="sub-title">
+        <span class="dot" style="background:#d97706;box-shadow:0 0 0 3px rgba(217,119,6,0.15)"></span>
+        主流 MQ 横向对比
+      </h3>
+      <p class="sub-body">三大主流 MQ 各有侧重，选型时需结合业务场景综合判断：</p>
+      <div class="diagram">
+        <div class="diagram-title">Kafka · RocketMQ · RabbitMQ 核心维度对比</div>
+        <table class="cmp-table">
+          <thead>
+            <tr>
+              <th>维度</th>
+              <th style="color:#d97706">Kafka</th>
+              <th style="color:#16a34a">RocketMQ</th>
+              <th style="color:#6d28d9">RabbitMQ</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>吞吐量</td>
+              <td>百万级/s（顺序写 + 零拷贝）</td>
+              <td>十万级/s（CommitLog 顺序写）</td>
+              <td>万级/s（AMQP 协议开销）</td>
+            </tr>
+            <tr>
+              <td>端到端延迟</td>
+              <td>ms 级（批量聚合有延迟）</td>
+              <td>ms 级（单条延迟更低）</td>
+              <td>μs～ms（单条延迟最低）</td>
+            </tr>
+            <tr>
+              <td>持久化</td>
+              <td>每个 Partition 独立 .log 文件，顺序写</td>
+              <td>所有 Topic 统一写 CommitLog，始终顺序写</td>
+              <td>AMQP 标准持久化，支持镜像队列</td>
+            </tr>
+            <tr>
+              <td>事务消息</td>
+              <td>支持（0.11+ 幂等 Producer + 事务 API）</td>
+              <td>支持（半消息 + 事务回查，更易用）</td>
+              <td>不支持原生事务消息</td>
+            </tr>
+            <tr>
+              <td>延迟消息</td>
+              <td>不原生支持，需业务层实现</td>
+              <td>支持（18 个固定延迟级别）</td>
+              <td>支持（TTL + 死信队列）</td>
+            </tr>
+            <tr>
+              <td>消息顺序</td>
+              <td>Partition 内有序</td>
+              <td>Queue 内有序，支持全局有序</td>
+              <td>Queue 内有序</td>
+            </tr>
+            <tr>
+              <td>消息回溯</td>
+              <td>支持（可按 offset / 时间重置，回放历史）</td>
+              <td>支持（按时间 / offset 回溯）</td>
+              <td>不支持（消费即删除）</td>
+            </tr>
+            <tr>
+              <td>适用场景</td>
+              <td>大数据 / 日志流 / 实时计算</td>
+              <td>金融 / 电商（顺序 + 事务）</td>
+              <td>企业集成 / 多协议 / 低延迟</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── 3. Kafka 核心原理 ── -->
+    <div class="subsection" id="mq-kafka">
+      <h3 class="sub-title">
+        <span class="dot" style="background:#d97706;box-shadow:0 0 0 3px rgba(217,119,6,0.15)"></span>
+        Kafka 核心原理
+      </h3>
+      <p class="sub-body">Kafka 是吞吐量最高的开源 MQ，其高性能来自四个关键设计，同时通过 ISR 机制保证高可靠。</p>
+
+      <!-- 架构图 -->
+      <div class="diagram" style="margin-bottom:20px">
+        <div class="diagram-title">Kafka 整体架构</div>
+        <div style="display:flex;gap:12px;align-items:stretch;flex-wrap:wrap;font-family:var(--fm);font-size:11.5px">
+          <!-- Producer -->
+          <div style="background:rgba(217,119,6,0.07);border:1px solid rgba(217,119,6,0.22);border-radius:8px;padding:14px 16px;min-width:100px;flex:1">
+            <div style="color:#d97706;font-size:10px;letter-spacing:.1em;margin-bottom:10px;font-weight:600">PRODUCER</div>
+            <div style="color:var(--text-2);line-height:2">批量发送<br>分区路由<br>acks 确认</div>
+          </div>
+          <div style="display:flex;align-items:center;color:var(--text-3);font-size:20px">→</div>
+          <!-- Broker -->
+          <div style="background:var(--bg-1);border:1px solid var(--border-b);border-radius:8px;padding:14px 16px;flex:3;min-width:200px">
+            <div style="color:var(--text-3);font-size:10px;letter-spacing:.1em;margin-bottom:10px;font-weight:600">BROKER CLUSTER</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <div style="background:#fff;border:1px solid rgba(217,119,6,0.25);border-radius:6px;padding:8px 12px;flex:1;min-width:80px">
+                <div style="color:#d97706;font-size:10px;margin-bottom:6px;font-weight:600">Topic-A</div>
+                <div style="color:var(--text-2);line-height:1.9">P0 Leader ★<br><span style="color:var(--text-3)">P0 Follower</span><br>P1 Leader ★</div>
+              </div>
+              <div style="background:#fff;border:1px solid rgba(217,119,6,0.25);border-radius:6px;padding:8px 12px;flex:1;min-width:80px">
+                <div style="color:#d97706;font-size:10px;margin-bottom:6px;font-weight:600">Topic-B</div>
+                <div style="color:var(--text-2);line-height:1.9"><span style="color:var(--text-3)">P0 Follower</span><br>P1 Leader ★<br><span style="color:var(--text-3)">P1 Follower</span></div>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;color:var(--text-3);font-size:20px">→</div>
+          <!-- Consumer Group -->
+          <div style="background:rgba(109,40,217,0.06);border:1px solid rgba(109,40,217,0.15);border-radius:8px;padding:14px 16px;min-width:100px;flex:1">
+            <div style="color:var(--zgc);font-size:10px;letter-spacing:.1em;margin-bottom:10px;font-weight:600">CONSUMER GROUP</div>
+            <div style="color:var(--text-2);line-height:2">C1 → P0<br>C2 → P1<br><span style="color:var(--text-3)">手动提交 offset</span></div>
+          </div>
+        </div>
+        <div style="margin-top:12px;font-family:var(--fm);font-size:11px;color:var(--text-3)">
+          每个 Partition 同时只有一个 Leader 负责读写，Follower 从 Leader 同步数据。
+          同一 Consumer Group 内每个 Partition 仅分配给一个 Consumer。
+        </div>
+      </div>
+
+      <!-- 为什么快 -->
+      <div class="diagram" style="margin-bottom:20px">
+        <div class="diagram-title">Kafka 为什么这么快 — 四个关键设计</div>
+        <div class="kv-grid">
+          <div class="kv-item">
+            <div class="kv-key" style="color:#d97706">① 顺序写磁盘</div>
+            <div class="kv-val">消息追加写入 .log 文件末尾，磁盘顺序写吞吐 ~600 MB/s，远高于随机写 ~100 MB/s。避免了磁头寻道，是高吞吐的基础。</div>
+          </div>
+          <div class="kv-item">
+            <div class="kv-key" style="color:#d97706">② PageCache</div>
+            <div class="kv-val">写入 OS 页缓存即返回，OS 异步刷盘。Consumer 紧跟 Producer 时直接从 PageCache 读，几乎零磁盘 IO，且利用了 OS 的预读机制。</div>
+          </div>
+          <div class="kv-item">
+            <div class="kv-key" style="color:#d97706">③ sendfile 零拷贝</div>
+            <div class="kv-val">Java <code>FileChannel.transferTo()</code> 调用内核 sendfile：磁盘→内核缓冲区→网卡 DMA，仅 2 次拷贝 + 2 次上下文切换（传统需 4 + 4 次）。</div>
+          </div>
+          <div class="kv-item">
+            <div class="kv-key" style="color:#d97706">④ 批量压缩</div>
+            <div class="kv-val">Producer 聚合多条消息为 RecordBatch 统一发送，支持 gzip / snappy / lz4 / zstd 压缩，大幅减少网络 IO 和 Broker 存储占用。</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ISR / HW / LEO -->
+      <div class="diagram" style="margin-bottom:20px">
+        <div class="diagram-title">ISR / HW / LEO — 副本同步与高水位机制</div>
+        <div style="font-family:var(--fb);font-size:13px;color:var(--text-2);margin-bottom:14px;line-height:1.9">
+          <strong style="color:var(--text)">AR（Assigned Replicas）</strong> = 分区全部副本 =
+          <strong style="color:#d97706">ISR</strong>（In-Sync，同步中）+
+          <strong style="color:var(--red)">OSR</strong>（Out-of-Sync，落后过多）
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;font-family:var(--fm);font-size:11.5px">
+          <div style="flex:1;min-width:120px;background:rgba(217,119,6,0.07);border:1px solid rgba(217,119,6,0.25);border-radius:6px;padding:12px">
+            <div style="color:#d97706;font-weight:600;margin-bottom:6px">Leader</div>
+            <div style="color:var(--text)">LEO = 10</div>
+            <div style="color:var(--text-3);font-size:10px">已写入消息 0 ~ 9</div>
+          </div>
+          <div style="flex:1;min-width:120px;background:rgba(217,119,6,0.07);border:1px solid rgba(217,119,6,0.25);border-radius:6px;padding:12px">
+            <div style="color:#d97706;font-weight:600;margin-bottom:6px">Follower-1（ISR）</div>
+            <div style="color:var(--text)">LEO = 9</div>
+            <div style="color:var(--text-3);font-size:10px">滞后 1 条，在 ISR 内</div>
+          </div>
+          <div style="flex:1;min-width:120px;background:rgba(220,38,38,0.06);border:1px solid rgba(220,38,38,0.2);border-radius:6px;padding:12px">
+            <div style="color:var(--red);font-weight:600;margin-bottom:6px">Follower-2（OSR）</div>
+            <div style="color:var(--text)">LEO = 5</div>
+            <div style="color:var(--text-3);font-size:10px">滞后过多，踢出 ISR</div>
+          </div>
+        </div>
+        <div style="background:rgba(217,119,6,0.06);border-radius:6px;padding:12px 14px;font-family:var(--fm);font-size:12px;color:var(--text-2)">
+          <span style="color:#d97706;font-weight:600">HW（High Watermark）= ISR 中所有副本 LEO 的最小值 = min(10, 9) = 9</span><br>
+          Consumer 只能消费 offset &lt; HW 的消息（即 0 ~ 8），offset = 9 对消费者不可见。
+          这样即使 Leader 切换，新 Leader 上一定存在 HW 以内的全部消息，不会出现数据回退。
+        </div>
+      </div>
+
+      <!-- acks -->
+      <div class="diagram">
+        <div class="diagram-title">acks 参数 — 生产者可靠性与性能权衡</div>
+        <table class="cmp-table">
+          <thead>
+            <tr><th>acks</th><th>语义</th><th>性能</th><th>可靠性</th><th>适用场景</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>0</code></td>
+              <td>不等待 Broker 确认，即发即忘</td>
+              <td>最高</td>
+              <td>最低，可能丢失</td>
+              <td>日志 / 埋点（允许少量丢失）</td>
+            </tr>
+            <tr>
+              <td><code>1</code></td>
+              <td>Leader 写入即确认，不等 Follower</td>
+              <td>高</td>
+              <td>中，Leader 宕机可能丢失</td>
+              <td>一般业务消息</td>
+            </tr>
+            <tr>
+              <td><code>-1 / all</code></td>
+              <td>ISR 全部副本写入后才确认</td>
+              <td>低</td>
+              <td>最高，配合 min.insync.replicas</td>
+              <td>订单 / 支付等不允许丢失</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout callout-info" style="margin-top:16px">
+        <span class="callout-icon">💡</span>
+        <div class="callout-body">
+          <strong>最佳实践：</strong><code>acks=-1</code> + <code>min.insync.replicas=2</code> + <code>replication.factor=3</code>，
+          并关闭 <code>unclean.leader.election.enable=false</code>，可最大程度防止数据丢失。
+        </div>
+      </div>
+    </div>
+
+    <!-- ── 4. RocketMQ 核心原理 ── -->
+    <div class="subsection" id="mq-rocketmq">
+      <h3 class="sub-title">
+        <span class="dot" style="background:#d97706;box-shadow:0 0 0 3px rgba(217,119,6,0.15)"></span>
+        RocketMQ 核心原理
+      </h3>
+      <p class="sub-body">RocketMQ 由阿里巴巴开源，在金融 / 电商场景广泛使用，核心优势是存储架构稳定性与原生事务消息支持。</p>
+
+      <!-- CommitLog + ConsumeQueue -->
+      <div class="diagram" style="margin-bottom:20px">
+        <div class="diagram-title">存储架构 — CommitLog + ConsumeQueue</div>
+        <div style="display:flex;gap:16px;flex-wrap:wrap;font-family:var(--fb);font-size:12.5px">
+          <!-- CommitLog -->
+          <div style="flex:2;min-width:180px">
+            <div style="background:rgba(217,119,6,0.07);border:1px solid rgba(217,119,6,0.22);border-radius:8px;padding:14px 16px">
+              <div style="color:#d97706;font-size:10px;letter-spacing:.1em;margin-bottom:10px;font-weight:600">COMMITLOG（顺序写，所有 Topic 共用）</div>
+              <div style="display:flex;flex-direction:column;gap:3px;font-family:var(--fm);font-size:11px">
+                <div style="background:#fff;border:1px solid rgba(0,0,0,0.07);border-radius:4px;padding:5px 10px;color:var(--text-2)">[Msg] Topic-A / Q0 &nbsp;offset:0 &nbsp;body…</div>
+                <div style="background:#fff;border:1px solid rgba(0,0,0,0.07);border-radius:4px;padding:5px 10px;color:var(--text-2)">[Msg] Topic-B / Q1 &nbsp;offset:1 &nbsp;body…</div>
+                <div style="background:#fff;border:1px solid rgba(0,0,0,0.07);border-radius:4px;padding:5px 10px;color:var(--text-2)">[Msg] Topic-A / Q0 &nbsp;offset:2 &nbsp;body…</div>
+                <div style="color:var(--text-3);text-align:center;padding:4px;font-size:10px">↓ 所有 Topic 混合追加，始终顺序写</div>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;color:var(--text-3);font-size:22px;padding:0 4px">⇄</div>
+          <!-- ConsumeQueue -->
+          <div style="flex:2;min-width:180px">
+            <div style="background:rgba(109,40,217,0.06);border:1px solid rgba(109,40,217,0.15);border-radius:8px;padding:14px 16px">
+              <div style="color:var(--zgc);font-size:10px;letter-spacing:.1em;margin-bottom:10px;font-weight:600">CONSUMEQUEUE（每个 Topic/Queue 独立索引）</div>
+              <div style="font-family:var(--fm);font-size:11px;color:var(--text-2);line-height:2">
+                <div style="margin-bottom:4px;color:#d97706">Topic-A / Q0：</div>
+                <div style="background:#fff;border:1px solid rgba(0,0,0,0.07);border-radius:4px;padding:4px 10px;margin-bottom:2px">[commitLogOffset | size | tagHash] 20 字节</div>
+                <div style="background:#fff;border:1px solid rgba(0,0,0,0.07);border-radius:4px;padding:4px 10px">[commitLogOffset | size | tagHash] 20 字节</div>
+                <div style="color:var(--text-3);font-size:10px;margin-top:4px">消费时先查索引，再按 offset 读 CommitLog</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="callout callout-g1" style="margin-top:14px;margin-bottom:0">
+          <span class="callout-icon">✓</span>
+          <div class="callout-body">
+            <strong>优势：</strong>CommitLog 全局顺序写，Topic / Queue 数量增多也不会退化为随机写（Kafka 多 Partition 时磁盘变随机写）。ConsumeQueue 每条固定 20 字节，体积小，消费端随机读代价可控。
+          </div>
+        </div>
+      </div>
+
+      <!-- 事务消息流程 -->
+      <div class="diagram">
+        <div class="diagram-title">事务消息流程 — 本地事务与消息投递最终一致</div>
+        <div style="font-family:var(--fm);font-size:11.5px;display:flex;flex-direction:column;gap:6px">
+          <div style="background:rgba(217,119,6,0.09);border:1px solid rgba(217,119,6,0.22);border-radius:6px;padding:9px 14px;color:var(--text-2)">
+            ① Producer 发送 <strong style="color:#d97706">半消息（Half Message）</strong>→ Broker 存储，但对 Consumer <strong>不可见</strong>
+          </div>
+          <div style="text-align:center;color:var(--text-3)">↓ Broker ACK 半消息成功</div>
+          <div style="background:rgba(22,163,74,0.08);border:1px solid rgba(22,163,74,0.22);border-radius:6px;padding:9px 14px;color:var(--text-2)">
+            ② Producer 执行 <strong style="color:var(--g1)">本地事务</strong>（如：扣减库存、写订单）
+          </div>
+          <div style="text-align:center;color:var(--text-3)">↓ 根据本地事务结果</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <div style="flex:1;min-width:140px;background:rgba(22,163,74,0.07);border:1px solid rgba(22,163,74,0.2);border-radius:6px;padding:9px 12px">
+              <div style="color:var(--g1);font-size:10px;font-weight:600;margin-bottom:4px">SUCCESS → COMMIT</div>
+              <div style="color:var(--text-2)">③a Broker 将半消息标记为<strong>可见</strong>，Consumer 正常消费</div>
+            </div>
+            <div style="flex:1;min-width:140px;background:rgba(220,38,38,0.06);border:1px solid rgba(220,38,38,0.18);border-radius:6px;padding:9px 12px">
+              <div style="color:var(--red);font-size:10px;font-weight:600;margin-bottom:4px">FAIL → ROLLBACK</div>
+              <div style="color:var(--text-2)">③b Broker 删除半消息，Consumer 永不可见</div>
+            </div>
+          </div>
+          <div style="background:rgba(146,64,14,0.07);border:1px solid rgba(146,64,14,0.2);border-radius:6px;padding:9px 14px;color:var(--text-2)">
+            ④ 若 Producer 宕机 / 超时未发 Commit/Rollback：Broker <strong style="color:var(--gold)">定时回查</strong> Producer 本地事务状态（最多 15 次），再决定 Commit 或 Rollback
+          </div>
+        </div>
+        <div style="margin-top:12px;font-family:var(--fb);font-size:12.5px;color:var(--text-3)">
+          <em style="color:var(--accent-em)">核心价值：</em>保证「本地事务执行成功 ↔ 消息对消费者可见」的最终一致性，解决分布式事务中消息与本地操作的原子性问题。
+        </div>
+      </div>
+    </div>
+
+    <!-- ── 5. 消息可靠性 ── -->
+    <div class="subsection" id="mq-reliability">
+      <h3 class="sub-title">
+        <span class="dot" style="background:#d97706;box-shadow:0 0 0 3px rgba(217,119,6,0.15)"></span>
+        消息可靠性 — 三段保障
+      </h3>
+      <p class="sub-body">消息从生产到消费经历三个阶段，每段都有丢失风险，需分别加固：</p>
+      <div class="diagram">
+        <div class="diagram-title">生产者 → Broker → 消费者 全链路可靠性</div>
+        <table class="cmp-table">
+          <thead>
+            <tr><th>阶段</th><th>丢失原因</th><th>Kafka 方案</th><th>RocketMQ 方案</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>生产者端</td>
+              <td>网络抖动、发送失败未重试</td>
+              <td><code>acks=-1</code> + <code>retries</code> + 幂等 Producer（<code>enable.idempotence=true</code>）</td>
+              <td>同步 / 异步发送 + 失败重试 + 事务消息（半消息回查）</td>
+            </tr>
+            <tr>
+              <td>Broker 端</td>
+              <td>写入 PageCache 后宕机未刷盘；只有单副本</td>
+              <td><code>replication.factor≥2</code> + ISR + 关闭 <code>unclean.leader.election</code></td>
+              <td>同步刷盘（<code>SYNC_FLUSH</code>）+ 主从同步复制（<code>SYNC_MASTER</code>）</td>
+            </tr>
+            <tr>
+              <td>消费者端</td>
+              <td>自动提交 offset，消费逻辑失败前已提交</td>
+              <td>关闭自动提交，消费成功后手动 <code>commitSync()</code></td>
+              <td>消费成功返回 <code>CONSUME_SUCCESS</code>；失败返回 <code>RECONSUME_LATER</code> 触发重试</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout callout-info" style="margin-top:16px">
+        <span class="callout-icon">💡</span>
+        <div class="callout-body">
+          <strong>Kafka 最优可靠性配置：</strong>
+          <code>acks=-1</code> · <code>min.insync.replicas=2</code> · <code>replication.factor=3</code> · <code>enable.auto.commit=false</code> · <code>unclean.leader.election.enable=false</code>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── 6. 消息顺序性 ── -->
+    <div class="subsection" id="mq-order">
+      <h3 class="sub-title">
+        <span class="dot" style="background:#d97706;box-shadow:0 0 0 3px rgba(217,119,6,0.15)"></span>
+        消息顺序性
+      </h3>
+      <p class="sub-body">MQ 默认只保证单个 Partition / Queue 内有序，跨分区无全局顺序。</p>
+      <div class="kv-grid" style="margin-bottom:20px">
+        <div class="kv-item">
+          <div class="kv-key" style="color:#d97706">全局有序（慎用）</div>
+          <div class="kv-val">Topic 只设 1 个 Partition / Queue，所有消息顺序追加。吞吐量极低，仅用于对账等低频严格顺序场景。</div>
+        </div>
+        <div class="kv-item">
+          <div class="kv-key" style="color:#d97706">分区内有序（推荐）</div>
+          <div class="kv-val">同一业务 Key 的消息路由到同一 Partition，该 Partition 只分配一个 Consumer，Partition 内天然有序，吞吐不受影响。</div>
+        </div>
+      </div>
+      <div class="diagram">
+        <div class="diagram-title">实现分区内有序 — 以订单状态流转为例</div>
+        <div style="font-family:var(--fm);font-size:12px;line-height:2;color:var(--text-2)">
+          <div style="margin-bottom:6px">
+            <span style="color:#d97706;font-weight:600">Producer 端：</span>
+            发送时指定 <code>key = orderId</code>，Kafka 按 <code>hash(key) % numPartitions</code> 路由，相同订单的消息始终落入同一 Partition。
+            RocketMQ 通过 <code>MessageQueueSelector</code> 选择固定 Queue。
+          </div>
+          <div style="margin-bottom:6px">
+            <span style="color:#d97706;font-weight:600">Consumer 端：</span>
+            Consumer 实例数 ≤ Partition 数，每个 Partition 只分配给一个 Consumer；Consumer 内部<strong>串行处理</strong>，不使用线程池并发消费。
+          </div>
+          <div style="color:var(--red)">
+            ⚠ 注意：Rebalance 期间顺序可能短暂中断；发送失败重试可能乱序，需开启幂等 Producer 配合。
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── 7. 消息幂等 ── -->
+    <div class="subsection" id="mq-idempotent">
+      <h3 class="sub-title">
+        <span class="dot" style="background:#d97706;box-shadow:0 0 0 3px rgba(217,119,6,0.15)"></span>
+        消息幂等 — 解决重复消费
+      </h3>
+      <p class="sub-body">MQ 的投递语义是 <em>at-least-once</em>（至少一次），重复消费不可避免，必须在消费端实现幂等：</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;font-family:var(--fm);font-size:12px">
+        <div style="flex:1;min-width:150px;background:rgba(220,38,38,0.05);border:1px solid rgba(220,38,38,0.18);border-radius:6px;padding:13px 14px">
+          <div style="color:var(--red);font-weight:600;margin-bottom:6px">根源① 生产者重试</div>
+          <div style="color:var(--text-2);line-height:1.8">网络抖动导致 ACK 超时 → Producer 重发 → Broker 已收到第一条 → 重复写入</div>
+        </div>
+        <div style="flex:1;min-width:150px;background:rgba(220,38,38,0.05);border:1px solid rgba(220,38,38,0.18);border-radius:6px;padding:13px 14px">
+          <div style="color:var(--red);font-weight:600;margin-bottom:6px">根源② 消费者重平衡</div>
+          <div style="color:var(--text-2);line-height:1.8">Consumer 处理完但未提交 offset 时宕机 / Rebalance → 新 Consumer 从上次 offset 重新消费</div>
+        </div>
+      </div>
+      <div class="diagram">
+        <div class="diagram-title">消费端幂等方案</div>
+        <div class="kv-grid">
+          <div class="kv-item">
+            <div class="kv-key" style="color:#d97706">Redis SETNX</div>
+            <div class="kv-val">消费前 <code>SET msgId EX 86400 NX</code>，成功才处理；已存在则幂等返回。注意设置合理 TTL 防止 Key 堆积。</div>
+          </div>
+          <div class="kv-item">
+            <div class="kv-key" style="color:#d97706">DB 唯一约束</div>
+            <div class="kv-val">幂等表加联合唯一索引（business_key），INSERT 触发唯一冲突则 catch 忽略，简单可靠。</div>
+          </div>
+          <div class="kv-item">
+            <div class="kv-key" style="color:#d97706">业务状态机</div>
+            <div class="kv-val">消费前检查业务当前状态，只有目标前置状态才执行（如订单已支付则支付消息幂等跳过）。</div>
+          </div>
+          <div class="kv-item">
+            <div class="kv-key" style="color:#d97706">Kafka 幂等 Producer</div>
+            <div class="kv-val"><code>enable.idempotence=true</code>，用 PID + SequenceNumber 在 Broker 端去重，防止 Producer 重试导致重复写入。</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── 8. 高级特性 ── -->
+    <div class="subsection" id="mq-advanced">
+      <h3 class="sub-title">
+        <span class="dot" style="background:#d97706;box-shadow:0 0 0 3px rgba(217,119,6,0.15)"></span>
+        高级特性
+      </h3>
+      <p class="sub-body">死信队列、延迟消息是面试中的高频补充考点：</p>
+
+      <!-- 死信队列 -->
+      <div class="diagram" style="margin-bottom:20px">
+        <div class="diagram-title">死信队列（Dead Letter Queue，DLQ）</div>
+        <div style="font-family:var(--fb);font-size:13px;line-height:1.9;color:var(--text-2);margin-bottom:14px">
+          消息消费失败超过最大重试次数后，自动进入死信队列，不再重试，等待人工介入。<br>
+          <strong style="color:var(--text)">RocketMQ：</strong>自动创建 <code>%DLQ%{ConsumerGroup}</code> Topic；默认重试 16 次，每次间隔递增（最长 2 小时）。<br>
+          <strong style="color:var(--text)">Kafka：</strong>无原生 DLQ，需业务代码 catch 异常后写入专用 <code>.dead</code> Topic。
+        </div>
+        <div class="kv-grid" style="grid-template-columns:repeat(auto-fill,minmax(160px,1fr))">
+          <div class="kv-item">
+            <div class="kv-key" style="color:#d97706">监控告警</div>
+            <div class="kv-val">订阅 DLQ Topic，消息进入即触发告警通知（钉钉 / Prometheus）。</div>
+          </div>
+          <div class="kv-item">
+            <div class="kv-key" style="color:#d97706">人工排查</div>
+            <div class="kv-val">查看 DLQ 消息内容和异常日志，定位是业务 Bug、数据异常还是依赖服务故障。</div>
+          </div>
+          <div class="kv-item">
+            <div class="kv-key" style="color:#d97706">消息重放</div>
+            <div class="kv-val">修复 Bug 后从 DLQ 重新投递到原 Topic，Consumer 幂等处理，完成消息补偿。</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 延迟消息 -->
+      <div class="diagram">
+        <div class="diagram-title">延迟消息 — 各 MQ 实现对比</div>
+        <table class="cmp-table">
+          <thead>
+            <tr><th>MQ</th><th>是否支持</th><th>实现原理</th><th>限制</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>RocketMQ</td>
+              <td style="color:var(--g1)">原生支持</td>
+              <td>18 个固定延迟级别（1s / 5s / 10s … 2h），内部用 <code>SCHEDULE_TOPIC</code> + 定时线程扫描，到期后投递到真实 Topic</td>
+              <td>只支持固定级别，不支持任意精度延迟</td>
+            </tr>
+            <tr>
+              <td>Kafka</td>
+              <td style="color:var(--red)">不原生支持</td>
+              <td>业务层实现：时间轮算法 / 写入延迟 Topic + Consumer 定时轮询 / 直接用 RocketMQ 替代</td>
+              <td>需额外开发，成本较高</td>
+            </tr>
+            <tr>
+              <td>RabbitMQ</td>
+              <td style="color:var(--gold)">TTL + DLQ 间接实现</td>
+              <td>设置 <code>x-message-ttl</code>，消息过期后路由到死信队列，DLQ 的 Consumer 即为延迟消费方</td>
+              <td>队头阻塞可能导致后续消息延迟不准确</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── 9. 面试题 ── -->
+    <div class="subsection" id="mq-qa">
+      <h3 class="sub-title">
+        <span class="dot" style="background:#d97706;box-shadow:0 0 0 3px rgba(217,119,6,0.15)"></span>
+        MQ 高频面试题
+      </h3>
+      <div class="qa-list">
+
+        <div class="qa-item" id="q-mq-1">
+          <div class="qa-question" onclick="toggleQA('q-mq-1')">
+            <span class="qa-num" style="background:rgba(217,119,6,0.1);color:#d97706;border:1px solid rgba(217,119,6,0.25)">Q1</span>
+            <span class="qa-q-text">为什么使用 MQ？引入 MQ 有哪些缺点需要应对？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <strong>优点三点：</strong>
+            <ul>
+              <li><em>解耦</em>：服务 A 只发消息，B / C / D 各自订阅消费，互不依赖。新增消费方无需修改 A，B 故障不影响 A 主链路。</li>
+              <li><em>异步</em>：主流程发完消息即返回，耗时操作（发短信 / 发邮件 / 更新积分）异步处理，接口响应时间从数百 ms 降至个位数 ms。</li>
+              <li><em>削峰</em>：秒杀 / 大促洪峰流量先写入 MQ 缓冲，消费者按自身速率平稳消费，保护下游数据库。</li>
+            </ul>
+            <strong>缺点三点：</strong>
+            <ul>
+              <li><em>可用性降低</em>：MQ 挂掉整条链路受影响，需高可用集群部署。</li>
+              <li><em>复杂度增加</em>：消息丢失、重复消费、消息顺序都需单独处理，开发测试成本上升。</li>
+              <li><em>一致性挑战</em>：消费失败如何补偿、如何保证最终一致，需要完善的幂等和重试机制。</li>
+            </ul>
+          </div></div>
+        </div>
+
+        <div class="qa-item" id="q-mq-2">
+          <div class="qa-question" onclick="toggleQA('q-mq-2')">
+            <span class="qa-num" style="background:rgba(217,119,6,0.1);color:#d97706;border:1px solid rgba(217,119,6,0.25)">Q2</span>
+            <span class="qa-q-text">Kafka 为什么吞吐量能达到百万级？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            五个关键设计共同作用：
+            <ul>
+              <li><strong>顺序写磁盘</strong>：消息追加写 .log 文件末尾，磁盘顺序写吞吐 ~600 MB/s，远高于随机写 ~100 MB/s，避免磁头寻道。</li>
+              <li><strong>PageCache</strong>：写入 OS 页缓存即返回，OS 异步刷盘。Consumer 紧跟时直接从 PageCache 读，几乎零磁盘 IO。</li>
+              <li><strong>sendfile 零拷贝</strong>：<code>FileChannel.transferTo()</code> 调用内核 sendfile，数据路径磁盘→内核缓冲区→网卡 DMA，仅 2 次拷贝 + 2 次上下文切换（传统 4 + 4 次）。</li>
+              <li><strong>批量压缩</strong>：Producer 聚合多条消息为 RecordBatch，支持 snappy / lz4 / zstd 压缩，大幅减少网络 IO 和存储占用。</li>
+              <li><strong>多 Partition 并发</strong>：Topic 拆分多个 Partition，多 Producer / Consumer 并行读写，横向扩展吞吐能力。</li>
+            </ul>
+          </div></div>
+        </div>
+
+        <div class="qa-item" id="q-mq-3">
+          <div class="qa-question" onclick="toggleQA('q-mq-3')">
+            <span class="qa-num" style="background:rgba(217,119,6,0.1);color:#d97706;border:1px solid rgba(217,119,6,0.25)">Q3</span>
+            <span class="qa-q-text">Kafka 如何保证消息不丢失（三段分析）？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <ul>
+              <li><strong>生产者端</strong>：<code>acks=-1</code> + <code>min.insync.replicas=2</code>，确保至少 2 个 ISR 副本写入才返回成功；开启 <code>retries</code> 重试；使用幂等 Producer（<code>enable.idempotence=true</code>）防止重试导致重复。</li>
+              <li><strong>Broker 端</strong>：<code>replication.factor≥2</code> 多副本保障；关闭 <code>unclean.leader.election.enable=false</code>，防止落后副本成为 Leader 后覆盖未同步数据。</li>
+              <li><strong>消费者端</strong>：关闭自动提交 <code>enable.auto.commit=false</code>，消费逻辑全部执行成功后再手动调用 <code>commitSync()</code>，避免消费失败但 offset 已推进。</li>
+            </ul>
+            <span class="ans-tag tip">答题技巧</span>面试时按「生产→存储→消费」三段逐一展开，思路清晰有加分。
+          </div></div>
+        </div>
+
+        <div class="qa-item" id="q-mq-4">
+          <div class="qa-question" onclick="toggleQA('q-mq-4')">
+            <span class="qa-num" style="background:rgba(217,119,6,0.1);color:#d97706;border:1px solid rgba(217,119,6,0.25)">Q4</span>
+            <span class="qa-q-text">如何保证消息的顺序性？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <strong>核心思路：同一业务 Key 路由到同一 Partition，并由同一 Consumer 串行消费。</strong>
+            <ul>
+              <li><em>Producer 端</em>：发送时指定 <code>key = orderId</code>，Kafka 按 <code>hash(key) % numPartitions</code> 确保相同 key 进同一 Partition；RocketMQ 通过 <code>MessageQueueSelector</code> 选固定 Queue。</li>
+              <li><em>Consumer 端</em>：Consumer 实例数 ≤ Partition 数，每个 Partition 只分配一个 Consumer；Consumer 内部<strong>串行</strong>处理，不用线程池并发消费。</li>
+              <li><em>注意</em>：Rebalance 期间顺序可能短暂中断；发送失败重试可能乱序，需开启幂等 Producer 配合。</li>
+            </ul>
+          </div></div>
+        </div>
+
+        <div class="qa-item" id="q-mq-5">
+          <div class="qa-question" onclick="toggleQA('q-mq-5')">
+            <span class="qa-num" style="background:rgba(217,119,6,0.1);color:#d97706;border:1px solid rgba(217,119,6,0.25)">Q5</span>
+            <span class="qa-q-text">如何解决消息重复消费（幂等）？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            MQ 语义是 at-least-once，重复消费不可避免，需在<strong>消费端</strong>实现幂等：
+            <ul>
+              <li><em>Redis SETNX</em>：消费前 <code>SET msgId EX 86400 NX</code>，成功才处理；已存在则幂等返回。</li>
+              <li><em>DB 唯一约束</em>：幂等表加联合唯一索引（business_key），INSERT 触发唯一冲突则 catch 忽略，简单可靠。</li>
+              <li><em>业务状态机</em>：消费前检查业务状态，只有目标前置状态才执行（如订单已支付则跳过支付消息）。</li>
+              <li><em>Kafka 幂等 Producer</em>：<code>enable.idempotence=true</code>，用 PID + SequenceNumber 在 Broker 去重，解决生产者重试导致的重复写入。</li>
+            </ul>
+          </div></div>
+        </div>
+
+        <div class="qa-item" id="q-mq-6">
+          <div class="qa-question" onclick="toggleQA('q-mq-6')">
+            <span class="qa-num" style="background:rgba(217,119,6,0.1);color:#d97706;border:1px solid rgba(217,119,6,0.25)">Q6</span>
+            <span class="qa-q-text">消息积压了怎么处理？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            分<strong>短期应急</strong>和<strong>长期根治</strong>两步走：
+            <ul>
+              <li><em>扩容 Consumer</em>：增加 Consumer 实例数（注意不能超过 Partition 数，否则多余实例空闲）；必要时临时增加 Partition 数再对应扩 Consumer。</li>
+              <li><em>提升批量</em>：调大 <code>max.poll.records</code>，每次 poll 更多消息批量处理，提高单实例消费速率。</li>
+              <li><em>降级丢弃</em>：对日志 / 埋点等非核心消息采样或直接丢弃，优先保证核心业务消息消费完。</li>
+              <li><em>长期根治</em>：排查消费端性能瓶颈（慢 SQL / 外部调用超时），优化消费逻辑，从根本上使消费速率 ≥ 生产速率。</li>
+            </ul>
+            <span class="ans-tag tip">加分点</span>主动说明「Consumer 实例数 ≤ Partition 数」这个约束，很多候选人会忽略。
+          </div></div>
+        </div>
+
+        <div class="qa-item" id="q-mq-7">
+          <div class="qa-question" onclick="toggleQA('q-mq-7')">
+            <span class="qa-num" style="background:rgba(217,119,6,0.1);color:#d97706;border:1px solid rgba(217,119,6,0.25)">Q7</span>
+            <span class="qa-q-text">Kafka 的 ISR 是什么？HW 和 LEO 的区别？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <ul>
+              <li><strong>ISR（In-Sync Replicas）</strong>：与 Leader 同步延迟在 <code>replica.lag.time.max.ms</code>（默认 30s）内的副本集合。落后过多的副本踢出 ISR 进入 OSR。</li>
+              <li><strong>LEO（Log End Offset）</strong>：每个副本已写入的最大消息 offset + 1，即「下一条消息应写入的位置」。</li>
+              <li><strong>HW（High Watermark）</strong>：ISR 中所有副本 LEO 的最小值。Consumer 只能消费 offset &lt; HW 的消息。</li>
+              <li><strong>为什么需要 HW</strong>：防止数据回退。若 Follower 未同步时 Leader 切换，已暴露给 Consumer 的消息在新 Leader 上不存在，会造成数据不一致。HW 作为「安全水位」只暴露已完全复制的数据。</li>
+            </ul>
+          </div></div>
+        </div>
+
+        <div class="qa-item" id="q-mq-8">
+          <div class="qa-question" onclick="toggleQA('q-mq-8')">
+            <span class="qa-num" style="background:rgba(217,119,6,0.1);color:#d97706;border:1px solid rgba(217,119,6,0.25)">Q8</span>
+            <span class="qa-q-text">Kafka 的 acks 参数如何选择？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <ul>
+              <li><code>acks=0</code>：不等待 Broker 确认，即发即忘。吞吐最高，但消息可能丢失。<em>适用</em>：日志收集、埋点上报等允许少量丢失的场景。</li>
+              <li><code>acks=1</code>：等待 Leader 写入确认，不等 Follower 同步。Leader 宕机且 Follower 未同步时可能丢失。<em>适用</em>：一般业务消息，吞吐与可靠性折中。</li>
+              <li><code>acks=-1（all）</code>：等待 ISR 全部副本写入后才确认。可靠性最高，配合 <code>min.insync.replicas=2</code> 防止 ISR 退化为单副本时失去意义。<em>适用</em>：订单、支付、金融等不允许丢失的场景。</li>
+            </ul>
+          </div></div>
+        </div>
+
+        <div class="qa-item" id="q-mq-9">
+          <div class="qa-question" onclick="toggleQA('q-mq-9')">
+            <span class="qa-num" style="background:rgba(217,119,6,0.1);color:#d97706;border:1px solid rgba(217,119,6,0.25)">Q9</span>
+            <span class="qa-q-text">Kafka Consumer Group 是什么？Rebalance 何时触发？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <strong>Consumer Group：</strong>同组内每个 Partition 只被一个 Consumer 消费（组内并行，互不重复）；不同 Group 各自独立消费全量消息（多订阅方互不干扰）。
+            <br><br>
+            <strong>Rebalance 触发时机：</strong>
+            <ul>
+              <li>Consumer 实例加入或离开（包括消费超时被踢出）</li>
+              <li>订阅 Topic 的 Partition 数量变化</li>
+              <li>Consumer 心跳超时（超过 <code>session.timeout.ms</code>）</li>
+            </ul>
+            <strong>Rebalance 的问题：</strong>期间所有 Consumer 暂停消费（Stop The World），高并发下造成明显延迟。<br>
+            <em>优化</em>：调大 <code>session.timeout.ms</code> 和 <code>max.poll.interval.ms</code>；Kafka 2.3+ 支持 Static Membership 减少不必要的 Rebalance。
+          </div></div>
+        </div>
+
+        <div class="qa-item" id="q-mq-10">
+          <div class="qa-question" onclick="toggleQA('q-mq-10')">
+            <span class="qa-num" style="background:rgba(217,119,6,0.1);color:#d97706;border:1px solid rgba(217,119,6,0.25)">Q10</span>
+            <span class="qa-q-text">RocketMQ 事务消息的原理是什么？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            通过两阶段提交 + 事务回查，实现本地事务与消息投递的最终一致性：
+            <ul>
+              <li>① Producer 发送<strong>半消息（Half Message）</strong>到 Broker，此时对 Consumer 不可见。</li>
+              <li>② Broker 持久化半消息并返回 ACK。</li>
+              <li>③ Producer 执行<strong>本地事务</strong>（如扣款、写订单）。</li>
+              <li>④ 事务成功 → 发送 <strong>Commit</strong>，Broker 将消息标记为可见；失败 → 发送 <strong>Rollback</strong>，Broker 删除半消息。</li>
+              <li>⑤ 若 Producer 宕机未发 Commit/Rollback，Broker <strong>定时回查</strong>（<code>checkLocalTransaction</code>）本地事务状态，最多 15 次。</li>
+            </ul>
+            <span class="ans-tag key">核心价值</span>保证「本地事务成功 ↔ 消息对消费者可见」的最终一致性，解决分布式事务中消息与本地操作的原子性问题。
+          </div></div>
+        </div>
+
+        <div class="qa-item" id="q-mq-11">
+          <div class="qa-question" onclick="toggleQA('q-mq-11')">
+            <span class="qa-num" style="background:rgba(217,119,6,0.1);color:#d97706;border:1px solid rgba(217,119,6,0.25)">Q11</span>
+            <span class="qa-q-text">死信队列是什么？如何处理死信消息？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <strong>死信队列（DLQ）</strong>：消息消费失败超过最大重试次数后，自动路由到死信队列，不再重试，等待人工介入。
+            <ul>
+              <li><em>RocketMQ</em>：自动创建 <code>%DLQ%{ConsumerGroup}</code> Topic；默认重试 16 次，每次间隔递增，最长 2 小时。</li>
+              <li><em>Kafka</em>：无原生 DLQ，需业务代码 catch 消费异常后写入专用 <code>.dead</code> Topic。</li>
+            </ul>
+            <strong>处理策略：</strong>
+            <ul>
+              <li>订阅 DLQ，消息进入即触发监控告警（钉钉 / Prometheus）。</li>
+              <li>人工分析原因：消费代码 Bug、上游数据异常、依赖服务故障。</li>
+              <li>修复后从 DLQ 重新投递到原 Topic 进行重放，Consumer 幂等处理完成补偿。</li>
+            </ul>
+          </div></div>
+        </div>
+
+        <div class="qa-item" id="q-mq-12">
+          <div class="qa-question" onclick="toggleQA('q-mq-12')">
+            <span class="qa-num" style="background:rgba(217,119,6,0.1);color:#d97706;border:1px solid rgba(217,119,6,0.25)">Q12</span>
+            <span class="qa-q-text">延迟消息如何实现？RocketMQ 和 Kafka 有什么区别？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <ul>
+              <li><strong>RocketMQ（原生支持）</strong>：发送时调用 <code>setDelayTimeLevel(N)</code>，支持 18 个固定级别（1s / 5s / 10s / 30s / 1min … 2h）。内部将消息先写入 <code>SCHEDULE_TOPIC_XXXX</code>，定时线程每秒扫描，到期后投递到真实 Topic。</li>
+              <li><strong>Kafka（不原生支持）</strong>：需业务层实现，常见方案：① 时间轮算法维护延迟队列；② 写入延迟 Topic + Consumer 定时轮询；③ 直接用 RocketMQ 处理延迟消息场景。</li>
+              <li><strong>RabbitMQ</strong>：通过 <code>x-message-ttl</code> 设置消息过期时间，过期后路由到死信队列，DLQ 的 Consumer 即为延迟消费方。缺点：队头阻塞会影响后续消息的延迟精度。</li>
+            </ul>
+          </div></div>
+        </div>
+
+        <div class="qa-item" id="q-mq-13">
+          <div class="qa-question" onclick="toggleQA('q-mq-13')">
+            <span class="qa-num" style="background:rgba(217,119,6,0.1);color:#d97706;border:1px solid rgba(217,119,6,0.25)">Q13</span>
+            <span class="qa-q-text">Kafka 和 RocketMQ 存储架构的核心区别？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <ul>
+              <li><strong>Kafka</strong>：每个 Partition 对应独立的 .log 文件。Partition 数量少时性能极致（纯顺序写）；但 Partition 增多时，多个文件交替写入会退化为<strong>随机写</strong>，吞吐明显下降。</li>
+              <li><strong>RocketMQ</strong>：所有 Topic 消息统一追加写入 CommitLog（单文件，默认 1GB 分片），始终是顺序写。ConsumeQueue 是轻量级消费索引（每条固定 20 字节），消费时先查索引再按 offset 读 CommitLog。</li>
+              <li><strong>结论</strong>：RocketMQ 在 Topic / Queue 数量多时写入性能更稳定；Kafka 在少量 Partition 场景性能更极致，Topic 规模大时性能会有所下降。</li>
+            </ul>
+          </div></div>
+        </div>
+
+        <div class="qa-item" id="q-mq-14">
+          <div class="qa-question" onclick="toggleQA('q-mq-14')">
+            <span class="qa-num" style="background:rgba(217,119,6,0.1);color:#d97706;border:1px solid rgba(217,119,6,0.25)">Q14</span>
+            <span class="qa-q-text">如何设计一个可靠的消息投递系统（本地消息表方案）？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            本地消息表是解决「分布式事务中消息与本地事务一致性」的经典方案：
+            <ul>
+              <li>① 在<strong>同一个本地事务</strong>中执行业务操作（如扣款）+ 向本地消息表插入待发送记录（状态 = PENDING），两者原子提交。</li>
+              <li>② 本地事务提交后，发送消息到 MQ，成功后将消息表记录标记为 SENT。</li>
+              <li>③ <strong>定时任务</strong>扫描消息表中超过 N 分钟仍为 PENDING 的记录进行重发，直到发送成功。</li>
+              <li>④ 消费端做<strong>幂等处理</strong>，确保重复消息不产生副作用。</li>
+            </ul>
+            <span class="ans-tag key">保证</span>本地事务成功 → 消息最终一定发出（最终一致）；事务失败 → 消息表记录不存在，消息绝不发出。<br>
+            <span class="ans-tag warn">缺点</span>依赖本地 DB，消息表会成为写入热点；高频场景可用 RocketMQ 事务消息替代。
+          </div></div>
+        </div>
+
+        <div class="qa-item" id="q-mq-15">
+          <div class="qa-question" onclick="toggleQA('q-mq-15')">
+            <span class="qa-num" style="background:rgba(217,119,6,0.1);color:#d97706;border:1px solid rgba(217,119,6,0.25)">Q15</span>
+            <span class="qa-q-text">Kafka 的零拷贝（Zero-Copy）是如何实现的？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <strong>传统数据传输（4 次拷贝，4 次上下文切换）：</strong>
+            <ul>
+              <li>磁盘 →（DMA）→ 内核缓冲区 →（CPU）→ 用户缓冲区 →（CPU）→ Socket 缓冲区 →（DMA）→ 网卡</li>
+            </ul>
+            <strong>sendfile 零拷贝（Linux 2.1+，2 次拷贝，2 次上下文切换）：</strong>
+            <ul>
+              <li>磁盘 →（DMA）→ 内核缓冲区 →（CPU）→ Socket 缓冲区 →（DMA）→ 网卡</li>
+              <li>完全跳过用户空间，减少 2 次数据拷贝和 2 次用户 / 内核态切换。</li>
+            </ul>
+            <strong>sendfile + DMA gather（Linux 2.4+，1 次拷贝）：</strong>
+            <ul>
+              <li>磁盘 →（DMA）→ 内核缓冲区，网卡 DMA 直接从内核缓冲区读取，仅 1 次真正的数据拷贝。</li>
+            </ul>
+            Kafka 通过 Java 的 <code>FileChannel.transferTo()</code> 调用操作系统 sendfile，实现消息从磁盘到网卡的高效传输，是 Kafka 高吞吐的关键之一。
+          </div></div>
+        </div>
+
+      </div>
+    </div>
+
+  </section>
+</main>
+</div>
+
+<div class="toc-panel" id="toc-panel">
+  <div class="toc-title">ON THIS PAGE</div>
+  <nav id="toc-nav"></nav>
+</div>
+
+<script src="shared.js"></script>
+</body>
+</html>

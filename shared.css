@@ -98,6 +98,7 @@ body {
 .tab.active-spring { color: #0369a1;    background: rgba(3,105,161,0.08);       font-weight: 500; border-left-color: #0369a1; }
 .tab.active-mysql  { color: #0e7490;    background: rgba(14,116,144,0.08);      font-weight: 500; border-left-color: #0e7490; }
 .tab.active-redis  { color: #dc2626;    background: rgba(220,38,38,0.08);       font-weight: 500; border-left-color: #dc2626; }
+.tab.active-mq     { color: #d97706;    background: rgba(217,119,6,0.08);       font-weight: 500; border-left-color: #d97706; }
 
 /* ── Main Layout ── */
 .content-wrap { margin-left: 272px; margin-right: 252px; flex: 1; min-width: 0; padding: 16px 0; }
@@ -113,7 +114,16 @@ body {
   background: #fff; border: 1px solid rgba(28,25,23,0.15); color: var(--accent);
   padding: 8px 12px; cursor: pointer; border-radius: 8px; font-size: 16px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  -webkit-tap-highlight-color: transparent;
 }
+
+/* ── Sidebar overlay (mobile) ── */
+.sidebar-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.45); z-index: 90;
+  -webkit-tap-highlight-color: transparent;
+}
+.sidebar-overlay.open { display: block; }
 
 /* ── Hero ── */
 .hero { padding: 60px 0 48px; border-bottom: 1px solid #e1e4e8; }
@@ -381,14 +391,46 @@ body {
 
 /* ── Responsive ── */
 @media (max-width: 768px) {
-  .sidebar { transform: translateX(-100%); transition: transform 0.3s; }
+  /* Sidebar: full-height drawer from left edge */
+  .sidebar {
+    top: 0; left: 0; bottom: 0;
+    border-radius: 0 14px 14px 0;
+    width: min(260px, 82vw);
+    transform: translateX(-110%); transition: transform 0.3s;
+  }
   .sidebar.open { transform: translateX(0); }
-  .content-wrap { margin-left: 0; padding: 8px; }
-  .main { padding: 0 20px 60px; border-radius: 10px; }
+
+  /* Layout */
+  .content-wrap { margin-left: 0; margin-right: 0; padding: 8px; }
+  .main { padding: 0 16px 48px; border-radius: 10px; }
   .menu-btn { display: block; }
-  .hero { padding: 70px 0 48px; }
-  .phase-timeline { flex-direction: column; }
-  .phase-bar::after { display: none; }
+  .hero { padding: 70px 0 40px; }
+
+  /* Touch targets */
+  .nav-link { padding: 11px 12px; font-size: 13px; }
+  .tab { padding: 11px 12px; }
+  .qa-question { min-height: 48px; }
+  .qa-toggle { width: 28px; height: 28px; }
+
+  /* Tables: force min-width so .diagram overflow-x:auto kicks in */
+  .cmp-table { min-width: 460px; }
+  /* Q&A inline tables */
+  .qa-answer-inner { overflow-x: auto; }
+
+  /* Pointer layout: scrollable instead of clipped */
+  .pointer-layout { overflow-x: auto; overflow-y: visible; }
   .ptr-field { padding: 10px 4px; }
   .ptr-bits  { font-size: 9px; }
+
+  /* Heap grid: 4 columns instead of 8 */
+  .heap-grid { grid-template-columns: repeat(4, 1fr); }
+
+  /* Phase timeline: stack */
+  .phase-timeline { flex-direction: column; }
+  .phase-bar::after { display: none; }
+
+  /* Multi-mapping: stack vertically */
+  .multimap { flex-direction: column; }
+  .arrow-col { flex-direction: row; padding: 4px 0; }
+  .vaddr-space, .phys-space { width: 100%; min-width: unset; }
 }

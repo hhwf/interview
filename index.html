@@ -104,6 +104,7 @@ h1 {
 .card.spring .card-icon { background: #eff6ff; color: #2563eb; border-color: rgba(37,99,235,0.2); }
 .card.mysql  .card-icon { background: #f0fdfa; color: #0891b2; border-color: rgba(8,145,178,0.2); }
 .card.redis  .card-icon { background: #fff1f2; color: #dc2626; border-color: rgba(220,38,38,0.2); }
+.card.mq     .card-icon { background: #fffbeb; color: #d97706; border-color: rgba(217,119,6,0.2); }
 
 .card-title {
   font-size: 18px;
@@ -152,6 +153,7 @@ h1 {
 .card.spring .card-cta { color: #2563eb; }
 .card.mysql  .card-cta { color: #0891b2; }
 .card.redis  .card-cta { color: #dc2626; }
+.card.mq     .card-cta { color: #d97706; }
 
 .card:hover .card-cta { gap: 10px; }
 
@@ -167,6 +169,8 @@ h1 {
 @media (max-width: 768px) {
   .header { padding: 48px 20px 36px; }
   .cards { margin: 24px auto 40px; padding: 0 16px; grid-template-columns: 1fr; }
+  .footer { padding: 20px 16px; }
+  .card:hover { box-shadow: var(--shadow-md); transform: none; }
 }
 </style>
 </head>
@@ -175,7 +179,7 @@ h1 {
 <div class="header">
   <div class="eyebrow">Java Backend Interview</div>
   <h1>面试知识库</h1>
-  <p class="subtitle">JVM 垃圾收集 · Spring 框架原理 · MySQL 核心知识 · Redis 原理</p>
+  <p class="subtitle">JVM 垃圾收集 · Spring 框架原理 · MySQL 核心知识 · Redis 原理 · 消息队列</p>
 </div>
 
 <div class="cards">
@@ -236,6 +240,21 @@ h1 {
       <span class="tag">分布式锁</span>
       <span class="tag">Cluster</span>
       <span class="tag">面试题 ×10</span>
+    </div>
+    <div class="card-cta">进入学习 →</div>
+  </a>
+
+  <a class="card mq" href="mq.html">
+    <div class="card-icon">MQ</div>
+    <div class="card-title">消息队列</div>
+    <p class="card-desc">Kafka 高性能原理与副本机制、RocketMQ 事务消息、消息可靠性三段保障、顺序性与幂等消费、死信队列与延迟消息。</p>
+    <div class="card-tags">
+      <span class="tag">Kafka</span>
+      <span class="tag">RocketMQ</span>
+      <span class="tag">ISR / HW</span>
+      <span class="tag">事务消息</span>
+      <span class="tag">消息幂等</span>
+      <span class="tag">面试题 ×15</span>
     </div>
     <div class="card-cta">进入学习 →</div>
   </a>
