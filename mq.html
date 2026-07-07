@@ -10,7 +10,7 @@
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=DM+Mono:wght@400;500;600&display=swap"></noscript>
 <link rel="preload" as="style" href="https://fontsapi.zeoseven.com/161/main/result.css" onload="this.onload=null;this.rel='stylesheet'">
 <noscript><link rel="stylesheet" href="https://fontsapi.zeoseven.com/161/main/result.css"></noscript>
-<link rel="stylesheet" href="shared.css">
+<link rel="stylesheet" href="style/shared.css">
 <style>
 :root {
   --mq: #d97706; --mq-2: #b45309;
@@ -691,11 +691,17 @@
           </div>
           <div class="qa-answer"><div class="qa-answer-inner">
             <ul>
-              <li><strong>ISR（In-Sync Replicas）</strong>：与 Leader 同步延迟在 <code>replica.lag.time.max.ms</code>（默认 30s）内的副本集合。落后过多的副本踢出 ISR 进入 OSR。</li>
-              <li><strong>LEO（Log End Offset）</strong>：每个副本已写入的最大消息 offset + 1，即「下一条消息应写入的位置」。</li>
-              <li><strong>HW（High Watermark）</strong>：ISR 中所有副本 LEO 的最小值。Consumer 只能消费 offset &lt; HW 的消息。</li>
-              <li><strong>为什么需要 HW</strong>：防止数据回退。若 Follower 未同步时 Leader 切换，已暴露给 Consumer 的消息在新 Leader 上不存在，会造成数据不一致。HW 作为「安全水位」只暴露已完全复制的数据。</li>
+              <li><strong>AR（Assigned Replicas）</strong>：分区的全部副本集合 = ISR + OSR</li>
+              <li><strong>ISR（In-Sync Replicas）</strong>：与 Leader 同步延迟在 <code>replica.lag.time.max.ms</code>（默认 30s）内的副本集合。<br>
+                <span style="color:var(--text-3);font-size:12px">Follower 落后超过阈值 → 踢出 ISR 进入 OSR；追上 Leader 后重新加入 ISR（动态收缩与扩张）</span></li>
+              <li><strong>LEO（Log End Offset）</strong>：每个副本已写入的最大消息 offset + 1，即「下一条消息应写入的位置」，各副本独立维护。</li>
+              <li><strong>HW（High Watermark）</strong>：ISR 中所有副本 LEO 的最小值。Consumer 只能消费 offset &lt; HW 的消息——HW 是对外可见的「安全水位」，确保只有 ISR 全员确认的数据才对外可见。</li>
+              <li><strong>为什么需要 HW</strong>：防止数据回退。若 Follower 未同步时 Leader 宕机，新 Leader 可能缺少旧 Leader 已暴露给 Consumer 的消息，造成数据不一致。</li>
             </ul>
+            <br>
+            <strong>Leader Election：</strong>新 Leader 必须从 ISR 中选出（由 Controller 决定）。<code>unclean.leader.election.enable=false</code>（默认）禁止 OSR 成为 Leader，确保不丢数据；设为 <code>true</code> 时 OSR 可被选为 Leader，可用性更高但可能丢失未同步的消息。<br><br>
+            <strong>Leader Epoch（Kafka 2.0+）：</strong>HW 机制存在边缘 Bug——Follower 以 HW 为基准截断日志后重启，若 HW 未及时更新可能错误截断正确数据。Leader Epoch 用单调递增的纪元号替代 HW 截断，彻底解决该问题。<br><br>
+            <span class="ans-tag tip">答题技巧</span>按 ISR → LEO → HW 的顺序层层递进，最后主动补充 Leader Election 与 Leader Epoch，展示对 Kafka 可靠性机制的深度理解。
           </div></div>
         </div>
 
@@ -859,6 +865,6 @@
   <nav id="toc-nav"></nav>
 </div>
 
-<script src="shared.js"></script>
+<script src="style/shared.js"></script>
 </body>
 </html>

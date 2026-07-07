@@ -10,7 +10,7 @@
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=DM+Mono:wght@400;500;600&display=swap"></noscript>
 <link rel="preload" as="style" href="https://fontsapi.zeoseven.com/161/main/result.css" onload="this.onload=null;this.rel='stylesheet'">
 <noscript><link rel="stylesheet" href="https://fontsapi.zeoseven.com/161/main/result.css"></noscript>
-<link rel="stylesheet" href="shared.css">
+<link rel="stylesheet" href="style/shared.css">
 <style>
 :root {
   --dist: #7c3aed; --dist-2: #6d28d9;
@@ -332,6 +332,10 @@
 
       <div class="callout callout-warn" style="margin-top:1rem">
         <strong>注意：</strong>Redis 主从切换期间，主节点尚未同步到从节点的锁数据可能丢失——新主节点上该锁不存在，另一个客户端可能同时获锁，导致锁失效。高一致性场景应使用 RedLock 或改用 ZooKeeper。
+      </div>
+      <div class="callout callout-info" style="margin-top:12px">
+        <span class="callout-icon">→</span>
+        <div class="callout-body">另见：<a href="redis.html#redis-lock" style="color:var(--accent)">Redis 原理 — 分布式锁详细实现（SETNX / Redlock 算法 / Redisson watchdog）</a></div>
       </div>
     </div>
 
@@ -919,6 +923,6 @@
   <nav id="toc-nav"></nav>
 </div>
 
-<script src="shared.js"></script>
+<script src="style/shared.js"></script>
 </body>
 </html>

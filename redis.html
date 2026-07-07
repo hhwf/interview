@@ -10,7 +10,7 @@
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=DM+Mono:wght@400;500;600&display=swap"></noscript>
 <link rel="preload" as="style" href="https://fontsapi.zeoseven.com/161/main/result.css" onload="this.onload=null;this.rel='stylesheet'">
 <noscript><link rel="stylesheet" href="https://fontsapi.zeoseven.com/161/main/result.css"></noscript>
-<link rel="stylesheet" href="shared.css">
+<link rel="stylesheet" href="style/shared.css">
 <style>
 :root {
   --redis: #dc2626; --redis-2: #b91c1c;
@@ -725,6 +725,10 @@
           </div>
         </div>
       </div>
+      <div class="callout callout-info" style="margin-top:12px">
+        <span class="callout-icon">→</span>
+        <div class="callout-body">另见：<a href="distributed.html#dist-lock" style="color:var(--accent)">分布式系统 — 分布式锁选型（Redis vs ZooKeeper 全面对比）</a></div>
+      </div>
     </div>
 
     <!-- ══ 8. 高频面试题 ══ -->
@@ -940,6 +944,167 @@
           </div></div>
         </div>
 
+        <div class="qa-item" id="q-redis-11">
+          <div class="qa-question" onclick="toggleQA('q-redis-11')">
+            <span class="qa-num" style="background:rgba(220,38,38,0.1);color:#dc2626;border:1px solid rgba(220,38,38,0.25)">Q11</span>
+            <span class="qa-q-text">缓存穿透、击穿、雪崩如何区分？各自如何解决？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:16px">
+              <thead><tr style="border-bottom:1px solid var(--border)">
+                <th style="padding:8px 10px;text-align:left;font-size:11px;color:var(--text-3)">问题</th>
+                <th style="padding:8px 10px;text-align:left;font-size:11px;color:var(--text-3)">根本原因</th>
+                <th style="padding:8px 10px;text-align:left;font-size:11px;color:var(--text-3)">核心解法</th>
+              </tr></thead>
+              <tbody>
+                <tr style="border-bottom:1px solid rgba(0,0,0,0.05)">
+                  <td style="padding:8px 10px;color:#dc2626;font-weight:600">穿透</td>
+                  <td style="padding:8px 10px;color:var(--text-2)">查询 DB 中也不存在的 key，每次均穿透缓存直打 DB</td>
+                  <td style="padding:8px 10px;color:var(--text-2)">布隆过滤器拦截；或缓存空值（短 TTL）</td>
+                </tr>
+                <tr style="border-bottom:1px solid rgba(0,0,0,0.05)">
+                  <td style="padding:8px 10px;color:#7c3aed;font-weight:600">击穿</td>
+                  <td style="padding:8px 10px;color:var(--text-2)">单个热点 key 过期瞬间，大量并发同时 miss 涌入 DB</td>
+                  <td style="padding:8px 10px;color:var(--text-2)">互斥锁（强一致）或逻辑过期（永不设 TTL，异步重建）</td>
+                </tr>
+                <tr>
+                  <td style="padding:8px 10px;color:#d97706;font-weight:600">雪崩</td>
+                  <td style="padding:8px 10px;color:var(--text-2)">大量 key 同时过期 / Redis 宕机，缓存层整体失效</td>
+                  <td style="padding:8px 10px;color:var(--text-2)">过期时间加随机偏移；高可用（哨兵/Cluster）；本地缓存兜底</td>
+                </tr>
+              </tbody>
+            </table>
+            <strong>穿透 vs 击穿的本质区别：</strong>穿透是 key 在 DB 里根本不存在；击穿是 key 在 DB 里存在，只是缓存里刚好过期了。<br><br>
+            <strong>击穿两种解法的取舍：</strong><br>
+            <strong>互斥锁</strong>：缓存 miss → <code>SETNX lock 30s</code> → 仅一个线程查 DB 重建，其他线程自旋等待。数据强一致，但等待期间有延迟。<br>
+            <strong>逻辑过期</strong>：key 永不设 TTL，value 中存储逻辑过期时间；发现逻辑过期时立即返回旧值 + 异步线程重建缓存。用户无感知无阻塞，但短暂返回旧数据（最终一致）。<br><br>
+            <span class="ans-tag tip">答题技巧</span>先用"三者都是缓存失效引发 DB 压力的问题，但成因不同"破题，再逐一展开，最后对比互斥锁与逻辑过期的适用场景，展现系统设计深度。
+          </div></div>
+        </div>
+
+        <div class="qa-item" id="q-redis-12">
+          <div class="qa-question" onclick="toggleQA('q-redis-12')">
+            <span class="qa-num" style="background:rgba(220,38,38,0.1);color:#dc2626;border:1px solid rgba(220,38,38,0.25)">Q12</span>
+            <span class="qa-q-text">Redis 分布式锁如何实现？Redlock 解决了什么问题？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <strong>基础实现：</strong><code>SET lock_key {uuid} NX EX 30</code>（原子命令，Redis 2.6.12+）<br>
+            释放时用 Lua 脚本保证原子性（判断 value == uuid 再 DEL），防止误删其他线程持有的锁。<br><br>
+            <strong>单节点方案的两个问题：</strong>
+            <ul>
+              <li><strong>业务超时锁自动过期</strong>：用 Redisson watchdog 机制——锁持有时每 10s 自动续期，业务执行完主动删除</li>
+              <li><strong>主从切换锁丢失</strong>：主节点写锁后宕机，Slave 未同步，新 Master 上可再次加同一把锁 → 两个客户端同时持锁</li>
+            </ul>
+            <strong>Redlock 算法（多节点方案）：</strong>向 N（通常 5）个独立 Redis 实例依次加锁，<strong>超过半数（≥3）成功且总耗时 &lt; 锁 TTL</strong> 才认为加锁成功，任意少数节点宕机时锁仍安全。<br><br>
+            <strong>Redlock 的争议：</strong>Martin Kleppmann 指出 GC STW / NTP 时钟跳变 / 网络延迟等原因可能导致锁已过期但持有者不知道，从而出现并发安全问题。<strong>强一致性场景建议用 ZooKeeper / etcd</strong>（基于顺序临时节点，不依赖时间，具备线性一致性）。<br><br>
+            <span class="ans-tag tip">答题技巧</span>回答完基础实现后主动提 Redlock，再说争议和 ZK 替代方案，展示对分布式系统设计权衡的理解。
+          </div></div>
+        </div>
+
+        <div class="qa-item" id="q-redis-13">
+          <div class="qa-question" onclick="toggleQA('q-redis-13')">
+            <span class="qa-num" style="background:rgba(220,38,38,0.1);color:#dc2626;border:1px solid rgba(220,38,38,0.25)">Q13</span>
+            <span class="qa-q-text">Redis 主从复制原理是什么？哨兵如何实现自动故障切换？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <strong>主从复制流程：</strong>
+            <ul>
+              <li><strong>全量同步（首次 / repl_backlog 溢出）</strong>：Master 执行 BGSAVE 生成 RDB 传给 Slave；Slave 清空本地载入 RDB；RDB 生成期间的写命令暂存 replication buffer，传输 RDB 后补发</li>
+              <li><strong>增量同步（正常运行 / 短暂断线重连）</strong>：Slave 上报 <code>repl_id + offset</code>，Master 在 repl_backlog 环形缓冲区中找到对应位置，只补发增量命令</li>
+            </ul>
+            <strong>哨兵（Sentinel）自动故障切换四步骤：</strong>
+            <ol>
+              <li><strong>监控</strong>：每个 Sentinel 每秒向 Master/Slave 发送 PING，超时 → 标记<strong>主观下线（sdown）</strong></li>
+              <li><strong>客观下线（odown）</strong>：向其他 Sentinel 询问，确认票数超过 <code>quorum</code>（通常过半）→ 确认 Master 不可达</li>
+              <li><strong>选举 Leader Sentinel</strong>：基于 Raft 协议从 Sentinel 集群中选出一个 Leader 执行故障转移</li>
+              <li><strong>故障转移</strong>：Leader Sentinel 从 Slave 中选出新 Master（优先级高、offset 最大的），发送 <code>SLAVEOF NO ONE</code>，通知其他 Slave 指向新 Master，并更新客户端路由</li>
+            </ol>
+          </div></div>
+        </div>
+
+        <div class="qa-item" id="q-redis-14">
+          <div class="qa-question" onclick="toggleQA('q-redis-14')">
+            <span class="qa-num" style="background:rgba(220,38,38,0.1);color:#dc2626;border:1px solid rgba(220,38,38,0.25)">Q14</span>
+            <span class="qa-q-text">Redis 的内存淘汰策略有哪些？如何选择？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <table style="width:100%;border-collapse:collapse;font-size:13px">
+              <thead><tr style="border-bottom:1px solid var(--border)">
+                <th style="padding:8px 10px;text-align:left;font-size:11px;color:var(--text-3)">策略</th>
+                <th style="padding:8px 10px;text-align:left;font-size:11px;color:var(--text-3)">含义</th>
+                <th style="padding:8px 10px;text-align:left;font-size:11px;color:var(--text-3)">适用场景</th>
+              </tr></thead>
+              <tbody>
+                <tr style="border-bottom:1px solid rgba(0,0,0,0.05)"><td style="padding:7px 10px;color:var(--text-2)"><code>noeviction</code></td><td style="padding:7px 10px;color:var(--text-2)">内存满时拒绝写入，返回错误</td><td style="padding:7px 10px;color:var(--text-2)">数据不可丢失，宁可报错</td></tr>
+                <tr style="border-bottom:1px solid rgba(0,0,0,0.05)"><td style="padding:7px 10px;color:#dc2626;font-weight:500"><code>allkeys-lru</code></td><td style="padding:7px 10px;color:var(--text-2)">全部 key 中淘汰最近最少使用的</td><td style="padding:7px 10px;color:var(--text-2)"><strong>纯缓存场景（最常用）</strong></td></tr>
+                <tr style="border-bottom:1px solid rgba(0,0,0,0.05)"><td style="padding:7px 10px;color:var(--text-2)"><code>volatile-lru</code></td><td style="padding:7px 10px;color:var(--text-2)">仅在设置了 TTL 的 key 中淘汰 LRU</td><td style="padding:7px 10px;color:var(--text-2)">缓存与持久数据混存</td></tr>
+                <tr style="border-bottom:1px solid rgba(0,0,0,0.05)"><td style="padding:7px 10px;color:#dc2626;font-weight:500"><code>allkeys-lfu</code></td><td style="padding:7px 10px;color:var(--text-2)">全部 key 中淘汰访问频率最低的（4.0+）</td><td style="padding:7px 10px;color:var(--text-2)">热点分布不均匀时比 LRU 更精准</td></tr>
+                <tr style="border-bottom:1px solid rgba(0,0,0,0.05)"><td style="padding:7px 10px;color:var(--text-2)"><code>volatile-lfu</code></td><td style="padding:7px 10px;color:var(--text-2)">仅在有 TTL 的 key 中淘汰频率最低的</td><td style="padding:7px 10px;color:var(--text-2)">混存时需要 LFU 精度</td></tr>
+                <tr style="border-bottom:1px solid rgba(0,0,0,0.05)"><td style="padding:7px 10px;color:var(--text-2)"><code>volatile-ttl</code></td><td style="padding:7px 10px;color:var(--text-2)">有 TTL 的 key 中优先淘汰剩余存活时间最短的</td><td style="padding:7px 10px;color:var(--text-2)">希望快过期的先被踢出</td></tr>
+                <tr><td style="padding:7px 10px;color:var(--text-2)"><code>allkeys-random</code></td><td style="padding:7px 10px;color:var(--text-2)">全部 key 中随机淘汰</td><td style="padding:7px 10px;color:var(--text-2)">访问分布均匀时可用，少用</td></tr>
+              </tbody>
+            </table>
+            <br>
+            <strong>选择建议：</strong><br>
+            • 纯缓存：<code>allkeys-lru</code>（最常用）或 <code>allkeys-lfu</code>（热点分布不均时更精准）<br>
+            • 缓存与持久数据混存：<code>volatile-lru</code> / <code>volatile-lfu</code>，只淘汰有 TTL 的 key，保护持久数据<br>
+            • 不允许任何数据丢失：<code>noeviction</code>，配合监控告警及时扩容
+          </div></div>
+        </div>
+
+        <div class="qa-item" id="q-redis-15">
+          <div class="qa-question" onclick="toggleQA('q-redis-15')">
+            <span class="qa-num" style="background:rgba(220,38,38,0.1);color:#dc2626;border:1px solid rgba(220,38,38,0.25)">Q15</span>
+            <span class="qa-q-text">Redis Sentinel 与 Cluster 如何选型？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <table style="width:100%;border-collapse:collapse;font-size:13px">
+              <thead><tr style="border-bottom:1px solid var(--border)">
+                <th style="padding:8px 10px;text-align:left;font-size:11px;color:var(--text-3)">维度</th>
+                <th style="padding:8px 10px;text-align:left;font-size:11px;color:#dc2626">Sentinel（哨兵）</th>
+                <th style="padding:8px 10px;text-align:left;font-size:11px;color:#7c3aed">Cluster（集群）</th>
+              </tr></thead>
+              <tbody>
+                <tr style="border-bottom:1px solid rgba(0,0,0,0.05)">
+                  <td style="padding:7px 10px;color:var(--text-3);font-size:11px;font-weight:600">数据分片</td>
+                  <td style="padding:7px 10px;color:var(--text-2)">❌ 无分片，数据全在单主节点</td>
+                  <td style="padding:7px 10px;color:var(--text-2)">✅ 16384 个 slot 分布到多主节点</td>
+                </tr>
+                <tr style="border-bottom:1px solid rgba(0,0,0,0.05)">
+                  <td style="padding:7px 10px;color:var(--text-3);font-size:11px;font-weight:600">水平扩容</td>
+                  <td style="padding:7px 10px;color:var(--text-2)">❌ 内存上限 = 单机内存</td>
+                  <td style="padding:7px 10px;color:var(--text-2)">✅ 增加节点即可线性扩容</td>
+                </tr>
+                <tr style="border-bottom:1px solid rgba(0,0,0,0.05)">
+                  <td style="padding:7px 10px;color:var(--text-3);font-size:11px;font-weight:600">高可用</td>
+                  <td style="padding:7px 10px;color:var(--text-2)">✅ Sentinel 自动 Failover</td>
+                  <td style="padding:7px 10px;color:var(--text-2)">✅ 每个 Master 有 Slave，内置 Failover</td>
+                </tr>
+                <tr style="border-bottom:1px solid rgba(0,0,0,0.05)">
+                  <td style="padding:7px 10px;color:var(--text-3);font-size:11px;font-weight:600">多 key 事务</td>
+                  <td style="padding:7px 10px;color:var(--text-2)">✅ 支持（单节点）</td>
+                  <td style="padding:7px 10px;color:var(--text-2)">⚠ 仅限同一 slot（用 hash tag <code>{}</code> 规避）</td>
+                </tr>
+                <tr>
+                  <td style="padding:7px 10px;color:var(--text-3);font-size:11px;font-weight:600">运维复杂度</td>
+                  <td style="padding:7px 10px;color:var(--text-2)">低，配置简单</td>
+                  <td style="padding:7px 10px;color:var(--text-2)">较高，需管理 slot 分配与迁移</td>
+                </tr>
+              </tbody>
+            </table>
+            <br>
+            <strong>选型建议：</strong><br>
+            • <strong>数据量 &lt; 单机内存上限（通常 &lt; 50 GB）且不需横向扩容</strong> → Sentinel，运维简单，支持完整 Redis 命令<br>
+            • <strong>数据量大、需水平扩展或写 QPS 极高</strong> → Cluster，读写分片到多主节点，天花板更高<br>
+            • <strong>Cluster 的限制</strong>：不支持跨 slot 的 MGET / MSET / pipeline（需用 hash tag 强制同 slot）
+          </div></div>
+        </div>
+
       </div>
     </div>
 
@@ -955,6 +1120,6 @@
   <nav id="toc-nav"></nav>
 </aside>
 
-<script src="shared.js"></script>
+<script src="style/shared.js"></script>
 </body>
 </html>

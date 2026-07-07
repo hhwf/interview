@@ -9,9 +9,9 @@
 | [index.html](index.html) | 首页导航总览 | — |
 | [juc.html](juc.html) | JUC 并发编程 — JMM / synchronized / volatile / CAS / AQS / 线程池 / 虚拟线程 | ×15 |
 | [spring.html](spring.html) | Spring — IoC / Bean 生命周期 / AOP / 事务 / 三级缓存循环依赖 | ×17 |
-| [gc-principles.html](gc-principles.html) | JVM GC — G1 & ZGC & CMS 深度解析 | ×21 |
+| [gc-principles.html](gc-principles.html) | JVM GC — G1（Region / SATB / RSet / CSet / Evacuation / Young GC 机制 / 完整流程）& ZGC（染色指针 / 多重映射 / 读屏障 / 并发周期）& CMS | ×21 |
 | [mysql.html](mysql.html) | MySQL — B+ Tree 索引 / MVCC / 锁 / 日志 / 主从复制 | ×15 |
-| [redis.html](redis.html) | Redis — 数据结构 / 持久化 / 淘汰策略 / 集群 / 分布式锁 | ×10 |
+| [redis.html](redis.html) | Redis — 数据结构 / 持久化 / 缓存三大问题 / 分布式锁 / 淘汰策略 / 哨兵 & Cluster | ×15 |
 | [mq.html](mq.html) | 消息队列 — Kafka / RocketMQ / 可靠性 / 顺序 / 幂等 | ×15 |
 | [distributed.html](distributed.html) | 分布式系统 — CAP / 分布式事务 / 分布式锁 / 注册中心 / Snowflake / 限流熔断 | ×15 |
 
@@ -49,8 +49,9 @@ interview/
 ├── redis.html            # Redis 原理
 ├── mq.html               # 消息队列
 ├── distributed.html      # 分布式系统
-├── shared.css            # 公共样式（设计 token、布局、移动端适配、深色模式）
-├── shared.js             # 公共脚本（侧边栏、手风琴、搜索、TOC、深色模式切换）
+├── style/
+│   ├── shared.css        # 公共样式（设计 token、布局、移动端适配、深色模式）
+│   └── shared.js         # 公共脚本（侧边栏、手风琴、搜索、TOC、深色模式切换）
 └── README.md
 ```
 
