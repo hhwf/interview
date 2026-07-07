@@ -73,7 +73,7 @@
   <div class="nav-section-label">对比</div>
   <a href="#comparison" class="nav-link" data-section="comparison">G1 vs ZGC</a>
 
-  <div class="nav-section-label" style="color:rgba(203,70,26,0.6)">CMS GC</div>
+  <div class="nav-section-label" style="color:rgba(194,65,12,0.85)">CMS GC</div>
   <a href="#cms-overview"    class="nav-link" data-section="cms-overview">概览与背景</a>
   <a href="#cms-phases"      class="nav-link" data-section="cms-phases">六阶段流程</a>
   <a href="#cms-card-table"  class="nav-link" data-section="cms-card-table">卡表</a>
@@ -83,8 +83,8 @@
   <div class="nav-section-label" style="color:rgba(146,64,14,0.6)">面试题</div>
   <a href="#interview-g1"          class="nav-link" data-section="interview-g1">G1 面试题</a>
   <a href="#interview-zgc"         class="nav-link" data-section="interview-zgc">ZGC 面试题</a>
-  <a href="#interview-cmp"         class="nav-link" data-section="interview-cmp">对比面试题</a>
   <a href="#interview-cms"         class="nav-link" data-section="interview-cms">CMS 面试题</a>
+  <a href="#interview-cmp"         class="nav-link" data-section="interview-cmp">对比面试题</a>
 </nav>
 
 <div class="content-wrap">
@@ -95,10 +95,9 @@
   <!-- ──────────── HERO ──────────── -->
   <section class="hero" id="overview">
     <div class="hero-eyebrow">Java Virtual Machine · Garbage Collection</div>
-    <h1><span class="g1-text">G1</span> &amp; <span class="zgc-text">ZGC</span><br>垃圾收集器原理</h1>
+    <h1><span class="g1-text">G1</span> · <span class="zgc-text">ZGC</span> · <span style="color:var(--orange)">CMS</span><br>垃圾收集器原理</h1>
     <p class="hero-desc">
-      深入剖析两款现代 JVM 垃圾收集器的核心设计——从堆内存布局到并发算法，
-      从内存屏障到染色指针，理解它们如何在不同的约束下解决同一个问题。
+      深入剖析三款 JVM 垃圾收集器的核心设计——G1 的分区回收与停顿控制、ZGC 的染色指针与亚毫秒停顿、CMS 的历史局限与设计演进，理解它们如何在不同约束下解决同一个问题。
     </p>
   </section>
 
@@ -230,58 +229,66 @@
         </div>
 
         <!-- 时序步骤 -->
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px">
 
           <!-- Step 0: 初始状态 -->
-          <div style="background:rgba(0,0,0,0.03);border:1px solid var(--border);border-radius:8px;padding:14px 12px">
-            <div style="font-family:var(--fm);font-size:10px;color:var(--text-3);margin-bottom:12px;letter-spacing:.08em;text-transform:uppercase">初始状态</div>
-            <div style="display:flex;flex-direction:column;align-items:center;gap:6px">
-              <div style="width:36px;height:36px;background:rgba(74,222,128,0.2);border:2px solid rgba(74,222,128,0.5);border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:11px;color:var(--g1)">A●</div>
-              <div style="font-family:var(--fm);font-size:9px;color:var(--text-3)">↓ 指向</div>
-              <div style="width:36px;height:36px;background:rgba(251,191,36,0.15);border:2px solid rgba(251,191,36,0.4);border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:11px;color:#fbbf24">B◑</div>
-              <div style="font-family:var(--fm);font-size:9px;color:var(--text-3)">↓ 指向</div>
-              <div style="width:36px;height:36px;background:rgba(0,0,0,0.025);border:2px dashed rgba(0,0,0,0.12);border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:11px;color:var(--text-3)">C○</div>
+          <div style="background:rgba(0,0,0,0.03);border:1px solid var(--border);border-radius:8px;padding:16px 18px;display:flex;gap:16px;align-items:flex-start">
+            <div style="flex:1">
+              <div style="font-family:var(--fm);font-size:10px;color:var(--text-3);margin-bottom:12px;letter-spacing:.08em;text-transform:uppercase">初始状态</div>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:6px">
+                <div style="width:36px;height:36px;background:rgba(74,222,128,0.2);border:2px solid rgba(74,222,128,0.5);border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:11px;color:var(--g1)">A●</div>
+                <div style="font-family:var(--fm);font-size:9px;color:var(--text-3)">↓ 指向</div>
+                <div style="width:36px;height:36px;background:rgba(251,191,36,0.15);border:2px solid rgba(251,191,36,0.4);border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:11px;color:#fbbf24">B◑</div>
+                <div style="font-family:var(--fm);font-size:9px;color:var(--text-3)">↓ 指向</div>
+                <div style="width:36px;height:36px;background:rgba(0,0,0,0.025);border:2px dashed rgba(0,0,0,0.12);border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:11px;color:var(--text-3)">C○</div>
+              </div>
             </div>
-            <div style="font-family:var(--fm);font-size:10px;color:var(--text-3);margin-top:10px;line-height:1.5;text-align:center">A 已扫描<br>B 正在扫描<br>C 待处理</div>
+            <div style="font-family:var(--fm);font-size:11px;color:var(--text-3);line-height:1.7;padding-top:28px">A 已扫描完毕<br>B 正在扫描中<br>C 尚未处理</div>
           </div>
 
           <!-- Step 1: 应用线程操作①  -->
-          <div style="background:rgba(248,113,113,0.08);border:1px solid rgba(248,113,113,0.2);border-radius:8px;padding:14px 12px">
-            <div style="font-family:var(--fm);font-size:10px;color:var(--red);margin-bottom:12px;letter-spacing:.08em;text-transform:uppercase">操作① 应用线程</div>
-            <div style="display:flex;flex-direction:column;align-items:center;gap:6px">
-              <div style="width:36px;height:36px;background:rgba(74,222,128,0.2);border:2px solid rgba(74,222,128,0.5);border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:11px;color:var(--g1)">A●</div>
-              <div style="font-family:var(--fm);font-size:9px;color:var(--red);font-weight:600">↓ 新增引用</div>
-              <div style="width:36px;height:36px;background:rgba(251,191,36,0.15);border:2px solid rgba(251,191,36,0.4);border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:11px;color:#fbbf24">B◑</div>
-              <div style="font-family:var(--fm);font-size:9px;color:var(--text-3)">↓ 还存在</div>
-              <div style="width:36px;height:36px;background:rgba(0,0,0,0.025);border:2px dashed rgba(0,0,0,0.12);border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:11px;color:var(--text-3)">C○</div>
+          <div style="background:rgba(248,113,113,0.08);border:1px solid rgba(248,113,113,0.2);border-radius:8px;padding:16px 18px;display:flex;gap:16px;align-items:flex-start">
+            <div style="flex:1">
+              <div style="font-family:var(--fm);font-size:10px;color:var(--red);margin-bottom:12px;letter-spacing:.08em;text-transform:uppercase">操作① 应用线程</div>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:6px">
+                <div style="width:36px;height:36px;background:rgba(74,222,128,0.2);border:2px solid rgba(74,222,128,0.5);border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:11px;color:var(--g1)">A●</div>
+                <div style="font-family:var(--fm);font-size:9px;color:var(--red);font-weight:600">↓ 新增引用</div>
+                <div style="width:36px;height:36px;background:rgba(251,191,36,0.15);border:2px solid rgba(251,191,36,0.4);border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:11px;color:#fbbf24">B◑</div>
+                <div style="font-family:var(--fm);font-size:9px;color:var(--text-3)">↓ 还存在</div>
+                <div style="width:36px;height:36px;background:rgba(0,0,0,0.025);border:2px dashed rgba(0,0,0,0.12);border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:11px;color:var(--text-3)">C○</div>
+              </div>
             </div>
-            <div style="font-family:var(--fm);font-size:10px;color:var(--red);margin-top:10px;line-height:1.5;text-align:center">A.next = C<br>（黑色引用白色<br>违反不变式！）</div>
+            <div style="font-family:var(--fm);font-size:11px;color:var(--red);line-height:1.7;padding-top:28px">A.next = C<br>黑色引用白色<br>违反三色不变式！</div>
           </div>
 
           <!-- Step 2: 应用线程操作② -->
-          <div style="background:rgba(248,113,113,0.08);border:1px solid rgba(248,113,113,0.2);border-radius:8px;padding:14px 12px">
-            <div style="font-family:var(--fm);font-size:10px;color:var(--red);margin-bottom:12px;letter-spacing:.08em;text-transform:uppercase">操作② 应用线程</div>
-            <div style="display:flex;flex-direction:column;align-items:center;gap:6px">
-              <div style="width:36px;height:36px;background:rgba(74,222,128,0.2);border:2px solid rgba(74,222,128,0.5);border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:11px;color:var(--g1)">A●</div>
-              <div style="font-family:var(--fm);font-size:9px;color:var(--text-3)">↓ 引用 C</div>
-              <div style="width:36px;height:36px;background:rgba(251,191,36,0.15);border:2px solid rgba(251,191,36,0.4);border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:11px;color:#fbbf24">B◑</div>
-              <div style="font-family:var(--fm);font-size:9px;color:var(--red);font-weight:600">✕ 删除引用</div>
-              <div style="width:36px;height:36px;background:rgba(0,0,0,0.025);border:2px dashed rgba(0,0,0,0.12);border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:11px;color:var(--text-3)">C○</div>
+          <div style="background:rgba(248,113,113,0.08);border:1px solid rgba(248,113,113,0.2);border-radius:8px;padding:16px 18px;display:flex;gap:16px;align-items:flex-start">
+            <div style="flex:1">
+              <div style="font-family:var(--fm);font-size:10px;color:var(--red);margin-bottom:12px;letter-spacing:.08em;text-transform:uppercase">操作② 应用线程</div>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:6px">
+                <div style="width:36px;height:36px;background:rgba(74,222,128,0.2);border:2px solid rgba(74,222,128,0.5);border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:11px;color:var(--g1)">A●</div>
+                <div style="font-family:var(--fm);font-size:9px;color:var(--text-3)">↓ 引用 C</div>
+                <div style="width:36px;height:36px;background:rgba(251,191,36,0.15);border:2px solid rgba(251,191,36,0.4);border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:11px;color:#fbbf24">B◑</div>
+                <div style="font-family:var(--fm);font-size:9px;color:var(--red);font-weight:600">✕ 删除引用</div>
+                <div style="width:36px;height:36px;background:rgba(0,0,0,0.025);border:2px dashed rgba(0,0,0,0.12);border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:11px;color:var(--text-3)">C○</div>
+              </div>
             </div>
-            <div style="font-family:var(--fm);font-size:10px;color:var(--red);margin-top:10px;line-height:1.5;text-align:center">B.next = null<br>B 不再指向 C<br>灰色路径断开</div>
+            <div style="font-family:var(--fm);font-size:11px;color:var(--text-2);line-height:1.7;padding-top:28px">B.next = null<br>B 不再指向 C<br>灰色路径断开</div>
           </div>
 
           <!-- Step 3: 结果 -->
-          <div style="background:rgba(248,113,113,0.15);border:2px solid rgba(248,113,113,0.35);border-radius:8px;padding:14px 12px">
-            <div style="font-family:var(--fm);font-size:10px;color:var(--red);margin-bottom:12px;letter-spacing:.08em;text-transform:uppercase">漏标结果！</div>
-            <div style="display:flex;flex-direction:column;align-items:center;gap:6px">
-              <div style="width:36px;height:36px;background:rgba(74,222,128,0.2);border:2px solid rgba(74,222,128,0.5);border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:11px;color:var(--g1)">A●</div>
-              <div style="font-family:var(--fm);font-size:9px;color:var(--text-3)">↘ (不再扫描)</div>
-              <div style="width:36px;height:36px;background:rgba(74,222,128,0.2);border:2px solid rgba(74,222,128,0.5);border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:11px;color:var(--g1)">B●</div>
-              <div style="height:6px"></div>
-              <div style="width:36px;height:36px;background:rgba(0,0,0,0.025);border:2px dashed rgba(248,113,113,0.5);border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:11px;color:var(--red)">C○</div>
+          <div style="background:rgba(248,113,113,0.15);border:2px solid rgba(248,113,113,0.35);border-radius:8px;padding:16px 18px;display:flex;gap:16px;align-items:flex-start">
+            <div style="flex:1">
+              <div style="font-family:var(--fm);font-size:10px;color:var(--red);margin-bottom:12px;letter-spacing:.08em;text-transform:uppercase">漏标结果！</div>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:6px">
+                <div style="width:36px;height:36px;background:rgba(74,222,128,0.2);border:2px solid rgba(74,222,128,0.5);border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:11px;color:var(--g1)">A●</div>
+                <div style="font-family:var(--fm);font-size:9px;color:var(--text-3)">↘ (不再扫描)</div>
+                <div style="width:36px;height:36px;background:rgba(74,222,128,0.2);border:2px solid rgba(74,222,128,0.5);border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:11px;color:var(--g1)">B●</div>
+                <div style="height:6px"></div>
+                <div style="width:36px;height:36px;background:rgba(0,0,0,0.025);border:2px dashed rgba(248,113,113,0.5);border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:11px;color:var(--red)">C○</div>
+              </div>
             </div>
-            <div style="font-family:var(--fm);font-size:10px;color:var(--red);margin-top:10px;line-height:1.5;text-align:center">C 仍存活<br>却永远是白色<br>→ 被错误回收！</div>
+            <div style="font-family:var(--fm);font-size:11px;color:var(--red);line-height:1.7;padding-top:28px;font-weight:500">C 仍然存活<br>却永远是白色<br>→ 被错误回收！</div>
           </div>
         </div>
 
@@ -1213,7 +1220,7 @@
         </div>
         <div class="kv-item">
           <div class="kv-key">InitiatingHeapOccupancyPercent</div>
-          <div class="kv-val" style="font-size:12px">默认 <strong style="color:var(--g1)">45%</strong><br>Old 代占整堆比例达此值时触发并发标记（IHOP）</div>
+          <div class="kv-val" style="font-size:12px">初始参考值 <strong style="color:var(--g1)">45%</strong>，但 JDK 9+ 默认启用 <strong>Adaptive IHOP</strong>——G1 根据历史晋升速率和并发标记耗时动态预测触发点，无需手动设置；若要固定阈值可配合 <code style="font-family:var(--fm);font-size:10px;background:rgba(0,0,0,0.05);padding:1px 4px;border-radius:3px;color:var(--zgc-2)">-XX:-G1UseAdaptiveIHOP</code> 关闭自适应</div>
         </div>
         <div class="kv-item">
           <div class="kv-key">G1MixedGCCountTarget</div>
@@ -1232,7 +1239,23 @@
           <div class="kv-val" style="font-size:12px">Young 区占堆的 <strong style="color:var(--g1)">5%~60%</strong><br>G1 在此范围内动态调整 Eden Region 数量</div>
         </div>
       </div>
+      <div class="callout callout-info" style="margin-top:24px">
+        <span class="callout-icon">📋</span>
+        <div class="callout-body">
+          <strong>G1 GC 日志关键标志（<code style="font-family:var(--fm);font-size:11px">-Xlog:gc*</code>）：</strong>
+          <ul style="margin-top:8px;line-height:2">
+            <li><code style="font-family:var(--fm);font-size:11px">GC pause (G1 Evacuation Pause) (young)</code> → 正常 Young GC，STW 应 &lt;200ms</li>
+            <li><code style="font-family:var(--fm);font-size:11px">GC pause (G1 Evacuation Pause) (mixed)</code> → Mixed GC，Old Region 正在被回收</li>
+            <li><code style="font-family:var(--fm);font-size:11px;color:var(--red)">(to-space exhausted)</code> → <strong style="color:var(--red)">Evacuation Failure！</strong>立即检查 Free Region 数量和晋升速率</li>
+            <li><code style="font-family:var(--fm);font-size:11px;color:var(--red)">Full GC (Ergonomics)</code> → G1 降级为 Serial Old Full GC，通常由 Evacuation Failure 触发，停顿可达秒级</li>
+            <li><code style="font-family:var(--fm);font-size:11px">GC concurrent-mark-start</code> → 并发标记已启动，Old 代占比触达 IHOP 阈值</li>
+          </ul>
+        </div>
+      </div>
     </div>
+  <div style="display:flex;justify-content:flex-end;padding-top:24px;margin-top:12px;border-top:1px solid var(--border)">
+    <a href="#interview-g1" style="font-family:var(--fm);font-size:12px;color:var(--g1);text-decoration:none;display:inline-flex;align-items:center;gap:6px;padding:7px 18px;background:rgba(22,163,74,0.07);border:1px solid rgba(22,163,74,0.2);border-radius:20px;font-weight:500">G1 面试题 →</a>
+  </div>
   </section>
 
   <!-- ══════════════ ZGC ══════════════ -->
@@ -1480,7 +1503,23 @@
           堆从 4GB 增到 4TB，STW 时间几乎不变。
         </div>
       </div>
+      <div class="callout callout-info" style="margin-top:16px">
+        <span class="callout-icon">🚀</span>
+        <div class="callout-body">
+          <strong>Generational ZGC（JDK 21，<code style="font-family:var(--fm);font-size:11px">-XX:+ZGenerational</code>）——吞吐量的飞跃：</strong><br>
+          传统 ZGC 每轮标记全堆，读屏障触发频繁，吞吐量比 G1 低 5~15%。JDK 21 引入分代后：
+          <ul style="margin-top:8px;line-height:1.9">
+            <li><strong>Young Gen 快速回收</strong>：大多数短命对象在年轻代收集，无需全堆并发标记，读屏障触发次数大幅减少。</li>
+            <li><strong>吞吐量接近 G1</strong>：Oracle 实测提升 10%~40%，大幅缩小与 G1 的差距。</li>
+            <li><strong>停顿仍保持亚毫秒</strong>：分代设计不影响 STW 上限，依然只扫根引用。</li>
+            <li><strong>JDK 23+ 隐式启用</strong>：<code style="font-family:var(--fm);font-size:11px">-XX:+UseZGC</code> 默认即为分代模式；旧非分代行为需 <code style="font-family:var(--fm);font-size:11px">-XX:-ZGenerational</code> 显式关闭。</li>
+          </ul>
+        </div>
+      </div>
     </div>
+  <div style="display:flex;justify-content:flex-end;padding-top:24px;margin-top:12px;border-top:1px solid var(--border)">
+    <a href="#interview-zgc" style="font-family:var(--fm);font-size:12px;color:var(--zgc);text-decoration:none;display:inline-flex;align-items:center;gap:6px;padding:7px 18px;background:var(--zgc-d);border:1px solid var(--zgc-b);border-radius:20px;font-weight:500">ZGC 面试题 →</a>
+  </div>
   </section>
 
   <!-- ══════════════ COMPARISON ══════════════ -->
@@ -1508,8 +1547,8 @@
               <td>JDK 7u4，默认 JDK 9+</td>
               <td>JDK 11（实验）/ JDK 15（正式）</td>
             </tr>
-            <tr>
-              <td>停顿时间</td>
+            <tr style="background:rgba(37,99,235,0.05)">
+              <td><strong>停顿时间</strong></td>
               <td>几十 ms ~ 几百 ms<br>随堆大小增长</td>
               <td>&lt; 1ms（STW）<br>基本不随堆大小增长</td>
             </tr>
@@ -1553,8 +1592,8 @@
               <td>完整分代（Young/Old）</td>
               <td>JDK 21 起 Generational ZGC<br>（-XX:+ZGenerational）</td>
             </tr>
-            <tr>
-              <td>适用场景</td>
+            <tr style="background:rgba(37,99,235,0.05)">
+              <td><strong>适用场景</strong></td>
               <td>通用场景，追求吞吐/延迟均衡<br>堆 4~32GB</td>
               <td>低延迟优先（电商/交易/实时）<br>大堆 32GB+，JDK 15+</td>
             </tr>
@@ -1573,6 +1612,9 @@
         </div>
       </div>
     </div>
+  <div style="display:flex;justify-content:flex-end;padding-top:24px;margin-top:12px;border-top:1px solid var(--border)">
+    <a href="#interview-cmp" style="font-family:var(--fm);font-size:12px;color:var(--accent);text-decoration:none;display:inline-flex;align-items:center;gap:6px;padding:7px 18px;background:rgba(37,99,235,0.07);border:1px solid rgba(37,99,235,0.2);border-radius:20px;font-weight:500">对比面试题 →</a>
+  </div>
   </section>
 
   <!-- ══════════════ CMS GC ══════════════ -->
@@ -1938,6 +1980,9 @@
       </div>
     </div>
 
+  <div style="display:flex;justify-content:flex-end;padding-top:24px;margin-top:12px;border-top:1px solid var(--border)">
+    <a href="#interview-cms" style="font-family:var(--fm);font-size:12px;color:var(--orange);text-decoration:none;display:inline-flex;align-items:center;gap:6px;padding:7px 18px;background:rgba(194,65,12,0.07);border:1px solid rgba(194,65,12,0.2);border-radius:20px;font-weight:500">CMS 面试题 →</a>
+  </div>
   </section>
 
   <!-- ══════════════ INTERVIEW QUESTIONS ══════════════ -->
@@ -1947,6 +1992,9 @@
     <span class="section-badge g1">● Interview · G1 GC</span>
     <h2 class="section-title">G1 面试题</h2>
     <p class="section-intro">覆盖堆结构、并发标记、跨区引用、回收流程等核心考点。</p>
+    <div style="margin-bottom:20px">
+      <a href="#g1-section" style="font-family:var(--fm);font-size:11px;color:var(--text-3);text-decoration:none;display:inline-flex;align-items:center;gap:5px;padding:5px 12px;background:var(--bg-2);border:1px solid var(--border);border-radius:16px">← G1 GC 原理</a>
+    </div>
 
     <div class="subsection">
       <div class="qa-list">
@@ -2083,6 +2131,54 @@
           </div>
         </div>
 
+        <!-- Q7 -->
+        <div class="qa-item" id="q-g1-7">
+          <div class="qa-question" onclick="toggleQA('q-g1-7')">
+            <span class="qa-num g1">G1·07</span>
+            <span class="qa-q-text">TAMS 指针是什么？G1 如何保证并发标记期间新分配的对象不被误回收？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer">
+            <div class="qa-answer-inner">
+              <span class="ans-tag key">TAMS（Top-At-Mark-Start）</span><br>
+              每个 Region 都维护两个 TAMS 指针：<strong>prevTAMS</strong> 和 <strong>nextTAMS</strong>，用于区分"标记开始前的对象"与"并发标记期间新分配的对象"。
+              <ul>
+                <li><strong>Initial Mark（STW）</strong>：将每个 Region 的 nextTAMS 快照为当前 top 指针位置。</li>
+                <li><strong>并发标记阶段</strong>：应用线程继续在 top 指针之上（nextTAMS 到新 top 之间）分配新对象。这些"TAMS 之上"的对象被 G1 视为<em>隐式存活</em>，无需标记，不会被回收。</li>
+                <li><strong>Remark/Cleanup（STW）</strong>：标记结束，nextTAMS 晋升为 prevTAMS，准备下一轮；已确认存活的对象进入存活位图。</li>
+              </ul>
+              <span class="ans-tag tip">要点</span>：TAMS 机制与 SATB 协同——SATB 屏障保证"快照时已存活对象"不漏标；TAMS 保证"快照后新分配对象"不被误回收。两者缺一不可。
+            </div>
+          </div>
+        </div>
+
+        <!-- Q8 -->
+        <div class="qa-item" id="q-g1-8">
+          <div class="qa-question" onclick="toggleQA('q-g1-8')">
+            <span class="qa-num g1">G1·08</span>
+            <span class="qa-q-text">Young GC 的并行疏散是如何运作的？GCLAB 的作用是什么？什么情况下触发 Evacuation Failure？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer">
+            <div class="qa-answer-inner">
+              <span class="ans-tag key">并行疏散流程</span><br>
+              Young GC 为纯 STW，由多个并行 GC 线程同时扫描 CSet（所有 Eden + Survivor Region）：
+              <ul>
+                <li>每个 GC 线程从 Free Region 列表中领取一块私有缓冲区——<strong>GCLAB（GC Local Allocation Buffer）</strong>——用于存放复制过来的存活对象，避免多线程竞争同一 Region 的 top 指针。</li>
+                <li>存活对象按年龄计数：年龄 &lt; 晋升阈值 → 复制到 Survivor；年龄 ≥ 阈值 → 晋升到 Old Region 的 GCLAB。</li>
+                <li>复制完成后，原 CSet Region 整体释放为 Free，不需要整理碎片。</li>
+              </ul>
+              <span class="ans-tag warn">Evacuation Failure</span><br>
+              当 Survivor 和 Old 的 <strong>Free Region 耗尽</strong>（to-space exhausted），GC 线程无法再分配 GCLAB，疏散中断。G1 的处理：
+              <ul>
+                <li>已复制的对象保留在新位置；<strong>未来得及复制的对象原地保留</strong>，其指针修复为自引用（self-forwarded）。</li>
+                <li>触发后续一轮并发标记，最终可能升级为 <span style="color:var(--red)">Full GC</span>。</li>
+                <li>预防手段：增大 <code>-XX:G1ReservePercent</code>（默认 10%）预留更多 Free Region 作为应急缓冲。</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
       </div><!-- /.qa-list -->
     </div>
   </section>
@@ -2092,6 +2188,9 @@
     <span class="section-badge zgc">● Interview · ZGC</span>
     <h2 class="section-title">ZGC 面试题</h2>
     <p class="section-intro">聚焦染色指针、多重映射、读屏障和并发周期等 ZGC 专属机制。</p>
+    <div style="margin-bottom:20px">
+      <a href="#zgc-section" style="font-family:var(--fm);font-size:11px;color:var(--text-3);text-decoration:none;display:inline-flex;align-items:center;gap:5px;padding:5px 12px;background:var(--bg-2);border:1px solid var(--border);border-radius:16px">← ZGC 原理</a>
+    </div>
 
     <div class="subsection">
       <div class="qa-list">
@@ -2206,15 +2305,183 @@
           </div>
         </div>
 
+        <!-- Q6 -->
+        <div class="qa-item" id="q-zgc-6">
+          <div class="qa-question" onclick="toggleQA('q-zgc-6')">
+            <span class="qa-num zgc">ZGC·06</span>
+            <span class="qa-q-text">Generational ZGC（JDK 21）相比传统 ZGC 解决了什么问题？核心设计变化是什么？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer">
+            <div class="qa-answer-inner">
+              <span class="ans-tag key">传统 ZGC 的痛点</span><br>
+              传统 ZGC 每轮都标记<strong>整个堆</strong>，绝大多数短命对象（Eden 分配后立即成为垃圾）也要经历完整的标记-重定位流程，读屏障（Load Barrier）触发频繁，导致<strong>吞吐量比 G1 低 5~15%</strong>。
+              <br><br>
+              <span class="ans-tag key">核心设计变化</span><br>
+              JDK 21 引入分代后，ZGC 采用 Young / Old 双代模型：
+              <ul>
+                <li><strong>Young Gen</strong>：存放新分配对象，GC 频率高，每轮只标记和重定位 Young Region——短命对象快速回收，大幅减少读屏障触发次数。</li>
+                <li><strong>Old Gen</strong>：存放晋升的长寿对象，GC 频率低，与 Young GC 并发穿插执行。</li>
+                <li>读屏障（Load Barrier）保留，针对分代场景扩展了跨代引用跟踪（类似 G1 的 RSet，但通过屏障动态维护）。</li>
+              </ul>
+              <span class="ans-tag tip">效果</span>
+              <ul>
+                <li>吞吐量提升 <strong>10~40%</strong>（典型场景），基本追平 G1。</li>
+                <li>停顿仍保持亚毫秒（通常 &lt;1 ms）。</li>
+                <li>启用方式：JDK 21 使用 <code>-XX:+ZGenerational</code>；JDK 23+ 默认开启，无需手动指定。</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
   </section>
 
-  <!-- 对比面试题 -->
+  <!-- CMS 面试题 -->
+  <section class="gc-section" id="interview-cms">
+    <span class="section-badge" style="background:rgba(194,65,12,0.08);color:var(--orange);border:1px solid rgba(194,65,12,0.28)">● Interview · CMS GC</span>
+    <h2 class="section-title">CMS 面试题</h2>
+    <p class="section-intro">聚焦六阶段流程、CMF 问题、内存碎片与增量更新算法等核心考点。</p>
+    <div style="margin-bottom:20px">
+      <a href="#cms-section" style="font-family:var(--fm);font-size:11px;color:var(--text-3);text-decoration:none;display:inline-flex;align-items:center;gap:5px;padding:5px 12px;background:var(--bg-2);border:1px solid var(--border);border-radius:16px">← CMS 原理</a>
+    </div>
+
+    <div class="subsection">
+      <div class="qa-list">
+
+        <div class="qa-item" id="q-cms-1">
+          <div class="qa-question" onclick="toggleQA('q-cms-1')">
+            <span class="qa-num" style="background:rgba(194,65,12,0.1);color:var(--orange);border:1px solid rgba(194,65,12,0.28)">CMS·01</span>
+            <span class="qa-q-text">CMS 的六个 GC 阶段是什么？哪些是 STW？为什么 Remark 阶段比 G1 的 Remark 停顿更长？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer">
+            <div class="qa-answer-inner">
+              <span class="ans-tag key" style="background:rgba(194,65,12,0.1);color:var(--orange);border-color:rgba(194,65,12,0.28)">六阶段</span><br>
+              <ul>
+                <li><strong>① Initial Mark（STW·短）</strong>：标记 GC Roots 直接可达对象，工作量与 Root 数量相关，停顿极短。</li>
+                <li><strong>② Concurrent Mark（并发）</strong>：DFS 遍历整个老年代对象图，耗时最长，占整个 CMS 周期 80% 以上。</li>
+                <li><strong>③ Concurrent Preclean（并发）</strong>：重扫并发期间标记为 Dirty 的 Card，减轻 Remark 压力。</li>
+                <li><strong>④ Remark（STW·较长⚠）</strong>：处理并发阶段所有引用变更，使用增量更新，需重扫所有"重新变灰"的对象子树。</li>
+                <li><strong>⑤ Concurrent Sweep（并发）</strong>：清除未标记对象，归还空间到 free-list。不移动对象，产生碎片。</li>
+                <li><strong>⑥ Concurrent Reset（并发）</strong>：重置内部数据结构。</li>
+              </ul>
+              <span class="ans-tag warn">Remark 更长的原因</span><br>
+              G1 使用 <em>SATB</em>（写前屏障记录旧引用），Remark 只需处理 SATB 队列中少量条目，停顿极短（1~10ms）。<br>
+              CMS 使用<em>增量更新</em>（写后屏障将黑色对象重置为灰色），Remark 需要<strong>重新扫描所有被重置为灰色的黑色对象的完整子树</strong>——工作量随并发阶段修改量增长，可达数十至数百毫秒。
+            </div>
+          </div>
+        </div>
+
+        <div class="qa-item" id="q-cms-2">
+          <div class="qa-question" onclick="toggleQA('q-cms-2')">
+            <span class="qa-num" style="background:rgba(194,65,12,0.1);color:var(--orange);border:1px solid rgba(194,65,12,0.28)">CMS·02</span>
+            <span class="qa-q-text">什么是 Concurrent Mode Failure？触发条件是什么？发生时 JVM 会做什么？如何预防？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer">
+            <div class="qa-answer-inner">
+              <span class="ans-tag warn">定义</span><br>
+              CMS 并发清除阶段，应用线程仍在分配对象。若 Old Gen 在并发 GC 完成之前被填满，CMS 来不及完成回收，此时触发 <strong>Concurrent Mode Failure</strong>。<br><br>
+              <strong>后果：</strong>CMS 中止当前并发周期，JVM 退化为 <span style="color:var(--red);font-weight:600">Serial Old 单线程 Full GC</span>——Stop-The-World + 整堆标记压缩，停顿时间可达秒级，是 CMS 最严重的故障场景。<br><br>
+              <strong>预防措施：</strong>
+              <ul>
+                <li>调低 <code>-XX:CMSInitiatingOccupancyFraction</code> 到 70~75%（默认 92% 几乎没有余量）</li>
+                <li>增大堆（<code>-Xmx</code>），减少 Old Gen 压力</li>
+                <li>优化应用减少长生命周期对象晋升</li>
+                <li>根本解决：迁移到 G1（G1 的 Mixed GC 逐步回收老年代，无 CMF 风险）</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="qa-item" id="q-cms-3">
+          <div class="qa-question" onclick="toggleQA('q-cms-3')">
+            <span class="qa-num" style="background:rgba(194,65,12,0.1);color:var(--orange);border:1px solid rgba(194,65,12,0.28)">CMS·03</span>
+            <span class="qa-q-text">CMS 为什么会产生内存碎片？碎片化如何影响性能？有什么解决手段？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer">
+            <div class="qa-answer-inner">
+              <strong>根因：</strong>CMS 使用标记-清除（Mark-Sweep）算法，Concurrent Sweep 阶段只是将死亡对象标记为空闲归还 free-list，<strong>从不移动存活对象、从不整理内存</strong>。<br><br>
+              <strong>影响演化：</strong>
+              <ul>
+                <li>随应用运行，Old Gen 出现越来越多大小不一的"空洞"</li>
+                <li>free-list 查找合适空间开销增大</li>
+                <li>大对象分配时找不到足够大的连续空间 → <em>Promotion Failure</em> → Full GC</li>
+                <li>碎片严重时即使 Old Gen 总空闲空间充足，仍无法满足分配请求</li>
+              </ul>
+              <strong>解决手段：</strong>
+              <ul>
+                <li><code>-XX:+UseCMSCompactAtFullCollection</code>：Full GC 时顺带做一次内存整理（已在 JDK 9 废弃）</li>
+                <li><code>-XX:CMSFullGCsBeforeCompaction=N</code>：每 N 次 Full GC 后做一次整理</li>
+                <li><strong>根本解决：换用 G1</strong>——G1 的 Evacuation 将存活对象复制到空 Region，回收后的 Region 整块释放，天然无碎片</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="qa-item" id="q-cms-4">
+          <div class="qa-question" onclick="toggleQA('q-cms-4')">
+            <span class="qa-num" style="background:rgba(194,65,12,0.1);color:var(--orange);border:1px solid rgba(194,65,12,0.28)">CMS·04</span>
+            <span class="qa-q-text">CMS 使用增量更新（Incremental Update）而非 SATB，各有什么代价？G1 为什么选择 SATB？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer">
+            <div class="qa-answer-inner">
+              <strong>增量更新（CMS）：</strong><br>
+              写后屏障——黑色对象新增对白色对象的引用后，将黑色对象重置为灰色。<br>
+              <em>代价</em>：Remark 阶段需要重扫所有被重置为灰色的黑色对象的完整子树，工作量大，STW 较长；实现复杂（需管理"重新变灰"的对象集合）。<br><br>
+              <strong>SATB（G1）：</strong><br>
+              写前屏障——引用被覆盖前，将旧引用值压入 SATB 队列。<br>
+              <em>代价</em>：浮动垃圾较多（快照中存活的对象本轮不回收）；但 Remark 只需清空少量 SATB 队列，停顿极短。<br><br>
+              <span class="ans-tag tip">G1 选择 SATB 的核心原因</span><br>
+              G1 的核心目标是<strong>可预测的短暂停顿</strong>（默认 200ms 预算）。SATB 将 Remark 停顿控制在 1~10ms；若用增量更新，Remark 停顿不可预测，与 G1 设计目标冲突。浮动垃圾问题由 Mixed GC 多轮回收逐步消化。
+            </div>
+          </div>
+        </div>
+
+        <div class="qa-item" id="q-cms-5">
+          <div class="qa-question" onclick="toggleQA('q-cms-5')">
+            <span class="qa-num" style="background:rgba(194,65,12,0.1);color:var(--orange);border:1px solid rgba(194,65,12,0.28)">CMS·05</span>
+            <span class="qa-q-text">CMS 在 JDK 14 被移除前，为什么还有人选它而不是 G1？CMS 和 G1 各自的适用场景是什么？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer">
+            <div class="qa-answer-inner">
+              <strong>历史原因：</strong><br>
+              G1 在 JDK 6u14 引入（2009），JDK 9 才成为默认（2017）。在此之前，G1 仍处于实验/调优阶段，生产稳定性不如 CMS。JDK 9 之前的老项目若已针对 CMS 精心调优，迁移有风险和成本。<br><br>
+              <strong>技术层面选 CMS 的场景（历史上）：</strong>
+              <ul>
+                <li>堆较小（≤4GB），碎片化问题不严重，CMS 停顿比 G1 更可预测</li>
+                <li>应用对 <em>吞吐量</em> 要求高但能接受偶发性长停顿（CMF 触发的 Full GC）</li>
+                <li>JDK 7/8 环境，G1 尚不成熟</li>
+              </ul>
+              <strong>G1 的优势（也是 CMS 被取代的原因）：</strong>
+              <ul>
+                <li>无内存碎片（Evacuation 整块回收 Region）</li>
+                <li>Remark 更短（SATB vs 增量更新）</li>
+                <li>可预测的停顿时间（MaxGCPauseMillis 目标驱动 CSet 选择）</li>
+                <li>Mixed GC 渐进回收老年代，无 CMF 风险</li>
+              </ul>
+              <span class="ans-tag tip">现状</span> JDK 14 已移除 CMS。现代应用：中大型堆用 G1（默认），超低延迟或超大堆用 ZGC（JDK 21+ Generational ZGC）。
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+
   <section class="gc-section" id="interview-cmp">
     <span class="section-badge cmp">● Interview · G1 vs ZGC</span>
     <h2 class="section-title">对比面试题</h2>
     <p class="section-intro">从停顿、吞吐、屏障、适用场景等维度综合比较两款收集器。</p>
+    <div style="margin-bottom:20px">
+      <a href="#comparison" style="font-family:var(--fm);font-size:11px;color:var(--text-3);text-decoration:none;display:inline-flex;align-items:center;gap:5px;padding:5px 12px;background:var(--bg-2);border:1px solid var(--border);border-radius:16px">← G1 vs ZGC 对比</a>
+    </div>
 
     <div class="subsection">
       <div class="qa-list">
@@ -2341,135 +2608,31 @@
           </div>
         </div>
 
-      </div>
-    </div>
-  </section>
-
-  <!-- CMS 面试题 -->
-  <section class="gc-section" id="interview-cms">
-    <span class="section-badge" style="background:rgba(194,65,12,0.08);color:var(--orange);border:1px solid rgba(194,65,12,0.28)">● Interview · CMS GC</span>
-    <h2 class="section-title">CMS 面试题</h2>
-    <p class="section-intro">聚焦六阶段流程、CMF 问题、内存碎片与增量更新算法等核心考点。</p>
-
-    <div class="subsection">
-      <div class="qa-list">
-
-        <div class="qa-item" id="q-cms-1">
-          <div class="qa-question" onclick="toggleQA('q-cms-1')">
-            <span class="qa-num" style="background:rgba(194,65,12,0.1);color:var(--orange);border:1px solid rgba(194,65,12,0.28)">CMS·01</span>
-            <span class="qa-q-text">CMS 的六个 GC 阶段是什么？哪些是 STW？为什么 Remark 阶段比 G1 的 Remark 停顿更长？</span>
+        <!-- Q17 -->
+        <div class="qa-item" id="q-cmp-6">
+          <div class="qa-question" onclick="toggleQA('q-cmp-6')">
+            <span class="qa-num cmp">对比·06</span>
+            <span class="qa-q-text">生产环境如何诊断 G1 / ZGC 的 GC 性能问题？两者的调优思路有何不同？</span>
             <span class="qa-toggle">+</span>
           </div>
           <div class="qa-answer">
             <div class="qa-answer-inner">
-              <span class="ans-tag key" style="background:rgba(194,65,12,0.1);color:var(--orange);border-color:rgba(194,65,12,0.28)">六阶段</span><br>
+              <span class="ans-tag key">G1 诊断与调优</span><br>
+              开启详细日志：<code>-Xlog:gc*:file=gc.log:time,uptime,level,tags</code>，重点关注：
               <ul>
-                <li><strong>① Initial Mark（STW·短）</strong>：标记 GC Roots 直接可达对象，工作量与 Root 数量相关，停顿极短。</li>
-                <li><strong>② Concurrent Mark（并发）</strong>：DFS 遍历整个老年代对象图，耗时最长，占整个 CMS 周期 80% 以上。</li>
-                <li><strong>③ Concurrent Preclean（并发）</strong>：重扫并发期间标记为 Dirty 的 Card，减轻 Remark 压力。</li>
-                <li><strong>④ Remark（STW·较长⚠）</strong>：处理并发阶段所有引用变更，使用增量更新，需重扫所有"重新变灰"的对象子树。</li>
-                <li><strong>⑤ Concurrent Sweep（并发）</strong>：清除未标记对象，归还空间到 free-list。不移动对象，产生碎片。</li>
-                <li><strong>⑥ Concurrent Reset（并发）</strong>：重置内部数据结构。</li>
+                <li><code>(to-space exhausted)</code> → Evacuation Failure，需增大 <code>-XX:G1ReservePercent</code> 或扩堆。</li>
+                <li><code>Full GC (Ergonomics)</code> → G1 自适应降级，说明并发标记已跟不上分配速率，应调低 <code>-XX:InitiatingHeapOccupancyPercent</code> 提前触发标记。</li>
+                <li>停顿超出 <code>MaxGCPauseMillis</code> → 缩小 Young Gen 比例（<code>-XX:G1NewSizePercent</code>）或增加 <code>-XX:ConcGCThreads</code>。</li>
+                <li>Old Region 碎片化 → 适当降低 <code>-XX:G1HeapWastePercent</code> 触发更多 Mixed GC。</li>
               </ul>
-              <span class="ans-tag warn">Remark 更长的原因</span><br>
-              G1 使用 <em>SATB</em>（写前屏障记录旧引用），Remark 只需处理 SATB 队列中少量条目，停顿极短（1~10ms）。<br>
-              CMS 使用<em>增量更新</em>（写后屏障将黑色对象重置为灰色），Remark 需要<strong>重新扫描所有被重置为灰色的黑色对象的完整子树</strong>——工作量随并发阶段修改量增长，可达数十至数百毫秒。
-            </div>
-          </div>
-        </div>
-
-        <div class="qa-item" id="q-cms-2">
-          <div class="qa-question" onclick="toggleQA('q-cms-2')">
-            <span class="qa-num" style="background:rgba(194,65,12,0.1);color:var(--orange);border:1px solid rgba(194,65,12,0.28)">CMS·02</span>
-            <span class="qa-q-text">什么是 Concurrent Mode Failure？触发条件是什么？发生时 JVM 会做什么？如何预防？</span>
-            <span class="qa-toggle">+</span>
-          </div>
-          <div class="qa-answer">
-            <div class="qa-answer-inner">
-              <span class="ans-tag warn">定义</span><br>
-              CMS 并发清除阶段，应用线程仍在分配对象。若 Old Gen 在并发 GC 完成之前被填满，CMS 来不及完成回收，此时触发 <strong>Concurrent Mode Failure</strong>。<br><br>
-              <strong>后果：</strong>CMS 中止当前并发周期，JVM 退化为 <span style="color:var(--red);font-weight:600">Serial Old 单线程 Full GC</span>——Stop-The-World + 整堆标记压缩，停顿时间可达秒级，是 CMS 最严重的故障场景。<br><br>
-              <strong>预防措施：</strong>
+              <span class="ans-tag key">ZGC 诊断与调优</span><br>
+              同样开启 <code>-Xlog:gc*</code>，ZGC 特有的关键信号：
               <ul>
-                <li>调低 <code>-XX:CMSInitiatingOccupancyFraction</code> 到 70~75%（默认 92% 几乎没有余量）</li>
-                <li>增大堆（<code>-Xmx</code>），减少 Old Gen 压力</li>
-                <li>优化应用减少长生命周期对象晋升</li>
-                <li>根本解决：迁移到 G1（G1 的 Mixed GC 逐步回收老年代，无 CMF 风险）</li>
+                <li><strong>Allocation Stall</strong>（分配停顿）：应用线程因等待 GC 释放内存而被阻塞，是 ZGC 中最严重的问题信号。</li>
+                <li>根因：GC 并发速度跟不上分配速率。首选方案：<strong>增大堆内存</strong>（-Xmx）；其次增加 <code>-XX:ConcGCThreads</code> 并发线程。</li>
+                <li>ZGC <strong>几乎不需要手动调参</strong>：给够堆内存 + 开启 Generational ZGC（JDK 21+）通常已足够。</li>
               </ul>
-            </div>
-          </div>
-        </div>
-
-        <div class="qa-item" id="q-cms-3">
-          <div class="qa-question" onclick="toggleQA('q-cms-3')">
-            <span class="qa-num" style="background:rgba(194,65,12,0.1);color:var(--orange);border:1px solid rgba(194,65,12,0.28)">CMS·03</span>
-            <span class="qa-q-text">CMS 为什么会产生内存碎片？碎片化如何影响性能？有什么解决手段？</span>
-            <span class="qa-toggle">+</span>
-          </div>
-          <div class="qa-answer">
-            <div class="qa-answer-inner">
-              <strong>根因：</strong>CMS 使用标记-清除（Mark-Sweep）算法，Concurrent Sweep 阶段只是将死亡对象标记为空闲归还 free-list，<strong>从不移动存活对象、从不整理内存</strong>。<br><br>
-              <strong>影响演化：</strong>
-              <ul>
-                <li>随应用运行，Old Gen 出现越来越多大小不一的"空洞"</li>
-                <li>free-list 查找合适空间开销增大</li>
-                <li>大对象分配时找不到足够大的连续空间 → <em>Promotion Failure</em> → Full GC</li>
-                <li>碎片严重时即使 Old Gen 总空闲空间充足，仍无法满足分配请求</li>
-              </ul>
-              <strong>解决手段：</strong>
-              <ul>
-                <li><code>-XX:+UseCMSCompactAtFullCollection</code>：Full GC 时顺带做一次内存整理（已在 JDK 9 废弃）</li>
-                <li><code>-XX:CMSFullGCsBeforeCompaction=N</code>：每 N 次 Full GC 后做一次整理</li>
-                <li><strong>根本解决：换用 G1</strong>——G1 的 Evacuation 将存活对象复制到空 Region，回收后的 Region 整块释放，天然无碎片</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-
-        <div class="qa-item" id="q-cms-4">
-          <div class="qa-question" onclick="toggleQA('q-cms-4')">
-            <span class="qa-num" style="background:rgba(194,65,12,0.1);color:var(--orange);border:1px solid rgba(194,65,12,0.28)">CMS·04</span>
-            <span class="qa-q-text">CMS 使用增量更新（Incremental Update）而非 SATB，各有什么代价？G1 为什么选择 SATB？</span>
-            <span class="qa-toggle">+</span>
-          </div>
-          <div class="qa-answer">
-            <div class="qa-answer-inner">
-              <strong>增量更新（CMS）：</strong><br>
-              写后屏障——黑色对象新增对白色对象的引用后，将黑色对象重置为灰色。<br>
-              <em>代价</em>：Remark 阶段需要重扫所有被重置为灰色的黑色对象的完整子树，工作量大，STW 较长；实现复杂（需管理"重新变灰"的对象集合）。<br><br>
-              <strong>SATB（G1）：</strong><br>
-              写前屏障——引用被覆盖前，将旧引用值压入 SATB 队列。<br>
-              <em>代价</em>：浮动垃圾较多（快照中存活的对象本轮不回收）；但 Remark 只需清空少量 SATB 队列，停顿极短。<br><br>
-              <span class="ans-tag tip">G1 选择 SATB 的核心原因</span><br>
-              G1 的核心目标是<strong>可预测的短暂停顿</strong>（默认 200ms 预算）。SATB 将 Remark 停顿控制在 1~10ms；若用增量更新，Remark 停顿不可预测，与 G1 设计目标冲突。浮动垃圾问题由 Mixed GC 多轮回收逐步消化。
-            </div>
-          </div>
-        </div>
-
-        <div class="qa-item" id="q-cms-5">
-          <div class="qa-question" onclick="toggleQA('q-cms-5')">
-            <span class="qa-num" style="background:rgba(194,65,12,0.1);color:var(--orange);border:1px solid rgba(194,65,12,0.28)">CMS·05</span>
-            <span class="qa-q-text">CMS 在 JDK 14 被移除前，为什么还有人选它而不是 G1？CMS 和 G1 各自的适用场景是什么？</span>
-            <span class="qa-toggle">+</span>
-          </div>
-          <div class="qa-answer">
-            <div class="qa-answer-inner">
-              <strong>历史原因：</strong><br>
-              G1 在 JDK 6u14 引入（2009），JDK 9 才成为默认（2017）。在此之前，G1 仍处于实验/调优阶段，生产稳定性不如 CMS。JDK 9 之前的老项目若已针对 CMS 精心调优，迁移有风险和成本。<br><br>
-              <strong>技术层面选 CMS 的场景（历史上）：</strong>
-              <ul>
-                <li>堆较小（≤4GB），碎片化问题不严重，CMS 停顿比 G1 更可预测</li>
-                <li>应用对 <em>吞吐量</em> 要求高但能接受偶发性长停顿（CMF 触发的 Full GC）</li>
-                <li>JDK 7/8 环境，G1 尚不成熟</li>
-              </ul>
-              <strong>G1 的优势（也是 CMS 被取代的原因）：</strong>
-              <ul>
-                <li>无内存碎片（Evacuation 整块回收 Region）</li>
-                <li>Remark 更短（SATB vs 增量更新）</li>
-                <li>可预测的停顿时间（MaxGCPauseMillis 目标驱动 CSet 选择）</li>
-                <li>Mixed GC 渐进回收老年代，无 CMF 风险</li>
-              </ul>
-              <span class="ans-tag tip">现状</span> JDK 14 已移除 CMS。现代应用：中大型堆用 G1（默认），超低延迟或超大堆用 ZGC（JDK 21+ Generational ZGC）。
+              <span class="ans-tag tip">核心区别</span>：G1 调优复杂，需要平衡 Young/Old 比例、停顿预算、Mixed GC 频率等多个旋钮；ZGC 的核心调优手段只有两个——<strong>堆大小</strong>和<strong>并发线程数</strong>，其余交给 GC 自适应。
             </div>
           </div>
         </div>

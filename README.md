@@ -9,7 +9,7 @@
 | [index.html](index.html) | 首页导航总览 | — |
 | [juc.html](juc.html) | JUC 并发编程 — JMM / synchronized / volatile / CAS / AQS / 线程池 / 虚拟线程 | ×15 |
 | [spring.html](spring.html) | Spring — IoC / Bean 生命周期 / AOP / 事务 / 三级缓存循环依赖 | ×17 |
-| [gc-principles.html](gc-principles.html) | JVM GC — G1（Region / SATB / RSet / CSet / Evacuation / Young GC 机制 / 完整流程）& ZGC（染色指针 / 多重映射 / 读屏障 / 并发周期）& CMS | ×21 |
+| [gc-principles.html](gc-principles.html) | JVM GC — G1（Region / SATB / RSet / CSet / Evacuation / Young GC 机制 / 完整流程）& ZGC（染色指针 / 多重映射 / 读屏障 / 并发周期）& CMS | ×25 |
 | [mysql.html](mysql.html) | MySQL — B+ Tree 索引 / MVCC / 锁 / 日志 / 主从复制 | ×15 |
 | [redis.html](redis.html) | Redis — 数据结构 / 持久化 / 缓存三大问题 / 分布式锁 / 淘汰策略 / 哨兵 & Cluster | ×15 |
 | [mq.html](mq.html) | 消息队列 — Kafka / RocketMQ / 可靠性 / 顺序 / 幂等 | ×15 |
