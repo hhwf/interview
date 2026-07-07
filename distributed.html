@@ -5,7 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>分布式系统 — CAP / 分布式事务 / 分布式锁 / 限流熔断</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=DM+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=DM+Mono:wght@400;500;600&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=DM+Mono:wght@400;500;600&display=swap"></noscript>
+<link rel="preload" as="style" href="https://fontsapi.zeoseven.com/161/main/result.css" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fontsapi.zeoseven.com/161/main/result.css"></noscript>
 <link rel="stylesheet" href="shared.css">
 <style>
 :root {
@@ -25,15 +29,7 @@
     <span class="logo-badge" style="background:linear-gradient(135deg,#7c3aed,#6d28d9)">DST</span>
     <span class="logo-text">分布式系统</span>
   </div>
-  <div class="page-tabs">
-    <a href="gc-principles.html"  class="tab">GC 原理</a>
-    <a href="spring.html"         class="tab">Spring</a>
-    <a href="mysql.html"          class="tab">MySQL</a>
-    <a href="redis.html"          class="tab">Redis</a>
-    <a href="mq.html"             class="tab">MQ</a>
-    <a href="juc.html"            class="tab">JUC</a>
-    <a href="distributed.html"    class="tab active-dist">分布式</a>
-  </div>
+  <div class="page-tabs"></div>
   <div class="nav-section-label" style="color:rgba(124,58,237,0.65)">目 录</div>
   <a href="#dist-cap"          class="nav-link">CAP &amp; BASE 理论</a>
   <a href="#dist-transaction"  class="nav-link">分布式事务</a>
@@ -686,6 +682,8 @@
               <li>典型 CP：ZooKeeper、etcd（选主期间不可用）；典型 AP：Eureka（自我保护，不剔除实例）、Cassandra。</li>
             </ul>
           </div></div>
+        </div>
+        <div class="qa-item" id="q-dist-2">
           <div class="qa-question" onclick="toggleQA('q-dist-2')">
             <span class="qa-num" style="background:rgba(124,58,237,0.1);color:#7c3aed;border:1px solid rgba(124,58,237,0.25)">Q2</span>
             <span class="qa-q-text">BASE 理论是什么？和 ACID 有什么区别？</span>
@@ -700,6 +698,8 @@
               <li>BASE 不是"随便不一致"，需通过<strong>对账</strong>、<strong>重试补偿</strong>、<strong>版本号</strong>等机制保证最终收敛到一致。</li>
             </ul>
           </div></div>
+        </div>
+        <div class="qa-item" id="q-dist-3">
           <div class="qa-question" onclick="toggleQA('q-dist-3')">
             <span class="qa-num" style="background:rgba(124,58,237,0.1);color:#7c3aed;border:1px solid rgba(124,58,237,0.25)">Q3</span>
             <span class="qa-q-text">分布式事务有哪些解决方案？各自适用什么场景？</span>
@@ -714,6 +714,8 @@
               <li><strong>事务消息（RocketMQ）</strong>：生产者发送半消息，本地事务执行后提交/回滚，Broker 定期回查；适合生产者与消费者解耦场景。</li>
             </ul>
           </div></div>
+        </div>
+        <div class="qa-item" id="q-dist-4">
           <div class="qa-question" onclick="toggleQA('q-dist-4')">
             <span class="qa-num" style="background:rgba(124,58,237,0.1);color:#7c3aed;border:1px solid rgba(124,58,237,0.25)">Q4</span>
             <span class="qa-q-text">2PC 的原理是什么？有哪些缺陷？</span>
@@ -728,6 +730,8 @@
               <li><em>3PC</em> 通过增加 CanCommit 阶段和超时机制部分缓解单点问题，但实现复杂，生产中极少使用。</li>
             </ul>
           </div></div>
+        </div>
+        <div class="qa-item" id="q-dist-5">
           <div class="qa-question" onclick="toggleQA('q-dist-5')">
             <span class="qa-num" style="background:rgba(124,58,237,0.1);color:#7c3aed;border:1px solid rgba(124,58,237,0.25)">Q5</span>
             <span class="qa-q-text">TCC 的原理是什么？和 2PC 相比有什么优缺点？</span>
@@ -747,6 +751,8 @@
               <li>实践中推荐用 <strong>Seata TCC 模式</strong>，框架层处理幂等和空回滚，减少手动实现负担。</li>
             </ul>
           </div></div>
+        </div>
+        <div class="qa-item" id="q-dist-6">
           <div class="qa-question" onclick="toggleQA('q-dist-6')">
             <span class="qa-num" style="background:rgba(124,58,237,0.1);color:#7c3aed;border:1px solid rgba(124,58,237,0.25)">Q6</span>
             <span class="qa-q-text">如何用 Redis 实现分布式锁？有哪些常见问题？</span>
@@ -760,6 +766,8 @@
               <li><strong>常见问题</strong>：锁过期业务未完成（看门狗解决）、主从切换锁丢失（RedLock 解决）、无法重入（Redisson 用 hash 结构记录重入次数）。</li>
             </ul>
           </div></div>
+        </div>
+        <div class="qa-item" id="q-dist-7">
           <div class="qa-question" onclick="toggleQA('q-dist-7')">
             <span class="qa-num" style="background:rgba(124,58,237,0.1);color:#7c3aed;border:1px solid rgba(124,58,237,0.25)">Q7</span>
             <span class="qa-q-text">Redisson 的看门狗机制是什么？如何防止锁提前过期？</span>
@@ -774,6 +782,8 @@
               <li>JVM 进程崩溃时 WatchDog 线程也消失，锁会在 30s 后自动过期，不会死锁。</li>
             </ul>
           </div></div>
+        </div>
+        <div class="qa-item" id="q-dist-8">
           <div class="qa-question" onclick="toggleQA('q-dist-8')">
             <span class="qa-num" style="background:rgba(124,58,237,0.1);color:#7c3aed;border:1px solid rgba(124,58,237,0.25)">Q8</span>
             <span class="qa-q-text">ZooKeeper 如何实现分布式锁？和 Redis 分布式锁有什么区别？</span>
@@ -787,6 +797,8 @@
               <li>Redis vs ZK 对比：Redis 性能高（AP），ZK 可靠性强（CP）；Redis 主从切换可能锁丢失，ZK 临时节点无此问题；ZK 吞吐低，不适合高并发锁竞争。</li>
             </ul>
           </div></div>
+        </div>
+        <div class="qa-item" id="q-dist-9">
           <div class="qa-question" onclick="toggleQA('q-dist-9')">
             <span class="qa-num" style="background:rgba(124,58,237,0.1);color:#7c3aed;border:1px solid rgba(124,58,237,0.25)">Q9</span>
             <span class="qa-q-text">Nacos、Eureka、ZooKeeper 作为注册中心有什么区别？如何选型？</span>
@@ -801,6 +813,8 @@
               <li>选型建议：<em>国内 Spring Cloud 项目首选 Nacos</em>；K8s 场景可用 Consul 或直接使用 etcd；强一致配置管理用 etcd/ZK。</li>
             </ul>
           </div></div>
+        </div>
+        <div class="qa-item" id="q-dist-10">
           <div class="qa-question" onclick="toggleQA('q-dist-10')">
             <span class="qa-num" style="background:rgba(124,58,237,0.1);color:#7c3aed;border:1px solid rgba(124,58,237,0.25)">Q10</span>
             <span class="qa-q-text">Snowflake 算法的原理是什么？有哪些缺陷？</span>
@@ -815,6 +829,8 @@
               <li>实践中需保证<strong>机器ID不重复</strong>，可从 ZK/DB 动态分配；K8s 环境中 Pod 重启可能导致机器ID复用，需额外处理。</li>
             </ul>
           </div></div>
+        </div>
+        <div class="qa-item" id="q-dist-11">
           <div class="qa-question" onclick="toggleQA('q-dist-11')">
             <span class="qa-num" style="background:rgba(124,58,237,0.1);color:#7c3aed;border:1px solid rgba(124,58,237,0.25)">Q11</span>
             <span class="qa-q-text">如何实现接口限流？令牌桶和漏桶算法有什么区别？</span>
@@ -828,6 +844,8 @@
               <li>固定窗口问题：窗口边界处可能放过双倍流量（前一窗口末尾 + 后一窗口开头）；<strong>滑动窗口</strong>通过细分子窗口解决此问题，Sentinel 默认使用。</li>
             </ul>
           </div></div>
+        </div>
+        <div class="qa-item" id="q-dist-12">
           <div class="qa-question" onclick="toggleQA('q-dist-12')">
             <span class="qa-num" style="background:rgba(124,58,237,0.1);color:#7c3aed;border:1px solid rgba(124,58,237,0.25)">Q12</span>
             <span class="qa-q-text">什么是服务熔断？熔断器的三种状态是什么？</span>
@@ -842,6 +860,8 @@
               <li><strong>Sentinel</strong> vs <strong>Resilience4j</strong>：Sentinel 适合国内微服务，规则配置丰富；Resilience4j 轻量，适合 Spring Boot 项目，两者均支持三状态熔断器。</li>
             </ul>
           </div></div>
+        </div>
+        <div class="qa-item" id="q-dist-13">
           <div class="qa-question" onclick="toggleQA('q-dist-13')">
             <span class="qa-num" style="background:rgba(124,58,237,0.1);color:#7c3aed;border:1px solid rgba(124,58,237,0.25)">Q13</span>
             <span class="qa-q-text">一致性哈希算法是什么？如何解决数据倾斜问题？</span>
@@ -855,6 +875,8 @@
               <li>应用场景：Redis Cluster（16384槽的变种实现）、Memcached ketama 算法、Nginx 一致性哈希负载均衡、Dubbo 集群路由。</li>
             </ul>
           </div></div>
+        </div>
+        <div class="qa-item" id="q-dist-14">
           <div class="qa-question" onclick="toggleQA('q-dist-14')">
             <span class="qa-num" style="background:rgba(124,58,237,0.1);color:#7c3aed;border:1px solid rgba(124,58,237,0.25)">Q14</span>
             <span class="qa-q-text">分布式系统中如何保证接口幂等性？</span>
@@ -869,6 +891,8 @@
               <li><strong>乐观锁版本号</strong>：更新时携带 version，<code>UPDATE ... WHERE id=? AND version=?</code>，并发更新时只有一个成功。</li>
             </ul>
           </div></div>
+        </div>
+        <div class="qa-item" id="q-dist-15">
           <div class="qa-question" onclick="toggleQA('q-dist-15')">
             <span class="qa-num" style="background:rgba(124,58,237,0.1);color:#7c3aed;border:1px solid rgba(124,58,237,0.25)">Q15</span>
             <span class="qa-q-text">什么是分布式链路追踪？TraceId 如何实现全链路透传？</span>
@@ -883,6 +907,8 @@
               <li>链路追踪解决<em>分布式系统下日志分散</em>的问题，结合 ELK/Jaeger 可以按 TraceId 聚合完整调用链，快速定位性能瓶颈和错误根因。</li>
             </ul>
           </div></div>
+        </div>
+        </div>
 
   </section>
 </main>

@@ -72,6 +72,26 @@ navLinks.forEach(link => {
   pt.parentNode.insertBefore(h, pt);
 })();
 
+/* ── Page tabs (shared list, auto-highlights current page) ── */
+(function () {
+  var TABS = [
+    { href: 'juc.html',           label: 'JUC',     cls: 'active-juc'    },
+    { href: 'spring.html',        label: 'Spring',  cls: 'active-spring' },
+    { href: 'gc-principles.html', label: 'GC 原理', cls: 'active-g1'     },
+    { href: 'mysql.html',         label: 'MySQL',   cls: 'active-mysql'  },
+    { href: 'redis.html',         label: 'Redis',   cls: 'active-redis'  },
+    { href: 'mq.html',            label: 'MQ',      cls: 'active-mq'     },
+    { href: 'distributed.html',   label: '分布式',  cls: 'active-dist'   },
+  ];
+  var container = document.querySelector('.page-tabs');
+  if (!container) return;
+  var current = window.location.pathname.split('/').pop().replace(/\?.*$/, '');
+  container.innerHTML = TABS.map(function (t) {
+    var active = t.href === current ? ' ' + t.cls : '';
+    return '<a href="' + t.href + '" class="tab' + active + '">' + t.label + '</a>';
+  }).join('');
+})();
+
 const subObserver = new IntersectionObserver((entries) => {
   entries.forEach(entry => {
     if (entry.isIntersecting) {

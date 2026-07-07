@@ -5,7 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Spring 原理 — IoC / AOP / 事务 / 循环依赖</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=DM+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=DM+Mono:wght@400;500;600&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=DM+Mono:wght@400;500;600&display=swap"></noscript>
+<link rel="preload" as="style" href="https://fontsapi.zeoseven.com/161/main/result.css" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fontsapi.zeoseven.com/161/main/result.css"></noscript>
 <link rel="stylesheet" href="shared.css">
 <style>
 :root {
@@ -23,15 +27,7 @@
     <span class="logo-badge" style="background:linear-gradient(135deg,#0369a1,#0e7490)">Spring</span>
     <span class="logo-text">Spring 原理</span>
   </div>
-  <div class="page-tabs">
-    <a href="gc-principles.html" class="tab">GC 原理</a>
-    <a href="spring.html"        class="tab active-spring">Spring</a>
-    <a href="mysql.html"         class="tab">MySQL</a>
-    <a href="redis.html"         class="tab">Redis</a>
-    <a href="mq.html"            class="tab">MQ</a>
-    <a href="juc.html"           class="tab">JUC</a>
-    <a href="distributed.html"   class="tab">分布式</a>
-  </div>
+  <div class="page-tabs"></div>
   <div class="nav-section-label" style="color:rgba(3,105,161,0.5)">目 录</div>
   <a href="#spring-ioc"       class="nav-link" data-section="spring-ioc">IoC &amp; Bean 容器</a>
   <a href="#spring-lifecycle" class="nav-link" data-section="spring-lifecycle">Bean 生命周期</a>

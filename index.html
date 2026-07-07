@@ -5,9 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Java 面试知识库</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=DM+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=DM+Mono:wght@400;500;600&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=DM+Mono:wght@400;500;600&display=swap"></noscript>
+<link rel="preload" as="style" href="https://fontsapi.zeoseven.com/161/main/result.css" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fontsapi.zeoseven.com/161/main/result.css"></noscript>
 <style>
-@import url("https://fontsapi.zeoseven.com/161/main/result.css");
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { scroll-behavior: smooth; }
 :root {
@@ -220,10 +223,10 @@ h1 {
   .header { padding: 48px 20px 36px; }
   .cards { margin: 24px auto 40px; padding: 0 16px; grid-template-columns: repeat(2, 1fr); }
   .footer { padding: 20px 16px; }
+  .card { padding: 22px 18px; overflow: visible; }
   .card:hover { box-shadow: var(--shadow-md); transform: none; }
 
   /* Mobile: show preview always-visible below card content */
-  .card { overflow: visible; }
   .card-preview {
     position: static; transform: none;
     background: transparent; padding: 14px 0 0;
@@ -234,8 +237,9 @@ h1 {
   .preview-heading { margin-bottom: 6px; }
   .preview-cta { display: none; }
 }
-@media (max-width: 480px) {
+@media (max-width: 540px) {
   .cards { grid-template-columns: 1fr; }
+  .header { padding: 40px 16px 28px; }
 }
 
 /* ── Dark Mode ── */
@@ -294,31 +298,31 @@ h1 {
 
 <div class="cards">
 
-  <a class="card gc" href="gc-principles.html">
-    <div class="card-icon">JVM</div>
-    <div class="card-title">GC 原理</div>
-    <p class="card-desc">深入剖析 G1 / ZGC / CMS 的核心设计——堆分区模型、并发标记算法、内存屏障、染色指针。</p>
+  <a class="card juc" href="juc.html">
+    <div class="card-icon">JUC</div>
+    <div class="card-title">并发编程</div>
+    <p class="card-desc">Java 内存模型、synchronized 锁升级、volatile 内存屏障、CAS 与 AQS 底层原理、线程池参数调优、并发容器实现。</p>
     <div class="card-tags">
-      <span class="tag">G1 GC</span>
-      <span class="tag">ZGC</span>
-      <span class="tag">CMS</span>
-      <span class="tag">SATB</span>
-      <span class="tag">染色指针</span>
-      <span class="tag">面试题 ×21</span>
+      <span class="tag">线程池</span>
+      <span class="tag">AQS</span>
+      <span class="tag">synchronized</span>
+      <span class="tag">volatile</span>
+      <span class="tag">CAS</span>
+      <span class="tag">面试题 ×15</span>
     </div>
     <div class="card-cta">进入学习 →</div>
     <div class="card-preview">
       <div class="preview-heading">目 录</div>
       <ul class="preview-list">
-        <li>G1 堆分区模型 &amp; Region</li>
-        <li>G1 并发标记（SATB）</li>
-        <li>G1 CSet 与垃圾收集</li>
-        <li>ZGC 染色指针</li>
-        <li>ZGC 并发流程</li>
-        <li>GC 调优 &amp; 参数</li>
-        <li>CMS 对比</li>
+        <li>Java 内存模型（JMM）</li>
+        <li>synchronized 锁升级</li>
+        <li>volatile &amp; 内存屏障</li>
+        <li>CAS &amp; 原子类</li>
+        <li>AQS 原理</li>
+        <li>线程池 &amp; 并发容器</li>
+        <li>虚拟线程（JDK 21）</li>
       </ul>
-      <div class="preview-cta" style="color:#16a34a">进入学习 →</div>
+      <div class="preview-cta" style="color:#4f46e5">进入学习 →</div>
     </div>
   </a>
 
@@ -345,6 +349,34 @@ h1 {
         <li>三级缓存 &amp; 循环依赖</li>
       </ul>
       <div class="preview-cta" style="color:#0369a1">进入学习 →</div>
+    </div>
+  </a>
+
+  <a class="card gc" href="gc-principles.html">
+    <div class="card-icon">JVM</div>
+    <div class="card-title">GC 原理</div>
+    <p class="card-desc">深入剖析 G1 / ZGC / CMS 的核心设计——堆分区模型、并发标记算法、内存屏障、染色指针。</p>
+    <div class="card-tags">
+      <span class="tag">G1 GC</span>
+      <span class="tag">ZGC</span>
+      <span class="tag">CMS</span>
+      <span class="tag">SATB</span>
+      <span class="tag">染色指针</span>
+      <span class="tag">面试题 ×21</span>
+    </div>
+    <div class="card-cta">进入学习 →</div>
+    <div class="card-preview">
+      <div class="preview-heading">目 录</div>
+      <ul class="preview-list">
+        <li>G1 堆分区模型 &amp; Region</li>
+        <li>G1 并发标记（SATB）</li>
+        <li>G1 CSet 与垃圾收集</li>
+        <li>ZGC 染色指针</li>
+        <li>ZGC 并发流程</li>
+        <li>GC 调优 &amp; 参数</li>
+        <li>CMS 对比</li>
+      </ul>
+      <div class="preview-cta" style="color:#16a34a">进入学习 →</div>
     </div>
   </a>
 
@@ -426,34 +458,6 @@ h1 {
         <li>死信队列 &amp; 延迟消息</li>
       </ul>
       <div class="preview-cta" style="color:#d97706">进入学习 →</div>
-    </div>
-  </a>
-
-  <a class="card juc" href="juc.html">
-    <div class="card-icon">JUC</div>
-    <div class="card-title">并发编程</div>
-    <p class="card-desc">Java 内存模型、synchronized 锁升级、volatile 内存屏障、CAS 与 AQS 底层原理、线程池参数调优、并发容器实现。</p>
-    <div class="card-tags">
-      <span class="tag">线程池</span>
-      <span class="tag">AQS</span>
-      <span class="tag">synchronized</span>
-      <span class="tag">volatile</span>
-      <span class="tag">CAS</span>
-      <span class="tag">面试题 ×15</span>
-    </div>
-    <div class="card-cta">进入学习 →</div>
-    <div class="card-preview">
-      <div class="preview-heading">目 录</div>
-      <ul class="preview-list">
-        <li>Java 内存模型（JMM）</li>
-        <li>synchronized 锁升级</li>
-        <li>volatile &amp; 内存屏障</li>
-        <li>CAS &amp; 原子类</li>
-        <li>AQS 原理</li>
-        <li>线程池 &amp; 并发容器</li>
-        <li>虚拟线程（JDK 21）</li>
-      </ul>
-      <div class="preview-cta" style="color:#4f46e5">进入学习 →</div>
     </div>
   </a>
 
