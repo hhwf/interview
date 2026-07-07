@@ -776,6 +776,64 @@
             <span class="ans-tag key" style="background:rgba(3,105,161,0.08);color:#0369a1;border-color:rgba(3,105,161,0.25)">选型原则</span>强一致可接受性能损耗 → AT/TCC；高并发长流程 → SAGA；最终一致 → 可靠消息。
           </div></div>
         </div>
+
+        <div class="qa-item practical" id="q-spring-18">
+          <div class="qa-question" onclick="toggleQA('q-spring-18')">
+            <span class="qa-num">⚡ 实战</span>
+            <span class="qa-q-text">@Transactional 不生效，你遇到过哪些坑？怎么排查？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <p><strong>一、常见失效原因</strong></p>
+            <ul>
+              <li><strong>① 方法非 public：</strong>Spring AOP 默认只拦截 public 方法。如果 @Transactional 标注在 protected、private 或包级可见的方法上，事务切面不会织入，方法执行时不在事务上下文中。可通过 <code>TransactionAttributeSource</code> 确认方法是否被识别为事务方法。</li>
+              <li><strong>② 同类内部调用未经过代理：</strong>同一个类中，方法 A 调用方法 B（B 加了 @Transactional），由于调用走的是 <code>this</code> 引用而非代理对象，事务切面被完全绕过。这是最常见的踩坑点。例如：<code>OrderService.createOrder()</code> 内部调用 <code>this.deductStock()</code>，即使 deductStock 有 @Transactional 也不会开启事务。</li>
+              <li><strong>③ 异常类型不匹配：</strong>@Transactional 默认只对 <code>RuntimeException</code> 和 <code>Error</code> 回滚，checked exception（如 <code>IOException</code>、<code>SQLException</code>）不会触发回滚。如果业务方法抛出 checked exception 但希望回滚，必须显式声明 <code>@Transactional(rollbackFor = Exception.class)</code>。</li>
+              <li><strong>④ 异常被 catch 吞掉：</strong>方法内部 try-catch 捕获了异常但没有重新抛出，Spring 事务拦截器感知不到异常，认为方法正常完成，直接提交事务。这是隐蔽性最高的问题——代码看起来正常，但数据已经不一致。</li>
+              <li><strong>⑤ 传播级别设为 NOT_SUPPORTED / NEVER：</strong>如果 @Transactional 的 propagation 设为 <code>NOT_SUPPORTED</code>（挂起当前事务，非事务执行）或 <code>NEVER</code>（如果有事务则抛异常），方法不会在事务中运行。排查时注意检查注解参数。</li>
+            </ul>
+            <p><strong>二、排查手段</strong></p>
+            <ul>
+              <li><strong>检查代理对象是否生效：</strong>在调用方打断点，查看被调用对象是否是代理对象（CGLIB 子类或 JDK Proxy）。可以使用 <code>AopUtils.isAopProxy(obj)</code> 判断——返回 false 说明没有代理，事务切面不会生效。也可以在方法内打印 <code>this.getClass().getName()</code>，如果是原始类名而非 <code>$$SpringCGLIB$$</code> 后缀，说明未经过代理。</li>
+              <li><strong>Debug TransactionInterceptor：</strong>在 <code>org.springframework.transaction.interceptor.TransactionInterceptor#invoke</code> 上打断点。如果调用时没有进入该方法，说明事务切面未织入，问题出在代理层面。如果进入了但事务未生效，检查 <code>TransactionAttribute</code> 的解析结果。</li>
+              <li><strong>日志对比 this 与 proxy：</strong>在 Bean 中注入自身（<code>@Autowired private OrderService self;</code>），分别用 <code>this.method()</code> 和 <code>self.method()</code> 调用，观察日志中两者的类名差异。如果 this 是原始类而 self 是代理类，即可确认自调用问题。</li>
+              <li><strong>开启事务日志：</strong>在 <code>application.yml</code> 中设置 <code>logging.level.org.springframework.jdbc.datasource.DataSourceTransactionManager=DEBUG</code>（或 JPA 对应的事务管理器），观察日志中是否有 "Creating new transaction" 和 "Committing transaction" 输出。如果没有，说明事务根本没有启动。</li>
+            </ul>
+            <p><strong>三、解决方案</strong></p>
+            <ul>
+              <li><strong>自调用问题：</strong>使用 <code>AopContext.currentProxy()</code> 获取当前代理对象来调用（需在启动类加 <code>@EnableAspectJAutoProxy(exposeProxy = true)</code>），例如：<code>((OrderService) AopContext.currentProxy()).deductStock()</code>。或者将方法拆分到不同的 Service 中，通过 Spring 注入调用，自然经过代理。</li>
+              <li><strong>异常类型问题：</strong>统一使用 <code>@Transactional(rollbackFor = Exception.class)</code>，确保所有异常都能触发回滚。团队规范中应将其作为默认写法，避免依赖默认的 RuntimeException 行为。</li>
+              <li><strong>避免 catch 吞异常：</strong>如果必须 catch，在 catch 块中重新抛出运行时异常：<code>catch (Exception e) { throw new RuntimeException(e); }</code>，或使用 <code>TransactionAspectSupport.currentTransactionStatus().setRollbackOnly()</code> 手动标记回滚。</li>
+            </ul>
+          </div></div>
+        </div>
+
+        <div class="qa-item practical" id="q-spring-19">
+          <div class="qa-question" onclick="toggleQA('q-spring-19')">
+            <span class="qa-num">⚡ 实战</span>
+            <span class="qa-q-text">线上应用启动报循环依赖，怎么解决？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <p><strong>一、背景：Spring Boot 2.6+ 默认禁止循环依赖</strong></p>
+            <p>从 Spring Boot 2.6 开始，<code>spring.main.allow-circular-references</code> 默认值改为 <code>false</code>。如果存在循环依赖，启动时直接抛出 <code>BeanCurrentlyInCreationException</code>，错误信息类似：<code>The dependencies of some of the beans in the application context form a cycle: serviceA → serviceB → serviceA</code>。这个变更的目的是鼓励开发者在编码阶段就消除不合理的依赖关系，而非依赖 Spring 的三级缓存机制"静默解决"。</p>
+            <p><strong>二、排查步骤</strong></p>
+            <ul>
+              <li><strong>看异常堆栈定位循环链：</strong>启动失败的异常信息会明确列出形成循环的 Bean 名称链条。例如：<code>orderService (field com.example.StockService) → stockService (field com.example.OrderService)</code>。根据这条链路可以快速定位到哪两个（或多个）Bean 互相依赖。</li>
+              <li><strong>检查注入方式：</strong>确认循环依赖中的注入方式是构造器注入还是 setter/field 注入。两者的解决难度完全不同——构造器注入的循环依赖<strong>无法被三级缓存解决</strong>（实例化 A 时就需要 B，而 B 还未创建），Spring 会直接报错；setter/field 注入的循环依赖可以通过三级缓存解决（先实例化 A 的半成品放入缓存，再创建 B 时注入 A 的早期引用）。</li>
+              <li><strong>检查是否涉及 AOP 代理：</strong>如果循环依赖中的 Bean 需要被 AOP 代理（如加了 @Transactional、@Async），三级缓存中存储的是 <code>ObjectFactory</code>，在需要时才生成代理对象。但如果代理对象与原始对象的引用不一致（如 SmartInstantiationAwareBeanPostProcessor 介入），仍可能抛出异常。</li>
+            </ul>
+            <p><strong>三、解决方案</strong></p>
+            <ul>
+              <li><strong>构造器注入的循环依赖——必须重构：</strong>三级缓存无法解决构造器循环依赖，因为实例化阶段就需要依赖对象。推荐做法：① <strong>引入中间 Bean</strong>：将两个 Bean 共同依赖的逻辑抽取到第三个 Bean C，A 和 B 都依赖 C 而非互相依赖；② <strong>事件解耦</strong>：A 发布事件，B 监听事件处理，消除直接依赖。例如 <code>OrderCreatedEvent</code> 由 OrderService 发布，StockService 用 <code>@EventListener</code> 监听并扣减库存。</li>
+              <li><strong>setter/field 注入的循环依赖——临时方案：</strong>在 <code>application.yml</code> 中设置 <code>spring.main.allow-circular-references: true</code>，让 Spring 回到旧版行为，通过三级缓存自动解决。这只是临时止血，不应作为长期方案，因为循环依赖本身就是设计不合理的信号。</li>
+              <li><strong>@Lazy 延迟注入（推荐折中方案）：</strong>在注入点加 <code>@Lazy</code>，Spring 不会立即创建依赖 Bean，而是注入一个代理，首次调用方法时才真正解析。例如：<code>@Autowired @Lazy private StockService stockService;</code>。这样既不需要改配置，也不需要大规模重构，适合存量项目快速修复。</li>
+              <li><strong>最佳实践——重新设计依赖关系：</strong>循环依赖通常意味着两个模块职责边界不清。推荐的长期方案：① <strong>接口隔离</strong>：将 A 中被 B 依赖的方法抽取到独立接口 <code>AQueryService</code>，B 只依赖查询接口而非完整的 A；② <strong>事件驱动</strong>：用 Spring 的 <code>ApplicationEventPublisher</code> + <code>@EventListener</code> 替代直接调用，实现松耦合；③ <strong>DDD 聚合根审视</strong>：如果两个实体总是互相引用，可能属于同一个聚合根，应合并为一个领域对象。</li>
+            </ul>
+            <p><strong>四、生产环境应急</strong></p>
+            <p>如果线上紧急需要恢复服务（如升级 Spring Boot 版本后启动失败），最快的方式是先在配置中加 <code>spring.main.allow-circular-references: true</code> 恢复启动，然后排期逐步消除循环依赖。注意：Spring Boot 3.x 中该配置仍然存在，但官方明确表示未来版本可能彻底移除循环依赖支持，建议尽早治理。</p>
+          </div></div>
+        </div>
       </div>
     </div>
   </section>

@@ -709,6 +709,114 @@
           </div>
         </div>
 
+        <div class="qa-item practical" id="q-mysql-16">
+          <div class="qa-question" onclick="toggleQA('q-mysql-16')">
+            <span class="qa-num">⚡ 实战</span>
+            <span class="qa-q-text">线上出现死锁，你的排查思路是什么？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <p><strong>第一步：确认死锁并获取详细信息。</strong>登录 MySQL 执行 <code>SHOW ENGINE INNODB STATUS\G</code>，找到 <code>LATEST DETECTED DEADLOCK</code> 段。这里会完整记录两个（或多个）事务各自持有什么锁、在等待什么锁，以及 InnoDB 选择回滚了哪个事务。重点看：</p>
+            <ul>
+              <li><code>TRANSACTION 1</code> 持有哪些行锁（如 <code>X lock on record</code>），在等待哪个资源</li>
+              <li><code>TRANSACTION 2</code> 的持锁和等待情况</li>
+              <li><strong>等待图（Wait-for Graph）：</strong>如果两个事务互相持有对方需要的锁，就构成环形等待，InnoDB 会选择代价最小的事务进行回滚</li>
+            </ul>
+            <pre><code>-- 快速查看当前锁等待
+SELECT * FROM information_schema.INNODB_LOCK_WAITS;
+-- 查看当前活跃事务
+SELECT * FROM information_schema.INNODB_TRX WHERE trx_state = 'LOCK WAIT';</code></pre>
+            <p><strong>第二步：定位应用层代码。</strong>通过 <code>INNODB STATUS</code> 中记录的 SQL 语句，结合业务日志确定是哪些业务操作触发了死锁。如果是 Java 应用，可以使用 <code>jstack &lt;pid&gt;</code> 导出线程堆栈，搜索 <code>DeadlockLoserDataAccessException</code> 或 <code>SQLTransientException</code> 关键字，定位到具体的 Service 方法和 SQL 调用链。</p>
+            <p><strong>第三步：代码层面修复。</strong>死锁的根因是多个事务以不同顺序竞争相同资源，修复策略包括：</p>
+            <ul>
+              <li><strong>统一加锁顺序：</strong>比如操作多张表时，所有业务路径都按相同的表顺序加锁；操作多行时按主键排序后再更新</li>
+              <li><strong>缩短事务：</strong>将大事务拆成多个小事务，减少锁持有时间。避免在事务中做 RPC 调用或 IO 操作</li>
+              <li><strong>使用 tryLock 超时机制：</strong>在应用层对关键操作设置超时重试，如 Spring 的 <code>@Retryable</code> 配合退避策略</li>
+              <li><strong>降低隔离级别：</strong>如果业务允许，从 <code>REPEATABLE READ</code> 降到 <code>READ COMMITTED</code>，减少间隙锁（Gap Lock）冲突</li>
+            </ul>
+            <p><strong>第四步：持续监控。</strong>设置 <code>innodb_print_all_deadlocks=ON</code> 将所有死锁信息记录到 error log，配合告警系统（如 Prometheus + mysqld_exporter）监控 <code>innodb_deadlocks</code> 指标，及时发现趋势。</p>
+          </div></div>
+        </div>
+
+        <div class="qa-item practical" id="q-mysql-17">
+          <div class="qa-question" onclick="toggleQA('q-mysql-17')">
+            <span class="qa-num">⚡ 实战</span>
+            <span class="qa-q-text">一条慢 SQL 告警了，怎么定位和优化？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <p><strong>第一步：从慢查询日志定位目标 SQL。</strong>确保线上已开启慢查询日志：</p>
+            <pre><code>-- 查看当前配置
+SHOW VARIABLES LIKE 'slow_query%';
+SHOW VARIABLES LIKE 'long_query_time';
+
+-- 动态开启（无需重启）
+SET GLOBAL slow_query_log = 'ON';
+SET GLOBAL long_query_time = 1;       -- 超过 1 秒即记录
+SET GLOBAL log_queries_not_using_indexes = ON;  -- 未走索引的也记录</code></pre>
+            <p>拿到慢查询日志后，用 <code>pt-query-digest slow.log</code> 或 <code>mysqldumpslow -s t slow.log</code> 聚合分析，按<strong>总耗时、执行次数、单次平均耗时</strong>排序，找出最需要优化的 SQL。</p>
+            <p><strong>第二步：EXPLAIN 实战解读。</strong>对目标 SQL 执行 <code>EXPLAIN</code> 或 <code>EXPLAIN ANALYZE</code>（MySQL 8.0.18+），重点关注以下字段：</p>
+            <ul>
+              <li><code>type</code>：访问类型。生产环境至少要达到 <code>range</code> 级别，如果出现 <code>index</code>（全索引扫描）或 <code>ALL</code>（全表扫描）则需优化</li>
+              <li><code>key</code>：实际使用的索引。<code>NULL</code> 表示未走索引，需要检查是否缺少合适的索引，或者发生了<strong>隐式类型转换</strong>（如 varchar 列用数字查询）导致索引失效</li>
+              <li><code>rows</code>：预估扫描行数。结合 <code>filtered</code> 百分比可以估算实际返回行数，如果 rows 很大而 filtered 很小，说明索引区分度不够</li>
+              <li><code>Extra</code>：出现 <code>Using filesort</code> 说明需要额外排序（考虑加 ORDER BY 字段的联合索引）；<code>Using temporary</code> 说明使用了临时表（常见于 GROUP BY / DISTINCT，考虑调整索引覆盖分组字段）；<code>Using index</code> 是好消息，说明使用了覆盖索引</li>
+            </ul>
+            <p><strong>第三步：常见优化手段。</strong></p>
+            <ul>
+              <li><strong>覆盖索引：</strong>如果查询只需要索引列，确保 SELECT 的字段都在索引中，避免回表。例如 <code>SELECT id, name FROM user WHERE status=1</code> 可以建联合索引 <code>(status, name)</code></li>
+              <li><strong>避免隐式转换：</strong><code>WHERE phone = 13800138000</code>（phone 是 varchar）会导致全表扫描，改为 <code>WHERE phone = '13800138000'</code></li>
+              <li><strong>拆分大事务：</strong>如果一个事务中包含多次远程调用和数据库操作，将非数据库操作（如发消息、调 RPC）移到事务外，缩短锁持有时间</li>
+              <li><strong>分页优化（延迟关联）：</strong><code>LIMIT 100000, 20</code> 会扫描 100020 行再丢弃前 10 万行。优化方案是先通过覆盖索引取出主键 ID，再 JOIN 回主表获取完整数据：
+                <pre><code>-- 优化前
+SELECT * FROM orders ORDER BY id LIMIT 100000, 20;
+-- 优化后（延迟关联）
+SELECT o.* FROM orders o
+INNER JOIN (SELECT id FROM orders ORDER BY id LIMIT 100000, 20) AS tmp
+ON o.id = tmp.id;</code></pre>
+              </li>
+              <li><strong>考虑查询改写：</strong>用 <code>EXISTS</code> 替代 <code>IN</code> 子查询、用 <code>UNION ALL</code> 替代 <code>OR</code> 条件（让优化器分别走不同索引）</li>
+            </ul>
+            <p><strong>第四步：验证优化效果。</strong>用 <code>EXPLAIN ANALYZE</code> 对比优化前后的执行计划和实际耗时，关注 <code>actual time</code>、<code>rows</code>、<code>loops</code> 等字段，确认优化生效后再上线。</p>
+          </div></div>
+        </div>
+
+        <div class="qa-item practical" id="q-mysql-18">
+          <div class="qa-question" onclick="toggleQA('q-mysql-18')">
+            <span class="qa-num">⚡ 实战</span>
+            <span class="qa-q-text">主从延迟严重，业务读到了旧数据，怎么处理？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <p><strong>第一步：确认延迟程度。</strong>在从库执行 <code>SHOW REPLICA STATUS\G</code>（MySQL 8.0.22+）或 <code>SHOW SLAVE STATUS\G</code>，查看 <code>Seconds_Behind_Master</code> 字段。该值为 0 表示同步正常，大于 0 表示延迟秒数，<code>NULL</code> 表示复制线程异常中断。更精确的方式是使用 <code>pt-heartbeat</code> 工具，它在主库写入时间戳心跳行，从库读取后计算真实延迟，避免 <code>Seconds_Behind_Master</code> 在大事务场景下的误报。</p>
+            <pre><code>-- 从库快速检查
+SHOW REPLICA STATUS\G
+-- 关注字段：
+--   Seconds_Behind_Source: 延迟秒数
+--   Replica_IO_Running:  IO 线程是否正常
+--   Replica_SQL_Running: SQL 线程是否正常
+--   Last_Error: 是否有复制报错</code></pre>
+            <p><strong>第二步：短期应急方案——关键业务强制读主库。</strong>对于一致性要求高的场景（如支付后查订单、修改后立即查看详情），在业务层路由这些请求到主库。具体做法：</p>
+            <ul>
+              <li><strong>写后读主库：</strong>在写操作完成后，短时间内（如 3-5 秒）该用户的后续读请求强制路由到主库。可在 Redis 中标记 <code>user:{uid}:force_master=1</code>，TTL 设为预期延迟时间</li>
+              <li><strong>GTID 等待从库追平：</strong>如果开启了 GTID，可以在从库执行 <code>SELECT WAIT_FOR_EXECUTED_GTID_SET('uuid:N', timeout)</code>，等从库重放到指定 GTID 后再返回结果。适合对一致性要求极高但流量不大的场景</li>
+            </ul>
+            <pre><code>-- 获取主库最新 GTID
+-- 主库：SELECT @@GLOBAL.gtid_executed;
+-- 从库等待追平：
+SELECT WAIT_FOR_EXECUTED_GTID_SET('aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee:12345', 5);
+-- 返回 0 表示追平成功，返回 1 表示超时</code></pre>
+            <p><strong>第三步：长期根治方案。</strong></p>
+            <ul>
+              <li><strong>并行复制（MTS）：</strong>MySQL 5.7+ 设置 <code>replica_parallel_type=LOGICAL_CLOCK</code>，开启多线程并行重放。MySQL 8.0 进一步优化为 <code>WRITESET</code> 依赖追踪，并行度更高。配合 <code>replica_parallel_workers</code> 设置并行线程数（建议 8-16）</li>
+              <li><strong>半同步复制：</strong>安装 <code>semisync</code> 插件，主库在收到至少一个从库的 ACK 后才提交事务，从库延迟从秒级降到毫秒级。代价是主库写入延迟增加约 0.5-1ms</li>
+              <li><strong>业务层读写分离策略调整：</strong>引入中间件（如 ShardingSphere-Proxy、ProxySQL）的读写分离模块，内置延迟检测和自动切流能力。当从库延迟超过阈值时自动将读流量切回主库</li>
+              <li><strong>从库硬件升级：</strong>确保从库的磁盘 IO（SSD）、CPU、内存不低于主库，避免因硬件瓶颈导致重放速度跟不上</li>
+            </ul>
+            <p><strong>第四步：建立监控和告警。</strong>通过 Prometheus + mysqld_exporter 监控 <code>mysql_slave_status_seconds_behind_master</code> 指标，设置分级告警：延迟 &gt; 5s 为 Warning，&gt; 30s 为 Critical，确保问题能被及时发现和处理。</p>
+          </div></div>
+        </div>
+
       </div>
     </div>
 

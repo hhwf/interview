@@ -2637,6 +2637,82 @@
           </div>
         </div>
 
+        <!-- 实战追问 P1 -->
+        <div class="qa-item practical" id="q-gc-p1">
+          <div class="qa-question" onclick="toggleQA('q-gc-p1')">
+            <span class="qa-num">⚡ 实战</span>
+            <span class="qa-q-text">线上频繁 Full GC 怎么排查？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <p>频繁 Full GC 是 JVM 性能问题中最常见也最紧急的场景，需要按照"观察 → 定位 → 修复"三步走。</p>
+
+            <span class="ans-tag key">Step 1：确认 Full GC 频率与耗时</span><br>
+            首先开启统一 GC 日志（JDK 9+ 统一日志框架）：
+            <pre>-Xlog:gc*,gc+heap=debug:file=gc-%t.log:time,uptime,level,tags:filecount=10,filesize=64M</pre>
+            在日志中搜索 <code>Full GC</code> 关键字，关注每次 Full GC 的暂停时间（Pause Full）以及触发原因（如 <code>Ergonomics</code>、<code>Allocation Failure</code>、<code>Metadata GC Threshold</code>）。如果日志中出现 <code>to-space exhausted</code>，说明 G1 Evacuation 阶段预留空间不足，已退化为 Full GC。
+
+            <span class="ans-tag key">Step 2：观察各代使用率变化</span><br>
+            使用 <code>jstat</code> 以 1 秒间隔采样：
+            <pre>jstat -gcutil &lt;pid&gt; 1000</pre>
+            重点关注列：<code>O</code>（老年代使用率）是否持续走高且不回落——这通常意味着存在内存泄漏；<code>M</code>（Metaspace 使用率）是否逼近上限——说明类加载器泄漏或 Metaspace 配置偏小；<code>FGC</code>（Full GC 累计次数）增长速度是否异常。如果 O 列长期 &gt;90% 且 FGC 快速增长，基本可以判定为老年代空间不足或泄漏。
+
+            <span class="ans-tag key">Step 3：导出堆快照并分析</span><br>
+            在 Full GC 发生后尽快导出 heap dump：
+            <pre>jmap -dump:live,format=b,file=heap.hprof &lt;pid&gt;</pre>
+            注意 <code>live</code> 参数会先触发一次 Full GC 再 dump，确保拿到的是存活对象。使用 <strong>MAT（Memory Analyzer Tool）</strong>或 <strong>VisualVM</strong> 打开 dump 文件，依次查看：
+            <ul>
+              <li><strong>Leak Suspects Report</strong>：MAT 自动分析可疑泄漏点，快速缩小范围。</li>
+              <li><strong>Dominator Tree</strong>：按 retained size 排序，找出占用内存最大的对象及其引用链。</li>
+              <li><strong>Histogram</strong>：按类统计实例数和总大小，关注异常的集合类（如 <code>HashMap</code>、<code>ArrayList</code>）。</li>
+            </ul>
+
+            <span class="ans-tag tip">常见原因与处理</span>
+            <ul>
+              <li><strong>Metaspace 不足</strong>：动态类加载（CGLIB/反射/OSGi）频繁创建类导致 Metaspace 耗尽。处理：增大 <code>-XX:MaxMetaspaceSize</code> 和 <code>-XX:MetaspaceSize</code>，排查是否有不必要的动态代理。</li>
+              <li><strong>大对象直接晋升老年代</strong>：单次分配超过 <code>-XX:PretenureSizeThreshold</code>（G1 下默认为 Region 大小一半）的对象直接进入 Old Gen。处理：调大 <code>-XX:PretenureSizeThreshold</code> 或拆分为小对象分批处理。</li>
+              <li><strong>内存泄漏</strong>：ThreadLocal 未调用 <code>remove()</code>、静态集合无限增长、监听器/回调未注销。处理：修复代码，确保资源正确释放。</li>
+              <li><strong>老年代碎片化</strong>：G1 下 Mixed GC 未及时回收导致碎片。处理：降低 <code>-XX:G1HeapWastePercent</code>（默认 5%）促使更多 Mixed GC，或在极端情况下适当增大堆。</li>
+            </ul>
+            <span class="ans-tag tip">应急措施</span>：线上紧急时可先通过 <code>-XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/tmp/</code> 确保 OOM 时自动留 dump，然后重启服务恢复。后续根据 dump 分析结果做根因修复。
+          </div></div>
+        </div>
+
+        <!-- 实战追问 P2 -->
+        <div class="qa-item practical" id="q-gc-p2">
+          <div class="qa-question" onclick="toggleQA('q-gc-p2')">
+            <span class="qa-num">⚡ 实战</span>
+            <span class="qa-q-text">如何根据业务选型 G1 还是 ZGC？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <p>GC 选型的核心是在<strong>延迟</strong>、<strong>吞吐量</strong>和<strong>堆大小</strong>三个维度之间权衡。以下是系统化的决策框架。</p>
+
+            <span class="ans-tag key">G1 — 通用均衡之选</span><br>
+            G1（Garbage-First）是 JDK 9+ 的默认 GC，适用于堆大小 4~32 GB 的绝大多数场景。它通过 Region 分区和停顿目标（<code>-XX:MaxGCPauseMillis</code>，默认 200ms）在延迟与吞吐之间自适应调节。Young GC 和 Mixed GC 均为 STW，停顿时间与存活对象数量正相关。如果你的应用对 P99 延迟要求在百毫秒级别、堆不超过 32 GB、且团队已有成熟的调优经验，G1 是最稳妥的选择。典型场景：电商后台服务、微服务集群、批处理任务。
+
+            <span class="ans-tag key">ZGC — 极致低延迟之选</span><br>
+            ZGC 在 JDK 15 正式 production-ready，JDK 21 引入 Generational ZGC 后性能大幅提升。其核心优势是<strong>几乎所有阶段都并发执行</strong>，STW 停顿稳定在亚毫秒级（&lt;1ms），且停顿时间不随堆大小增长。ZGC 适合堆 16 GB 到数 TB 的超大堆场景。典型场景：金融交易系统（P99 &lt;10ms）、实时竞价引擎、游戏服务器、大规模缓存服务。
+
+            <span class="ans-tag key">决策依据速查</span>
+            <ul>
+              <li><strong>SLA 要求 P99 延迟 &lt;10ms</strong> → 选 ZGC。G1 在大堆下 Mixed GC 停顿可能超过 100ms，无法满足严格的延迟 SLA。</li>
+              <li><strong>堆 ≤16 GB 且吞吐优先</strong> → 选 G1。G1 没有读屏障开销，在 CPU 密集型场景下吞吐量更高。</li>
+              <li><strong>堆 &gt;32 GB</strong> → 必须选 ZGC。G1 在大堆下 STW 停顿不可控，Full GC 可能长达数秒。</li>
+              <li><strong>JDK 版本 &lt;15</strong> → 只能用 G1（或 CMS，但 CMS 已在 JDK 14 移除）。ZGC 在 JDK 15 前为实验性功能，不建议上生产。</li>
+            </ul>
+
+            <span class="ans-tag tip">注意事项</span>
+            <ul>
+              <li><strong>CPU 开销</strong>：ZGC 的读屏障（Load Barrier）和并发标记/转移会额外消耗约 10~15% 的 CPU。如果服务器 CPU 已接近饱和且无法扩容，ZGC 反而可能导致吞吐下降和延迟抖动。</li>
+              <li><strong>内存开销</strong>：ZGC 需要额外的堆外内存存储染色指针映射和转发表，实际内存占用比 G1 高约 5~10%。</li>
+              <li><strong>Generational ZGC（JDK 21+）</strong>：开启 <code>-XX:+UseZGC -XX:+ZGenerational</code> 后，ZGC 引入分代，大幅降低了 CPU 开销和 Allocation Stall 概率，在绝大多数场景下已接近甚至超越 G1 的吞吐水平。新项目如果 JDK 版本允许，强烈推荐直接启用。</li>
+              <li><strong>不适合 ZGC 的场景</strong>：CPU 密集型且资源紧张的环境（如嵌入式设备、低配容器），读屏障的持续开销会挤压业务线程的 CPU 时间。</li>
+            </ul>
+            <span class="ans-tag tip">实操建议</span>：上线前用 <code>jmh</code> 或真实流量做 A/B 压测，分别跑 G1（<code>-XX:+UseG1GC</code>）和 ZGC（<code>-XX:+UseZGC</code>），对比 P99/P999 延迟、QPS 和 CPU 利用率。数据说话比理论分析更可靠。
+          </div></div>
+        </div>
+
       </div>
     </div>
   </section>

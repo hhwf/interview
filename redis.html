@@ -1105,6 +1105,102 @@
           </div></div>
         </div>
 
+        <div class="qa-item practical" id="q-redis-16">
+          <div class="qa-question" onclick="toggleQA('q-redis-16')">
+            <span class="qa-num">⚡ 实战</span>
+            <span class="qa-q-text">线上 Redis 内存暴涨怎么排查？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <p><strong>第一步：查看内存概况。</strong>使用 <code>INFO memory</code> 命令获取关键指标：</p>
+            <ul style="margin:0.4rem 0 0.4rem 1.2rem;line-height:1.9">
+              <li><code>used_memory</code>：Redis 实际使用的内存总量。</li>
+              <li><code>used_memory_rss</code>：操作系统视角分配给 Redis 的物理内存（含碎片）。</li>
+              <li><code>mem_fragmentation_ratio</code>：碎片率 = <code>used_memory_rss / used_memory</code>。正常范围 1.0～1.5；若 &gt; 1.5 说明内存碎片严重，可考虑启用 <code>activedefrag yes</code> 或重启实例。</li>
+              <li><code>maxmemory</code> / <code>maxmemory-policy</code>：确认是否设置了上限及当前淘汰策略。</li>
+            </ul>
+            <p><strong>第二步：定位大 Key。</strong>大 Key 是内存暴涨最常见的原因之一。</p>
+            <ul style="margin:0.4rem 0 0.4rem 1.2rem;line-height:1.9">
+              <li>使用 <code>redis-cli --bigkeys</code> 快速扫描各数据类型中最大的 Key（内部基于 <code>SCAN</code>，不会阻塞主线程）。</li>
+              <li>对于疑似大 Key，用 <code>MEMORY USAGE &lt;key&gt;</code> 精确查看单个 Key 占用字节数（Redis 4.0+）。</li>
+              <li>也可通过 RDB 分析工具（如 <code>redis-rdb-tools</code>）离线解析 RDB 快照，按内存排序导出 Top-N Key。</li>
+            </ul>
+            <p><strong>第三步：检查未设 TTL 的 Key。</strong>大量没有过期时间的 Key 会持续累积。执行：</p>
+            <p><code style="background:#f5f5f5;padding:2px 6px;border-radius:4px">redis-cli --scan --pattern '*' | xargs -I {} redis-cli TTL {} | grep -c ':-1'</code></p>
+            <p>如果返回的 <code>-1</code>（永不过期）数量非常大，说明有大量 Key 未设置 TTL。业务侧应排查写入逻辑，确保缓存 Key 都带有合理的过期时间。</p>
+            <p><strong>第四步：检查过期策略是否正常。</strong>Redis 的过期删除采用<strong>惰性删除 + 定期删除</strong>双重机制。如果短时间内写入了大量相同过期时间的 Key，定期删除的采样可能无法及时清理，导致内存尖峰。可通过 <code>INFO stats</code> 中的 <code>expired_keys</code> 和 <code>evicted_keys</code> 观察过期和淘汰速率。</p>
+            <p><strong>第五步：调整 maxmemory 和淘汰策略。</strong>如果确认是正常业务增长导致内存不足：</p>
+            <ul style="margin:0.4rem 0 0.4rem 1.2rem;line-height:1.9">
+              <li>在线调整上限：<code>CONFIG SET maxmemory 4gb</code></li>
+              <li>切换淘汰策略：<code>CONFIG SET maxmemory-policy allkeys-lru</code>（纯缓存场景推荐）</li>
+              <li>长期方案：扩容实例或迁移至 Cluster 模式进行水平扩展。</li>
+            </ul>
+          </div></div>
+        </div>
+
+        <div class="qa-item practical" id="q-redis-17">
+          <div class="qa-question" onclick="toggleQA('q-redis-17')">
+            <span class="qa-num">⚡ 实战</span>
+            <span class="qa-q-text">缓存和数据库双写一致性怎么保证？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <p><strong>核心原则：Cache Aside Pattern（旁路缓存模式）。</strong>读流程：先读缓存，命中则返回；未命中则读 DB，将结果写入缓存。写流程：<strong>先更新数据库，再删除缓存</strong>（而非更新缓存），这是业界推荐的标准做法。</p>
+            <p><strong>方案一：先更新 DB + 再删缓存 + 延迟双删。</strong></p>
+            <p>在更新 DB 后，先删除缓存，等待一小段时间（如 500ms，大于一次读请求耗时）后再删一次缓存。第二次删除是为了兜底：在第一次删除和 DB 更新之间的时间窗口内，可能有并发读请求将旧数据重新写入缓存，延迟双删可以清除这个脏数据。</p>
+            <p><code style="background:#f5f5f5;padding:2px 6px;border-radius:4px">deleteCache(key); updateDB(data); Thread.sleep(500); deleteCache(key);</code></p>
+            <p>缺点：<code>sleep</code> 阻塞业务线程，且延迟时间不好精确设定。</p>
+            <p><strong>方案二：Canal 订阅 binlog 异步更新缓存。</strong></p>
+            <p>使用 Canal 伪装为 MySQL Slave，订阅数据库的 binlog 变更事件。当监听到数据变更时，通过消息队列（如 Kafka / RocketMQ）异步发送缓存删除或更新指令。优点是与业务代码完全解耦，不侵入业务逻辑，且消息队列提供重试机制保证最终一致性。</p>
+            <p><strong>最终一致性 vs 强一致性选择：</strong></p>
+            <ul style="margin:0.4rem 0 0.4rem 1.2rem;line-height:1.9">
+              <li><strong>最终一致性（推荐）：</strong>上述两种方案均为最终一致性方案。绝大多数业务场景（商品详情、用户资料等）可以接受短暂的不一致。</li>
+              <li><strong>强一致性：</strong>如果业务对一致性要求极高（如金融余额），应绕过缓存直接读 DB，或使用分布式锁串行化读写，但会显著降低吞吐量。</li>
+            </ul>
+            <p><strong>极端并发场景的解决方案：</strong></p>
+            <p>当读请求和写请求高度并发时，可能出现：读请求先于写请求删除缓存之前读到旧值并写回缓存，导致脏数据。解决方案：</p>
+            <ul style="margin:0.4rem 0 0.4rem 1.2rem;line-height:1.9">
+              <li><strong>分布式锁串行化：</strong>对同一 Key 的读写操作使用分布式锁（如 Redisson 的 <code>RLock</code>），保证同一时刻只有一个线程操作该 Key，彻底消除并发脏数据。</li>
+              <li><strong>消息队列重试删除：</strong>删缓存失败时将删除操作投入消息队列，由消费者重试删除，直到成功。配合 Canal 方案可实现可靠的最终一致性。</li>
+            </ul>
+          </div></div>
+        </div>
+
+        <div class="qa-item practical" id="q-redis-18">
+          <div class="qa-question" onclick="toggleQA('q-redis-18')">
+            <span class="qa-num">⚡ 实战</span>
+            <span class="qa-q-text">Redis Cluster 某节点挂了，故障转移全过程是什么？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <p><strong>第一阶段：故障检测 —— subjective down → objective down。</strong></p>
+            <p>Cluster 中每个节点通过 Gossip 协议定期互相 PING/PONG。当某个 Master 节点在 <code>cluster-node-timeout</code>（默认 15s）内没有回复 PONG 时，检测节点将其标记为 <strong>PFAIL（Possible Failure，主观下线）</strong>。随后，该节点通过 Gossip 传播 PFAIL 状态；当集群中<strong>大多数 Master 节点</strong>（超过半数）都报告该节点为 PFAIL 时，状态升级为 <strong>FAIL（Objective Failure，客观下线）</strong>，此时触发故障转移。</p>
+            <p><strong>第二阶段：Slave 选举新 Master。</strong></p>
+            <p>故障 Master 的所有 Slave 发起选举。选举规则：</p>
+            <ul style="margin:0.4rem 0 0.4rem 1.2rem;line-height:1.9">
+              <li>优先选择<strong>数据最新</strong>（复制偏移量 replication offset 最大）的 Slave。</li>
+              <li>候选 Slave 向集群中所有 Master 发起 <code>FAILOVER_AUTH_REQUEST</code>。</li>
+              <li>获得<strong>超过半数 Master 投票</strong>的 Slave 胜出，晋升为新 Master。</li>
+            </ul>
+            <p><strong>第三阶段：Slot 重新分配与角色切换。</strong></p>
+            <p>新 Master 接管故障 Master 负责的所有 hash slot（Redis Cluster 共有 16384 个 slot）。它向集群广播自己的新角色和 slot 映射表，其他节点更新本地的 slot → node 映射。原故障 Master 的所有 slot 现在由新 Master 服务。</p>
+            <p><strong>第四阶段：客户端连接更新。</strong></p>
+            <p>客户端向旧节点发送命令时，会收到重定向响应：</p>
+            <ul style="margin:0.4rem 0 0.4rem 1.2rem;line-height:1.9">
+              <li><code>MOVED &lt;slot&gt; &lt;new-master-ip:port&gt;</code>：永久重定向，客户端应更新本地 slot 映射缓存。</li>
+              <li><code>ASK &lt;slot&gt; &lt;node-ip:port&gt;</code>：临时重定向（slot 正在迁移中），客户端需先发 <code>ASKING</code> 命令再发实际命令。</li>
+            </ul>
+            <p>成熟的客户端（如 Jedis Cluster、Lettuce、Redisson）会自动处理重定向并刷新拓扑。</p>
+            <p><strong>脑裂问题与防护：</strong></p>
+            <p>脑裂（Split-Brain）发生在网络分区时：少数分区中的 Master 无法收到大多数节点的 PONG，但自身仍在接受写入，导致分区恢复后数据丢失。防护措施：</p>
+            <ul style="margin:0.4rem 0 0.4rem 1.2rem;line-height:1.9">
+              <li>配置 <code>min-replicas-to-write 1</code>：要求 Master 至少要有 1 个可通信的 Slave 才接受写入。当 Master 被隔离到少数分区、Slave 被其他分区拉走后，该 Master 将拒绝写入，避免数据丢失。</li>
+              <li>配置 <code>min-replicas-max-lag 10</code>：Slave 与 Master 之间的复制延迟超过 10 秒时，Master 也拒绝写入，防止数据落后过多。</li>
+              <li>这两个参数配合使用，能有效防止脑裂场景下的数据丢失。</li>
+            </ul>
+          </div></div>
+        </div>
+
       </div>
     </div>
 

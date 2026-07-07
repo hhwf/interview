@@ -97,6 +97,7 @@ h1 {
 .card.mq     { border-left-color: #d97706; }
 .card.juc    { border-left-color: #4f46e5; }
 .card.dist   { border-left-color: #7c3aed; }
+.card.jvm    { border-left-color: #0d9488; }
 
 .card-icon {
   width: 40px; height: 40px;
@@ -120,6 +121,7 @@ h1 {
 .card.mq     .card-icon { background: #fffbeb; color: #d97706; border-color: rgba(217,119,6,0.2); }
 .card.juc    .card-icon { background: #eef2ff; color: #4f46e5; border-color: rgba(79,70,229,0.2); }
 .card.dist   .card-icon { background: #f5f3ff; color: #7c3aed; border-color: rgba(124,58,237,0.2); }
+.card.jvm    .card-icon { background: #f0fdfa; color: #0d9488; border-color: rgba(13,148,136,0.2); }
 
 .card-title {
   font-size: 18px;
@@ -171,6 +173,7 @@ h1 {
 .card.mq     .card-cta { color: #d97706; }
 .card.juc    .card-cta { color: #4f46e5; }
 .card.dist   .card-cta { color: #7c3aed; }
+.card.jvm    .card-cta { color: #0d9488; }
 
 .card:hover .card-cta { gap: 10px; }
 
@@ -271,6 +274,7 @@ h1 {
 [data-theme="dark"] .card.mq     { border-left-color: #d97706; }
 [data-theme="dark"] .card.juc    { border-left-color: #4f46e5; }
 [data-theme="dark"] .card.dist   { border-left-color: #7c3aed; }
+[data-theme="dark"] .card.jvm    { border-left-color: #0d9488; }
 
 #dark-toggle-index {
   position: fixed; top: 20px; right: 24px; z-index: 100;
@@ -293,7 +297,7 @@ h1 {
 <div class="header">
   <div class="eyebrow">Java Backend Interview</div>
   <h1>面试知识库</h1>
-  <p class="subtitle">JVM 垃圾收集 · Spring 框架原理 · MySQL 核心知识 · Redis 原理 · 消息队列</p>
+  <p class="subtitle">JVM 垃圾收集 · JVM 内存与类加载 · Spring 框架原理 · MySQL 核心知识 · Redis 原理 · 消息队列</p>
 </div>
 
 <div class="cards">
@@ -308,7 +312,7 @@ h1 {
       <span class="tag">synchronized</span>
       <span class="tag">volatile</span>
       <span class="tag">CAS</span>
-      <span class="tag">面试题 ×15</span>
+      <span class="tag">面试题 ×16</span>
     </div>
     <div class="card-cta">进入学习 →</div>
     <div class="card-preview">
@@ -486,6 +490,33 @@ h1 {
         <li>一致性哈希</li>
       </ul>
       <div class="preview-cta" style="color:#7c3aed">进入学习 →</div>
+    </div>
+  </a>
+
+  <a class="card jvm" href="jvm.html">
+    <div class="card-icon">JVM</div>
+    <div class="card-title">JVM 内存与类加载</div>
+    <p class="card-desc">运行时数据区划分、对象内存布局与压缩指针、Class 文件结构、类加载五阶段、双亲委派与打破场景、JIT 分层编译与调优参数。</p>
+    <div class="card-tags">
+      <span class="tag">运行时数据区</span>
+      <span class="tag">类加载</span>
+      <span class="tag">双亲委派</span>
+      <span class="tag">JIT</span>
+      <span class="tag">Metaspace</span>
+      <span class="tag">面试题 ×15</span>
+    </div>
+    <div class="card-cta">进入学习 →</div>
+    <div class="card-preview">
+      <div class="preview-heading">目 录</div>
+      <ul class="preview-list">
+        <li>运行时数据区</li>
+        <li>对象内存布局</li>
+        <li>Class 文件结构</li>
+        <li>类加载机制</li>
+        <li>双亲委派模型</li>
+        <li>JIT 编译与调优</li>
+      </ul>
+      <div class="preview-cta" style="color:#0d9488">进入学习 →</div>
     </div>
   </a>
 

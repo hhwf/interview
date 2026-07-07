@@ -1164,6 +1164,77 @@
           </div></div>
         </div>
 
+        <div class="qa-item practical" id="q-juc-17">
+          <div class="qa-question" onclick="toggleQA('q-juc-17')">
+            <span class="qa-num">⚡ 实战</span>
+            <span class="qa-q-text">线上 CPU 100%，怎么定位到具体线程和代码行？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <p><strong>排查步骤（经典四步法）：</strong></p>
+            <p><strong>第一步：找到高 CPU 的 Java 进程 PID。</strong>使用 <code>top</code> 命令查看系统进程，按 <code>P</code> 键按 CPU 使用率排序，找到占用最高的 Java 进程，记下其 PID。也可以使用 <code>jps -l</code> 直接列出 Java 进程。<br>
+            <code style="background:#f5f5f5;padding:2px 6px;border-radius:4px">top -b -n 1 | head -20</code></p>
+            <p><strong>第二步：找到该进程中高 CPU 的线程。</strong>使用 <code>top -Hp &lt;pid&gt;</code> 列出该进程下所有线程的 CPU 占用，找到 CPU 最高的线程 TID（Thread ID）。<br>
+            <code style="background:#f5f5f5;padding:2px 6px;border-radius:4px">top -Hp 12345</code><br>
+            例如线程 TID 为 <code>8801</code>。</p>
+            <p><strong>第三步：将线程 ID 转换为 16 进制。</strong><code>jstack</code> 输出中的线程 nid 是 16 进制的，因此需要将 10 进制 TID 转换：<br>
+            <code style="background:#f5f5f5;padding:2px 6px;border-radius:4px">printf '%x' 8801</code><br>
+            结果为 <code>2261</code>。</p>
+            <p><strong>第四步：导出线程栈并搜索。</strong>使用 <code>jstack</code> 导出线程堆栈，搜索该 nid：<br>
+            <code style="background:#f5f5f5;padding:2px 6px;border-radius:4px">jstack 12345 | grep -A 30 'nid=0x2261'</code><br>
+            输出中即可看到具体的方法调用栈和代码行号，例如 <code>com.example.OrderService.processOrder(OrderService.java:127)</code>。</p>
+            <p><strong>常见原因：</strong></p>
+            <ul style="margin:0.4rem 0 0.4rem 1.2rem;line-height:1.9">
+              <li><strong>死循环：</strong>最常见，如 <code>while</code> 条件永远为 true、HashMap 并发 resize 导致链表环（JDK 7）。</li>
+              <li><strong>频繁 Full GC：</strong>GC 线程占用大量 CPU。通过 <code>jstat -gcutil &lt;pid&gt; 1000</code> 查看 GC 频率，若 Old 区频繁打满则需排查内存泄漏。</li>
+              <li><strong>正则回溯：</strong>复杂正则表达式在特定输入上触发指数级回溯，线程栈中可见 <code>java.util.regex.Pattern$xxx.match</code>。</li>
+            </ul>
+            <p><strong>Arthas 快捷方式：</strong>如果线上已挂载 Arthas，一条命令即可定位：<br>
+            <code style="background:#f5f5f5;padding:2px 6px;border-radius:4px">thread -n 3</code><br>
+            直接显示 CPU 使用率最高的 3 个线程及其完整调用栈，省去手动 grep 的步骤。<code>profiler start</code> 还可以生成火焰图，直观展示 CPU 热点。</p>
+          </div></div>
+        </div>
+
+        <div class="qa-item practical" id="q-juc-18">
+          <div class="qa-question" onclick="toggleQA('q-juc-18')">
+            <span class="qa-num">⚡ 实战</span>
+            <span class="qa-q-text">线程池任务堆积了怎么处理？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <p><strong>一、紧急处理（止血）：</strong></p>
+            <p>任务堆积意味着队列持续增长，延迟变大，甚至触发 <code>RejectedExecutionException</code>。首先快速扩容：<br>
+            <code style="background:#f5f5f5;padding:2px 6px;border-radius:4px">
+            // 动态调整最大线程数和队列容量（仅部分实现支持）<br>
+            executor.setMaximumPoolSize(maxThreads * 2);<br>
+            // 或使用有界队列的 BlockingQueue 时，通过 resize 扩容<br>
+            ((LinkedBlockingQueue) executor.getQueue()).remainingCapacity(); // 先确认剩余容量
+            </code><br>
+            如果线程池参数无法动态调整（使用 <code>Executors.newFixedThreadPool</code> 等固定配置），最快的方法是<strong>新建一个临时线程池</strong>，将新提交的任务路由到临时池处理，避免继续堆积。</p>
+            <p><strong>二、根因分析（定位）：</strong>堆积的根本原因只有两类——<strong>消费变慢</strong>或<strong>生产变快</strong>。</p>
+            <ul style="margin:0.4rem 0 0.4rem 1.2rem;line-height:1.9">
+              <li><strong>任务执行时间变长：</strong>检查任务内部是否有慢查询、外部 RPC 超时、锁竞争。通过 <code>jstack</code> 查看线程池线程的调用栈，若大量阻塞在 IO 或等待锁，说明下游服务变慢。</li>
+              <li><strong>提交速率突增：</strong>上游流量激增（如营销活动、爬虫），导致任务提交速率超过消费速率。</li>
+              <li><strong>拒绝策略是否合理：</strong>默认的 <code>AbortPolicy</code> 会直接抛异常，生产环境应考虑 <code>CallerRunsPolicy</code>（让提交线程自己执行，自动限流）或自定义策略（写日志/发消息队列稍后重试）。</li>
+            </ul>
+            <p><strong>三、监控指标（可观测性）：</strong>线程池必须接入监控，核心指标包括：</p>
+            <ul style="margin:0.4rem 0 0.4rem 1.2rem;line-height:1.9">
+              <li><code>executor.getActiveCount()</code> — 当前活跃线程数，接近 <code>maximumPoolSize</code> 说明线程资源紧张。</li>
+              <li><code>executor.getQueue().size()</code> — 队列中等待的任务数，持续增长即为堆积信号。</li>
+              <li><code>executor.getCompletedTaskCount()</code> — 已完成任务总数，配合时间窗口可算出吞吐量（TPS）。</li>
+              <li><code>executor.getPoolSize()</code> vs <code>getCorePoolSize()</code> — 当前线程数是否已扩容到最大。</li>
+            </ul>
+            <p>建议将以上指标暴露到 Prometheus/Grafana，设置队列长度告警阈值（如队列使用率 &gt; 80%）。</p>
+            <p><strong>四、长期方案（根治）：</strong></p>
+            <ul style="margin:0.4rem 0 0.4rem 1.2rem;line-height:1.9">
+              <li><strong>动态线程池：</strong>接入 Hippo4j 或 DynamicTp 等开源框架，支持运行时动态调整核心线程数、最大线程数、队列容量、拒绝策略，无需重启。配合 Nacos/Apollo 配置中心，运维可在控制台实时调参。</li>
+              <li><strong>合理设置拒绝策略：</strong>生产环境推荐 <code>CallerRunsPolicy</code>（反压限流）或自定义策略将溢出任务写入 MQ 异步重试，避免任务丢失。</li>
+              <li><strong>慢任务异步化：</strong>将耗时任务拆分为多步异步流水线，使用 <code>CompletableFuture</code> 编排，避免单个长耗时任务占住线程。</li>
+              <li><strong>核心参数经验值：</strong>CPU 密集型 <code>corePoolSize = N + 1</code>，IO 密集型 <code>corePoolSize = 2N</code>（N 为 CPU 核心数），但最终应以压测数据为准。</li>
+            </ul>
+          </div></div>
+        </div>
+
       </div><!-- end qa-list -->
     </div><!-- end juc-qa -->
 

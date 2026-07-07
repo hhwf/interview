@@ -912,7 +912,82 @@
             </ul>
           </div></div>
         </div>
+        <div class="qa-item practical" id="q-dist-p1">
+          <div class="qa-question" onclick="toggleQA('q-dist-p1')">
+            <span class="qa-num">⚡ 实战</span>
+            <span class="qa-q-text">Redisson 分布式锁续期失败导致业务异常，怎么排查？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <p><strong>一、Redisson Watchdog 机制回顾</strong></p>
+            <p>Redisson 的 <code>RLock</code> 默认使用 watchdog 自动续期机制：加锁时如果未指定 <code>leaseTime</code>，锁超时时间为 <strong>30 秒</strong>（由 <code>lockWatchdogTimeout</code> 配置），后台 watchdog 线程每隔 <strong>lockWatchdogTimeout / 3 = 10 秒</strong> 执行一次续期操作（通过 Lua 脚本将 Redis 中锁的 TTL 重置为 30s）。只要持有锁的线程还活着，锁就不会过期释放。</p>
+            <p>关键源码路径：<code>RedissonLock#scheduleRenewal()</code> → 注册 <code>Timeout</code> 任务 → <code>renewExpiration()</code> 执行 Lua 续期脚本。如果客户端与 Redis 之间连接断开，watchdog 无法续期，锁将在 30s 后自动过期，其他客户端可以获取锁——这是导致业务异常的核心场景。</p>
+            <p><strong>二、续期失败常见原因</strong></p>
+            <ul>
+              <li><strong>Redis 节点宕机 / 网络分区</strong>：Redis 主节点不可达，watchdog 的续期请求无法送达。主从切换期间（Sentinel 故障转移通常 5-15s），锁的 key 可能尚未同步到从节点，新主节点上锁不存在，续期直接失败。</li>
+              <li><strong>JVM GC 停顿（STW）</strong>：Full GC 或长时间 Young GC（如大堆内存 + 大量老年代对象）导致应用线程全部暂停，watchdog 续期任务无法按时执行。可通过 <code>-Xlog:gc*:file=gc.log</code>（JDK11+）或 <code>-XX:+PrintGCDetails</code>（JDK8）查看 GC 停顿时长。如果 STW 超过 10s，续期窗口被错过。</li>
+              <li><strong>应用重启 / OOM Kill</strong>：进程异常退出后 watchdog 线程随之终止，锁在 30s 后自动过期。重启后新实例无法感知旧锁的存在，可能导致并发问题。</li>
+              <li><strong>Redis 慢查询阻塞</strong>：如果 Redis 单线程被慢命令（如 <code>KEYS *</code>、大 key 操作）阻塞，续期的 <code>PEXPIRE</code> 命令排队等待，可能超时。</li>
+            </ul>
+            <p><strong>三、排查步骤与命令</strong></p>
+            <ul>
+              <li><strong>检查 Redis 连接状态</strong>：
+                <code>redis-cli info clients</code> 查看 connected_clients 是否骤降；
+                <code>redis-cli slowlog get 20</code> 查看近期慢查询，确认是否有阻塞续期的慢命令；
+                <code>redis-cli info replication</code> 确认主从同步状态和 offset 差距。</li>
+              <li><strong>检查 GC 日志</strong>：分析 GC 日志中是否有超过数秒的 STW 停顿。使用 <code>jstat -gcutil &lt;pid&gt; 1000</code> 实时监控，或用 GCEasy（gceasy.io）上传日志可视化分析。重点关注 Full GC 频率和耗时。</li>
+              <li><strong>确认锁参数配置</strong>：检查代码中 <code>tryLock(waitTime, leaseTime, unit)</code> 的设置。如果设置了 <code>leaseTime</code>（如 10s），则 watchdog <strong>不会启动</strong>，锁到期自动释放——这是最常见的配置错误。正确做法：不传 <code>leaseTime</code> 或传入 -1 让 watchdog 生效。</li>
+              <li><strong>查看 Redisson 日志</strong>：Redisson 使用 <code>org.redisson</code> 包下的 logger，开启 DEBUG 级别可看到续期任务的执行情况：
+                <code>logback.xml: &lt;logger name="org.redisson" level="DEBUG"/&gt;</code></li>
+            </ul>
+            <p><strong>四、解决方案</strong></p>
+            <ul>
+              <li><strong>tryLock 超时兜底</strong>：始终使用 <code>tryLock(waitTime, TimeUnit)</code> 而非 <code>lock()</code>，设置合理的等待时间避免无限阻塞。捕获返回 false 的情况走降级逻辑。</li>
+              <li><strong>RedLock 多节点部署</strong>：Redisson 提供 <code>RedissonRedLock</code>，在 N 个独立 Redis 节点上加锁，超过 N/2+1 个节点加锁成功才算成功。但 Martin Kleppmann 与 Antirez 对此有过经典争论——RedLock 在时钟跳跃场景下仍不安全，不适合强一致性场景。</li>
+              <li><strong>关键业务降级方案</strong>：对资金类、库存扣减等核心操作，使用 <strong>数据库乐观锁</strong>（<code>UPDATE stock SET count=count-1 WHERE id=? AND count&gt;0</code>）或 <strong>ZooKeeper 临时有序节点锁</strong>（Curator <code>InterProcessMutex</code>）作为降级，ZK 基于会话心跳检测，不存在续期问题。</li>
+              <li><strong>监控告警</strong>：对 Redisson 锁获取耗时（通过 AOP 切面统计）和锁等待队列长度设置 Prometheus 指标，锁获取超过阈值时告警。</li>
+            </ul>
+          </div></div>
         </div>
+        <div class="qa-item practical" id="q-dist-p2">
+          <div class="qa-question" onclick="toggleQA('q-dist-p2')">
+            <span class="qa-num">⚡ 实战</span>
+            <span class="qa-q-text">Seata AT 模式全局事务回滚失败怎么处理？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <p><strong>一、AT 模式回滚原理</strong></p>
+            <p>Seata AT（Automatic Transaction）模式的核心思路是<strong>无侵入自动补偿</strong>。事务提交阶段（Phase 1），各分支 RM（Resource Manager）在本地事务提交前，Seata 拦截 SQL 并自动记录 <strong>undo_log</strong>（包含 beforeImage 和 afterImage），与业务数据在同一个本地事务中提交。全局事务需要回滚时（Phase 2），TC（Transaction Coordinator）通知各 RM 根据 undo_log 生成<strong>反向补偿 SQL</strong>：INSERT 变 DELETE，UPDATE 用 beforeImage 还原，DELETE 重新 INSERT。</p>
+            <p>关键表：<code>undo_log</code>（每个业务库都需要建）记录回滚日志；<code>global_table</code>、<code>branch_table</code>、<code>lock_table</code> 在 Seata Server 端记录全局事务和分支状态。</p>
+            <p><strong>二、回滚失败常见原因</strong></p>
+            <ul>
+              <li><strong>undo_log 表被清理</strong>：运维误删或定时清理任务（如保留 7 天的 cron job）在事务尚未完成时删除了对应的 undo_log 记录，导致 RM 无法构造回滚 SQL。报错：<code>io.seata.rm.datasource.undo.AbstractUndoExecutor: undo_log not found</code>。</li>
+              <li><strong>脏写（Dirty Write）</strong>：AT 模式下全局锁（global_lock）保护被修改的行，但如果其他<strong>非 Seata 管理的事务</strong>（如直接操作数据库的脚本、未接入 Seata 的旧服务）修改了同一行数据，回滚时 afterImage 与当前数据不匹配，校验失败报错：<code>DirtyDataException: data has been modified by other transaction</code>。</li>
+              <li><strong>数据库连接断开</strong>：分支 RM 所在服务宕机或数据库连接池耗尽，Phase 2 回滚请求无法送达或执行超时。Seata Server 默认重试 5 次，每次间隔递增。</li>
+              <li><strong>DDL 变更</strong>：在分布式事务期间对表执行了 ALTER TABLE（加字段、改类型），导致 beforeImage 的列结构与当前表结构不匹配，undo SQL 执行报错。</li>
+            </ul>
+            <p><strong>三、排查步骤</strong></p>
+            <ul>
+              <li><strong>查 Seata Server 日志</strong>：在 <code>seata-server/logs/seata-server.log</code> 中搜索 XID（全局事务 ID），定位哪个分支回滚失败。关注 <code>BranchRollbackResponse</code> 的 resultCode 和异常堆栈。也可以通过 Seata 1.5+ 的 Web Console（默认端口 7091）查看全局事务状态和各分支状态。</li>
+              <li><strong>检查 undo_log 表</strong>：<code>SELECT * FROM undo_log WHERE xid = 'your-xid' ORDER BY log_created</code>，确认回滚日志是否存在且完整。如果记录已被删除，需要手动构造补偿 SQL。</li>
+              <li><strong>检查 global_lock 表</strong>：<code>SELECT * FROM lock_table WHERE xid = 'your-xid'</code>，确认全局锁是否有残留（事务超时后锁未释放）。残留锁会阻塞其他事务获取同一行的全局锁，导致新事务超时。</li>
+              <li><strong>检查分支数据库</strong>：对比 undo_log 中的 afterImage 与当前数据库中的实际数据，确认是否被脏写：<code>SELECT * FROM your_table WHERE id = ? </code>，与 afterImage 逐字段比对。</li>
+            </ul>
+            <p><strong>四、处理方式</strong></p>
+            <ul>
+              <li><strong>手动补偿 SQL</strong>：如果 undo_log 还在但自动回滚失败，可以手动取出 beforeImage 数据执行还原：<code>UPDATE your_table SET col1=before_val1, col2=before_val2 WHERE id=?</code>，然后手动删除 undo_log 记录并通过 Seata API 标记分支为已完成。</li>
+              <li><strong>调整重试与超时配置</strong>：在 <code>application.yml</code> 中设置 Seata 重试策略：<code>service.enable-degrade=true</code> 开启降级；<code>client.rm.async-commit-buffer-limit</code> 调整异步提交缓冲区；<code>transport.thread-factory.boss-thread-size</code> 增加通信线程。全局事务超时时间通过 <code>@GlobalTransactional(timeoutMills=60000)</code> 设置。</li>
+              <li><strong>监控告警</strong>：集成 Prometheus，监控 <code>seata_transaction</code> 指标（status=rollback 的数量），设置全局事务超时未完成时告警。Grafana 面板展示全局事务成功率、平均耗时、回滚率。</li>
+            </ul>
+            <p><strong>五、架构建议</strong></p>
+            <ul>
+              <li><strong>核心支付链路用 TCC 替代 AT</strong>：AT 模式依赖数据库层面的 undo_log 和全局锁，对脏写敏感且不适合跨异构数据源。TCC（Try-Confirm-Cancel）在业务层面实现三阶段操作——Try 冻结资源（如冻结金额到中间账户）、Confirm 确认扣减、Cancel 解冻——控制粒度更细，不依赖数据库机制，更适合金融场景。Seata 同时支持 TCC 模式，通过 <code>@TwoPhaseBusinessAction</code> 注解实现。</li>
+              <li><strong>防御性设计</strong>：接入 Seata 的库严格禁止非 Seata 管理的事务修改受保护的数据行；undo_log 清理任务必须检查事务状态（只清理 COMMITTED/ROLLBACKED 的记录）；生产环境对 DDL 变更加审批流程，禁止在活跃事务期间执行。</li>
+            </ul>
+          </div></div>
+        </div>
+        </div>
+    </div>
 
   </section>
 </main>

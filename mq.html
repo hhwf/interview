@@ -853,6 +853,133 @@
           </div></div>
         </div>
 
+        <div class="qa-item practical" id="q-mq-p1">
+          <div class="qa-question" onclick="toggleQA('q-mq-p1')">
+            <span class="qa-num">⚡ 实战</span>
+            <span class="qa-q-text">实战：消息积压了几百万条，怎么紧急处理？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <strong>① 确认积压原因（先诊断，再动手）</strong>
+            <p>积压的本质是<strong>消费速度 &lt; 生产速度</strong>，常见原因有三类：</p>
+            <ul>
+              <li><strong>消费者挂了</strong>：消费组实例全部宕机或 rebalance 卡死，consumer lag 持续上涨但 <code>consumer-fetch-rate</code> 为 0。排查方式：<code>kafka-consumer-groups.sh --bootstrap-server broker:9092 --describe --group my-group</code>，查看每个 partition 的 LAG 列和 OWNER 列。</li>
+              <li><strong>消费速度跟不上</strong>：下游数据库 / 远程调用变慢，单条消息处理耗时从 5 ms 涨到 200 ms。可通过消费者日志、APM（SkyWalking / Arthas <code>trace</code>）定位瓶颈。</li>
+              <li><strong>网络 / broker 问题</strong>：消费者与 broker 之间网络抖动导致 fetch 超时频繁，日志中出现大量 <code>FetchSessionHandler</code> 错误。</li>
+            </ul>
+
+            <strong>② 紧急扩容消费者实例</strong>
+            <p>最快的止血手段是增加消费者实例数，但<strong>消费者数不能超过 topic 的 partition 数</strong>——多余的实例只会处于 idle 状态。例如 topic 有 12 个 partition，最多部署 12 个实例并行消费：</p>
+            <pre><code># 快速查看 partition 数
+kafka-topics.sh --bootstrap-server broker:9092 --describe --topic order-events
+# 输出: PartitionCount: 12
+
+# K8s 环境一键扩容
+kubectl scale deployment order-consumer --replicas=12</code></pre>
+            <p>如果 partition 数本身就少（比如只有 3 个），临时扩 partition 需要谨慎：新 partition 不会迁移旧数据，对<strong>已积压的消息无帮助</strong>，只对增量消息有效。</p>
+
+            <strong>③ 临时方案：大 partition topic 转发</strong>
+            <p>当 partition 数不够、又不能改原 topic 时，可以新建一个 partition 数更多的临时 topic，用少量消费者把积压消息快速转发过去，再用大量消费者并行消费新 topic：</p>
+            <pre><code># 1. 创建临时 topic，partition 数设为 64
+kafka-topics.sh --create --bootstrap-server broker:9092 \
+  --topic order-events-temp --partitions 64 --replication-factor 3
+
+# 2. 临时转发消费者（伪代码）
+while (msg = consumer.poll()) {
+    producer.send("order-events-temp", msg.key(), msg.value());
+    // 转发只做搬运，不做业务逻辑
+}</code></pre>
+            <p>这样可以用 64 个消费者实例并行处理，消化速度提升数倍。积压清零后下线临时 topic 和转发程序即可。</p>
+
+            <strong>④ 消费端优化（提速）</strong>
+            <ul>
+              <li><strong>批量处理</strong>：将单条消费改为批量拉取（<code>max.poll.records=500</code>），批量写入数据库（JDBC batch insert），吞吐量可提升 5-10 倍。</li>
+              <li><strong>异步化</strong>：消费线程拿到消息后丢进本地线程池异步处理，主线程立即 commit offset 并拉取下一批。注意控制队列深度，防止 OOM。</li>
+              <li><strong>跳过非关键逻辑</strong>：紧急期间可临时关闭日志打印、指标上报、非核心缓存刷新等旁路操作，只保留核心业务写入。</li>
+            </ul>
+
+            <strong>⑤ 事后复盘 & 长效防护</strong>
+            <ul>
+              <li>加监控：对 consumer lag 设置告警阈值（如 lag &gt; 10000 持续 2 分钟触发 P1 告警），常用方案有 Burrow、Prometheus + kafka_exporter + Grafana。</li>
+              <li>设置合理的 <code>retention.ms</code>（如 72 小时）和 <code>retention.bytes</code>，避免消息无限堆积导致磁盘打满。</li>
+              <li>压测 &amp; 容量规划：定期压测消费端极限吞吐量，确保峰值时消费速度至少是生产速度的 1.5 倍以上，留足安全余量。</li>
+            </ul>
+          </div></div>
+        </div>
+
+        <div class="qa-item practical" id="q-mq-p2">
+          <div class="qa-question" onclick="toggleQA('q-mq-p2')">
+            <span class="qa-num">⚡ 实战</span>
+            <span class="qa-q-text">实战：消费者处理消息时抛异常了，消息会丢吗？怎么处理？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <strong>① Kafka：取决于 offset 提交方式</strong>
+            <p>这是面试中最容易踩坑的点。Kafka 本身<strong>不负责重试</strong>，消息丢不丢完全看 offset 有没有被提交：</p>
+            <ul>
+              <li><strong>自动提交（<code>enable.auto.commit=true</code>）</strong>：消费者 poll 后会在后台线程按 <code>auto.commit.interval.ms</code>（默认 5 s）自动提交 offset。如果消息刚被 poll 进来、offset 已经提交、但业务处理抛了异常——这条消息就<strong>永久丢失</strong>了，因为下次 rebalance 或重启后会从已提交的 offset 之后开始消费。</li>
+              <li><strong>手动提交（<code>enable.auto.commit=false</code>）</strong>：业务处理成功后才调用 <code>consumer.commitSync()</code>。如果处理抛异常，offset 不提交，重启或 rebalance 后会从上次提交的 offset 重新拉取，<strong>消息不会丢</strong>，但可能重复消费。</li>
+            </ul>
+            <pre><code>// 推荐写法：手动提交 + try-catch
+while (true) {
+    ConsumerRecords&lt;String, String&gt; records = consumer.poll(Duration.ofMillis(100));
+    for (ConsumerRecord&lt;String, String&gt; record : records) {
+        try {
+            processMessage(record);              // 业务处理
+            consumer.commitSync(                 // 成功才提交
+                Map.of(new TopicPartition(record.topic(), record.partition()),
+                       new OffsetAndMetadata(record.offset() + 1)));
+        } catch (Exception e) {
+            log.error("处理失败, offset={}", record.offset(), e);
+            // 不提交 offset → 下次会重试；可加入重试计数器
+        }
+    }
+}</code></pre>
+
+            <strong>② RocketMQ：内置重试机制</strong>
+            <p>RocketMQ 对消费失败有<strong>开箱即用的重试机制</strong>，比 Kafka 友好得多：</p>
+            <ul>
+              <li>PushConsumer 消费失败（返回 <code>RECONSUME_LATER</code> 或抛异常），broker 会自动将消息放入<strong>重试队列</strong>（<code>%RETRY%{ConsumerGroup}</code>），按梯度间隔重新投递：10s、30s、1min、2min、3min … 最多<strong>重试 16 次</strong>。</li>
+              <li>超过最大重试次数后，消息进入<strong>死信队列</strong>（<code>%DLQ%{ConsumerGroup}</code>），不再自动投递。</li>
+              <li>可通过 <code>consumer.setMaxReconsumeTimes(5)</code> 自定义最大重试次数；通过 <code>setDelayLevelWhenNextConsume(3)</code> 指定重试延迟级别。</li>
+            </ul>
+            <pre><code>// RocketMQ 消费示例
+consumer.registerMessageListener((MessageListenerConcurrently) (msgs, context) -> {
+    for (MessageExt msg : msgs) {
+        try {
+            processOrder(msg.getBody());
+        } catch (BusinessException e) {
+            // 业务异常：可重试，有补偿意义
+            return ConsumeConcurrentlyStatus.RECONSUME_LATER;
+        } catch (IllegalArgumentException e) {
+            // 数据格式错误：重试也不会成功，记录日志后直接 ACK
+            log.error("消息格式异常, msgId={}", msg.getMsgId(), e);
+            return ConsumeConcurrentlyStatus.CONSUME_SUCCESS;  // 跳过
+        }
+    }
+    return ConsumeConcurrentlyStatus.CONSUME_SUCCESS;
+});</code></pre>
+
+            <strong>③ 最佳实践总结</strong>
+            <ul>
+              <li><strong>关闭自动提交</strong>：Kafka 场景下务必使用手动提交 offset，确保"先处理、后提交"的语义。</li>
+              <li><strong>异常分级处理</strong>：业务异常（如下游超时、库存不足）→ 重试；系统异常 / 数据异常（如 JSON 解析失败、字段缺失）→ 记录并跳过，避免无限重试。</li>
+              <li><strong>死信队列兜底</strong>：为每个消费组创建对应的死信队列消费者或告警监控，定期人工检查死信消息，进行补偿或修复后重新投递。</li>
+              <li><strong>合理设置重试上限</strong>：重试次数过多会阻塞队列（尤其是 RocketMQ 的重试队列是串行消费的），建议根据业务 SLA 设定 3-5 次重试 + 指数退避。</li>
+            </ul>
+
+            <strong>④ 幂等性保障（重试的前提）</strong>
+            <p>既然消息会被重复消费，<strong>幂等处理是必须的</strong>，常见方案：</p>
+            <ul>
+              <li><strong>去重表</strong>：在数据库中创建 <code>msg_dedup</code> 表，以 <code>msg_id</code> 为唯一索引，消费前先 insert，insert 成功才执行业务，重复 insert 会抛唯一键冲突直接跳过。</li>
+              <li><strong>Redis SETNX</strong>：以 <code>msg_id</code> 为 key 做 SETNX，设置过期时间略大于消息最大重试周期，O(1) 判断是否已处理。</li>
+              <li><strong>状态机</strong>：利用业务状态（如订单状态从 CREATED → PAID）做前置校验，重复消费时状态已经是 PAID 则直接返回成功。</li>
+              <li><strong>数据库乐观锁</strong>：update 语句带版本号 <code>WHERE version = ?</code>，重复更新时 version 不匹配则影响行数为 0，视为已处理。</li>
+            </ul>
+            <p>总结一句话：<strong>先保证不丢（手动提交），再保证不重（幂等处理），最后兜底（死信队列 + 告警）</strong>。</p>
+          </div></div>
+        </div>
+
       </div>
     </div>
 

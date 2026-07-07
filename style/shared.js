@@ -82,6 +82,7 @@ navLinks.forEach(link => {
     { href: 'redis.html',         label: 'Redis',   cls: 'active-redis'  },
     { href: 'mq.html',            label: 'MQ',      cls: 'active-mq'     },
     { href: 'distributed.html',   label: '分布式',  cls: 'active-dist'   },
+    { href: 'jvm.html',           label: 'JVM',     cls: 'active-jvm'    },
   ];
   var container = document.querySelector('.page-tabs');
   if (!container) return;
