@@ -268,50 +268,86 @@ document.querySelectorAll('.arch-box').forEach(box => {
   logo.appendChild(btn);
 })();
 
-/* ── Search overlay (Ctrl+K or /) ── */
+/* ── Search overlay (Ctrl+K or /) — cross-page when search-data.js is loaded ── */
 (function () {
-  // Build search index from current page
-  function buildIndex() {
-    const items = [];
-    document.querySelectorAll('.subsection[id], .gc-section[id]').forEach(el => {
+  var PAGE_COLORS = {
+    'juc.html':           '#4f46e5',
+    'spring.html':        '#0369a1',
+    'gc-principles.html': '#16a34a',
+    'mysql.html':         '#0e7490',
+    'redis.html':         '#dc2626',
+    'mq.html':            '#d97706',
+    'distributed.html':   '#7c3aed',
+    'jvm.html':           '#0d9488',
+  };
+
+  var currentPage = window.location.pathname.split('/').pop().replace(/\?.*$/, '') || 'index.html';
+
+  function buildLocalIndex() {
+    var items = [];
+    document.querySelectorAll('.subsection[id], .gc-section[id]').forEach(function(el) {
       if (el.id === 'overview') return;
-      const titleEl = el.querySelector('.sub-title, .section-title');
-      const title = titleEl ? titleEl.textContent.replace(/[●○◑▸·•]/g, '').trim() : '';
-      const bodyEl = el.querySelector('.sub-body, .section-intro');
-      const body = bodyEl ? bodyEl.textContent.trim().slice(0, 120) : '';
-      if (title) items.push({ id: el.id, title, ctx: body });
+      var titleEl = el.querySelector('.sub-title, .section-title');
+      var title = titleEl ? titleEl.textContent.replace(/[●○◑▸·•]/g, '').trim() : '';
+      var bodyEl = el.querySelector('.sub-body, .section-intro');
+      var ctx = bodyEl ? bodyEl.textContent.trim().slice(0, 100) : '';
+      if (title) items.push({ page: currentPage, id: el.id, title: title, ctx: ctx });
     });
-    document.querySelectorAll('.qa-item[id]').forEach(el => {
-      const q = el.querySelector('.qa-q-text');
-      if (q) items.push({ id: el.id, title: q.textContent.trim(), ctx: 'Q&A' });
+    document.querySelectorAll('.qa-item[id]').forEach(function(el) {
+      var q = el.querySelector('.qa-q-text');
+      if (q) items.push({ page: currentPage, id: el.id, title: q.textContent.trim(), ctx: 'Q&A' });
     });
     return items;
   }
 
-  function highlight(text, q) {
-    if (!q) return text;
-    const re = new RegExp('(' + q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
-    return text.replace(re, '<mark>$1</mark>');
+  function buildIndex() {
+    if (window.SEARCH_INDEX) {
+      // Local page items first (fresh from DOM), then remote pages from static index
+      var remote = window.SEARCH_INDEX.filter(function(it) { return it.page !== currentPage; });
+      return buildLocalIndex().concat(remote);
+    }
+    return buildLocalIndex();
   }
 
-  const overlay = document.createElement('div');
+  function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  function highlight(text, q) {
+    if (!q) return esc(text);
+    var re = new RegExp('(' + q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
+    return esc(text).replace(re, '<mark>$1</mark>');
+  }
+
+  function badge(item) {
+    var label = item.label || (item.page ? item.page.replace('.html','') : '');
+    var color = PAGE_COLORS[item.page] || '#6b7280';
+    var isLocal = item.page === currentPage;
+    var style = 'font-family:var(--fm);font-size:9px;font-weight:700;padding:1px 7px;border-radius:10px;'
+      + 'background:' + color + (isLocal ? '28' : '18') + ';color:' + color + ';'
+      + 'border:1px solid ' + color + '44;flex-shrink:0;margin-right:8px;white-space:nowrap';
+    return '<span style="' + style + '">' + label + '</span>';
+  }
+
+  function makeHref(item) {
+    return item.page === currentPage ? '#' + item.id : item.page + '#' + item.id;
+  }
+
+  var overlay = document.createElement('div');
   overlay.id = 'search-overlay';
-  overlay.innerHTML = `
-    <div id="search-box">
-      <input id="search-input" placeholder="搜索本页内容…" autocomplete="off" spellcheck="false">
-      <div id="search-results"></div>
-      <div id="search-hint">
-        <span class="search-kbd"><kbd>↑</kbd><kbd>↓</kbd> 导航</span>
-        <span class="search-kbd"><kbd>↵</kbd> 跳转</span>
-        <span class="search-kbd"><kbd>Esc</kbd> 关闭</span>
-        <span style="margin-left:auto;opacity:.6">Ctrl+K 或 /</span>
-      </div>
-    </div>`;
+  overlay.innerHTML =
+    '<div id="search-box">'
+    + '<input id="search-input" placeholder="全站搜索…" autocomplete="off" spellcheck="false">'
+    + '<div id="search-results"></div>'
+    + '<div id="search-hint">'
+    + '<span class="search-kbd"><kbd>↑</kbd><kbd>↓</kbd> 导航</span>'
+    + '<span class="search-kbd"><kbd>↵</kbd> 跳转</span>'
+    + '<span class="search-kbd"><kbd>Esc</kbd> 关闭</span>'
+    + '<span style="margin-left:auto;opacity:.6">Ctrl+K 或 /</span>'
+    + '</div></div>';
   document.body.appendChild(overlay);
 
-  const input = document.getElementById('search-input');
-  const results = document.getElementById('search-results');
-  let index = null, selIdx = 0;
+  var input = document.getElementById('search-input');
+  var results = document.getElementById('search-results');
+  var index = null, selIdx = 0;
 
   function open() {
     if (!index) index = buildIndex();
@@ -319,41 +355,44 @@ document.querySelectorAll('.arch-box').forEach(box => {
     input.value = '';
     results.innerHTML = '';
     selIdx = 0;
-    setTimeout(() => input.focus(), 30);
+    setTimeout(function() { input.focus(); }, 30);
   }
   function close() { overlay.classList.remove('open'); }
 
   function render(q) {
-    const q2 = q.trim().toLowerCase();
-    const matches = q2.length < 1 ? [] :
-      index.filter(it => it.title.toLowerCase().includes(q2) || it.ctx.toLowerCase().includes(q2)).slice(0, 12);
-    if (!matches.length) {
-      results.innerHTML = q2 ? '<div class="search-empty">无匹配结果</div>' : '';
-      return;
-    }
-    results.innerHTML = matches.map((m, i) => `
-      <a class="search-item${i === selIdx ? ' selected' : ''}" href="#${m.id}" data-idx="${i}">
-        <div class="search-item-title">${highlight(m.title, q)}</div>
-        <div class="search-item-ctx">${highlight(m.ctx, q)}</div>
-      </a>`).join('');
-    results.querySelectorAll('.search-item').forEach(el => {
-      el.addEventListener('click', () => close());
+    var q2 = q.trim().toLowerCase();
+    if (q2.length < 1) { results.innerHTML = ''; return; }
+    var matches = index.filter(function(it) {
+      return it.title.toLowerCase().includes(q2) || it.ctx.toLowerCase().includes(q2);
+    }).slice(0, 15);
+    if (!matches.length) { results.innerHTML = '<div class="search-empty">无匹配结果</div>'; return; }
+    results.innerHTML = matches.map(function(m, i) {
+      var ctxHtml = m.ctx === 'Q&A'
+        ? '<span style="color:var(--accent);font-size:10px">Q&amp;A</span>'
+        : highlight(m.ctx, q);
+      return '<a class="search-item' + (i === selIdx ? ' selected' : '') + '" href="' + makeHref(m) + '" data-idx="' + i + '">'
+        + '<div class="search-item-title" style="display:flex;align-items:center;gap:0">' + badge(m) + highlight(m.title, q) + '</div>'
+        + '<div class="search-item-ctx">' + ctxHtml + '</div>'
+        + '</a>';
+    }).join('');
+    results.querySelectorAll('.search-item').forEach(function(el) {
+      el.addEventListener('click', function() { close(); });
     });
   }
 
-  input.addEventListener('input', () => { selIdx = 0; render(input.value); });
-  input.addEventListener('keydown', e => {
-    const items = results.querySelectorAll('.search-item');
-    if (e.key === 'ArrowDown')      { selIdx = Math.min(selIdx + 1, items.length - 1); }
-    else if (e.key === 'ArrowUp')   { selIdx = Math.max(selIdx - 1, 0); }
+  input.addEventListener('input', function() { selIdx = 0; render(input.value); });
+  input.addEventListener('keydown', function(e) {
+    var items = results.querySelectorAll('.search-item');
+    if (e.key === 'ArrowDown')     { selIdx = Math.min(selIdx + 1, items.length - 1); }
+    else if (e.key === 'ArrowUp')  { selIdx = Math.max(selIdx - 1, 0); }
     else if (e.key === 'Enter' && items[selIdx]) { items[selIdx].click(); close(); return; }
-    else if (e.key === 'Escape')    { close(); return; }
-    items.forEach((el, i) => el.classList.toggle('selected', i === selIdx));
+    else if (e.key === 'Escape')   { close(); return; }
+    items.forEach(function(el, i) { el.classList.toggle('selected', i === selIdx); });
     if (items[selIdx]) items[selIdx].scrollIntoView({ block: 'nearest' });
   });
 
-  overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
-  document.addEventListener('keydown', e => {
+  overlay.addEventListener('click', function(e) { if (e.target === overlay) close(); });
+  document.addEventListener('keydown', function(e) {
     if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); open(); }
     if (e.key === '/' && !overlay.classList.contains('open') &&
         !['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) {
