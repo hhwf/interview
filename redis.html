@@ -21,6 +21,36 @@
   --accent-em:  #dc2626; --accent-em-d:  rgba(220,38,38,0.08);
 }
 .logo-badge { background: linear-gradient(135deg, #dc2626, #b91c1c); }
+
+/* ── Commands reference table (neutral, no GC column colors) ── */
+.cmd-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.cmd-table { width: 100%; border-collapse: collapse; }
+.cmd-table th {
+  font-family: var(--fm); font-size: 10px; padding: 9px 12px;
+  text-align: left; border-bottom: 2px solid var(--border-b);
+  background: var(--bg-1); color: var(--text-3);
+  font-weight: 600; letter-spacing: 0.06em;
+}
+.cmd-table td {
+  padding: 8px 12px; border-bottom: 1px solid var(--border);
+  vertical-align: top; line-height: 1.65; color: var(--text-2);
+  font-family: var(--fb); font-size: 12.5px;
+}
+.cmd-table td:first-child {
+  font-family: var(--fm); font-size: 12px; color: var(--text);
+  min-width: 220px; font-weight: 400;
+}
+.cmd-table td:first-child code {
+  background: var(--redis-d); color: var(--redis);
+  border: 1px solid rgba(220,38,38,0.2);
+  padding: 1px 5px; border-radius: 3px; font-size: 11.5px;
+  font-family: var(--fm);
+}
+.cmd-table td code { font-family: var(--fm); font-size: 12px; }
+.cmd-table tr:last-child td { border-bottom: none; }
+.cmd-table tr:hover td { background: var(--bg-1); }
+[data-theme="dark"] .cmd-table th { background: var(--bg-2); }
+[data-theme="dark"] .cmd-table tr:hover td { background: var(--bg-2); }
 </style>
 </head>
 <body>
@@ -38,7 +68,7 @@
   <a href="#redis-cache"       class="nav-link" data-section="redis-cache">缓存三大问题</a>
   <a href="#redis-ha"          class="nav-link" data-section="redis-ha">高可用方案</a>
   <a href="#redis-lock"        class="nav-link" data-section="redis-lock">分布式锁</a>
-  <a href="#redis-pipeline"    class="nav-link" data-section="redis-pipeline">Pipeline &amp; Lua</a>
+  <a href="#redis-commands"   class="nav-link" data-section="redis-commands">常规指令速查</a>
   <a href="#redis-qa"          class="nav-link" data-section="redis-qa">Redis 面试题</a>
 </nav>
 
@@ -731,6 +761,218 @@
       </div>
     </div>
 
+    <!-- ══ 常规指令速查 ══ -->
+    <div class="subsection" id="redis-commands">
+      <h3 class="sub-title"><span class="dot" style="background:#dc2626;box-shadow:0 0 0 3px rgba(220,38,38,0.15)"></span>常规指令速查</h3>
+      <p class="sub-body">涵盖五种数据类型及通用键命令的核心操作。重点关注<strong>时间复杂度</strong>和<strong>生产注意事项</strong>（大 key、全量扫描等场景的最佳替代命令）。</p>
+
+      <!-- String -->
+      <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">String 字符串</p>
+      <div class="cmd-table-wrap" style="margin-top:0.4rem">
+        <table class="cmd-table">
+          <thead><tr><th style="min-width:230px">命令</th><th>说明</th><th style="min-width:60px;color:var(--text-3)">复杂度</th></tr></thead>
+          <tbody>
+            <tr><td><code>SET key val [EX n|PX n] [NX|XX] [GET]</code></td><td>设置值。EX/PX 设秒/毫秒过期；NX 键不存在才写；XX 键存在才写；GET 返回旧值（原子 CAS 基础）</td><td>O(1)</td></tr>
+            <tr><td><code>GET key</code></td><td>获取值，不存在返回 nil</td><td>O(1)</td></tr>
+            <tr><td><code>MSET k1 v1 k2 v2…</code></td><td>批量设置（原子）</td><td>O(N)</td></tr>
+            <tr><td><code>MGET k1 k2…</code></td><td>批量获取，不存在的位置返回 nil</td><td>O(N)</td></tr>
+            <tr><td><code>INCR / INCRBY key [n]</code></td><td>原子自增整数（不存在默认从 0 开始）。计数器、限流核心指令</td><td>O(1)</td></tr>
+            <tr><td><code>INCRBYFLOAT key delta</code></td><td>原子加浮点数（结果以字符串存储）</td><td>O(1)</td></tr>
+            <tr><td><code>DECR / DECRBY key [n]</code></td><td>原子自减</td><td>O(1)</td></tr>
+            <tr><td><code>SETEX key sec val</code></td><td>等价于 <code>SET key val EX sec</code>，原子设值+过期</td><td>O(1)</td></tr>
+            <tr><td><code>SETNX key val</code></td><td>等价于 <code>SET key val NX</code>，不存在才设（分布式锁早期用法，推荐改用 SET NX EX）</td><td>O(1)</td></tr>
+            <tr><td><code>GETSET key val</code></td><td>设新值并返回旧值（已废弃，用 <code>SET key val GET</code>）</td><td>O(1)</td></tr>
+            <tr><td><code>GETEX key [EX n|PERSIST]</code></td><td>获取值并重置/清除过期时间（Redis 6.2+）</td><td>O(1)</td></tr>
+            <tr><td><code>GETDEL key</code></td><td>获取并删除</td><td>O(1)</td></tr>
+            <tr><td><code>APPEND key val</code></td><td>追加字符串，返回新字节长度</td><td>O(1)</td></tr>
+            <tr><td><code>STRLEN key</code></td><td>返回字节数（UTF-8 中文 3 字节/字符）</td><td>O(1)</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- List -->
+      <p class="sub-body" style="margin-top:1.4rem;font-weight:600;color:var(--text-2)">List 列表</p>
+      <div class="cmd-table-wrap" style="margin-top:0.4rem">
+        <table class="cmd-table">
+          <thead><tr><th style="min-width:230px">命令</th><th>说明</th><th style="min-width:60px;color:var(--text-3)">复杂度</th></tr></thead>
+          <tbody>
+            <tr><td><code>LPUSH / RPUSH key v…</code></td><td>从左/右插入一或多个值，返回列表长度。多个值按参数顺序依次推入</td><td>O(N)</td></tr>
+            <tr><td><code>LPOP / RPOP key [n]</code></td><td>弹出左/右 n 个元素（Redis 6.2+ 支持 count）</td><td>O(N)</td></tr>
+            <tr><td><code>LRANGE key start stop</code></td><td>获取下标范围元素（0-based，-1=末尾）。<code>LRANGE key 0 -1</code> 取全部</td><td>O(S+N)</td></tr>
+            <tr><td><code>LLEN key</code></td><td>列表长度</td><td>O(1)</td></tr>
+            <tr><td><code>LINDEX key i</code></td><td>按下标取元素（支持负数）</td><td>O(N)</td></tr>
+            <tr><td><code>LSET key i val</code></td><td>按下标设置值</td><td>O(N)</td></tr>
+            <tr><td><code>LINSERT key BEFORE|AFTER pivot val</code></td><td>在 pivot 前/后插入</td><td>O(N)</td></tr>
+            <tr><td><code>LREM key count val</code></td><td>删除 count 个 val。count&gt;0 从头，&lt;0 从尾，=0 全删</td><td>O(N)</td></tr>
+            <tr><td><code>LTRIM key start stop</code></td><td>裁剪，保留 [start, stop]。与 LPUSH 组合维护定长列表</td><td>O(N)</td></tr>
+            <tr><td><code>BLPOP / BRPOP key… timeout</code></td><td>阻塞弹出，timeout=0 永久等待。轻量消息队列、实时通知场景</td><td>O(N)</td></tr>
+            <tr><td><code>LMOVE src dst LEFT|RIGHT LEFT|RIGHT</code></td><td>原子从一个列表弹出并推入另一个列表（可靠队列消费场景，Redis 6.2+）</td><td>O(1)</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Hash -->
+      <p class="sub-body" style="margin-top:1.4rem;font-weight:600;color:var(--text-2)">Hash 哈希</p>
+      <div class="cmd-table-wrap" style="margin-top:0.4rem">
+        <table class="cmd-table">
+          <thead><tr><th style="min-width:230px">命令</th><th>说明</th><th style="min-width:60px;color:var(--text-3)">复杂度</th></tr></thead>
+          <tbody>
+            <tr><td><code>HSET key f1 v1 f2 v2…</code></td><td>设置一或多个字段（Redis 4.0+ HSET 取代 HMSET）</td><td>O(N)</td></tr>
+            <tr><td><code>HGET key field</code></td><td>获取单字段值</td><td>O(1)</td></tr>
+            <tr><td><code>HMGET key f1 f2…</code></td><td>批量获取，不存在的字段返回 nil</td><td>O(N)</td></tr>
+            <tr><td><code>HGETALL key</code></td><td>获取所有字段和值（字段数多时慎用，改用 HSCAN）</td><td>O(N)</td></tr>
+            <tr><td><code>HDEL key f…</code></td><td>删除字段，返回实际删除数量</td><td>O(N)</td></tr>
+            <tr><td><code>HEXISTS key field</code></td><td>判断字段是否存在</td><td>O(1)</td></tr>
+            <tr><td><code>HLEN key</code></td><td>字段数量</td><td>O(1)</td></tr>
+            <tr><td><code>HKEYS / HVALS key</code></td><td>只获取字段名/值列表（比 HGETALL 节省带宽）</td><td>O(N)</td></tr>
+            <tr><td><code>HINCRBY key field n</code></td><td>字段原子加整数（不存在则从 0 开始）</td><td>O(1)</td></tr>
+            <tr><td><code>HINCRBYFLOAT key field delta</code></td><td>字段原子加浮点数</td><td>O(1)</td></tr>
+            <tr><td><code>HSCAN key cursor [MATCH p] [COUNT n]</code></td><td>渐进式扫描，大哈希必用（避免 HGETALL 阻塞）</td><td>O(1)/call</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Set -->
+      <p class="sub-body" style="margin-top:1.4rem;font-weight:600;color:var(--text-2)">Set 集合</p>
+      <div class="cmd-table-wrap" style="margin-top:0.4rem">
+        <table class="cmd-table">
+          <thead><tr><th style="min-width:230px">命令</th><th>说明</th><th style="min-width:60px;color:var(--text-3)">复杂度</th></tr></thead>
+          <tbody>
+            <tr><td><code>SADD key m…</code></td><td>添加成员，返回实际添加数量（已存在不重复添加）</td><td>O(N)</td></tr>
+            <tr><td><code>SMEMBERS key</code></td><td>获取所有成员（大集合慎用，改用 SSCAN）</td><td>O(N)</td></tr>
+            <tr><td><code>SISMEMBER key m</code></td><td>判断成员是否存在</td><td>O(1)</td></tr>
+            <tr><td><code>SMISMEMBER key m1 m2…</code></td><td>批量判断成员是否存在（Redis 6.2+）</td><td>O(N)</td></tr>
+            <tr><td><code>SCARD key</code></td><td>集合基数（元素数量）</td><td>O(1)</td></tr>
+            <tr><td><code>SREM key m…</code></td><td>删除成员</td><td>O(N)</td></tr>
+            <tr><td><code>SUNION k… / SINTER k… / SDIFF k…</code></td><td>并集 / 交集 / 差集，结果不保存。SINTERCARD 只返回数量（Redis 7.0+）</td><td>O(N·M)</td></tr>
+            <tr><td><code>SUNIONSTORE / SINTERSTORE / SDIFFSTORE dst k…</code></td><td>集合运算结果存入 dst</td><td>O(N·M)</td></tr>
+            <tr><td><code>SRANDMEMBER key n</code></td><td>随机取 n 个（n&gt;0 不重复，n&lt;0 可重复）。抽奖、随机推荐场景</td><td>O(N)</td></tr>
+            <tr><td><code>SPOP key n</code></td><td>随机弹出 n 个</td><td>O(N)</td></tr>
+            <tr><td><code>SMOVE src dst m</code></td><td>原子移动一个成员从 src 到 dst</td><td>O(1)</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- ZSet -->
+      <p class="sub-body" style="margin-top:1.4rem;font-weight:600;color:var(--text-2)">ZSet 有序集合</p>
+      <div class="cmd-table-wrap" style="margin-top:0.4rem">
+        <table class="cmd-table">
+          <thead><tr><th style="min-width:230px">命令</th><th>说明</th><th style="min-width:60px;color:var(--text-3)">复杂度</th></tr></thead>
+          <tbody>
+            <tr><td><code>ZADD key [NX|XX|GT|LT] [CH] [INCR] score m…</code></td><td>添加/更新成员分值。GT/LT 仅当新分值更大/更小时更新；INCR 模式返回新分值</td><td>O(M log N)</td></tr>
+            <tr><td><code>ZSCORE key m</code></td><td>获取成员分值（不存在返回 nil）</td><td>O(1)</td></tr>
+            <tr><td><code>ZMSCORE key m1 m2…</code></td><td>批量获取分值</td><td>O(N)</td></tr>
+            <tr><td><code>ZINCRBY key delta m</code></td><td>原子加分值，返回新分值。排行榜点赞/积分核心指令</td><td>O(log N)</td></tr>
+            <tr><td><code>ZRANK key m [WITHSCORE]</code></td><td>正序排名（0-based），WITHSCORE 同时返回分值（Redis 7.2+）</td><td>O(log N)</td></tr>
+            <tr><td><code>ZREVRANK key m</code></td><td>逆序排名</td><td>O(log N)</td></tr>
+            <tr><td><code>ZRANGE key min max [BYSCORE|BYLEX] [REV] [LIMIT off n] [WITHSCORES]</code></td><td>Redis 6.2+ 统一查询接口，按排名/分值/字典序，支持正逆序和分页</td><td>O(log N+M)</td></tr>
+            <tr><td><code>ZRANGEBYSCORE key min max [WITHSCORES] [LIMIT]</code></td><td>按分值范围查（6.2 前常用，推荐改用 ZRANGE BYSCORE）</td><td>O(log N+M)</td></tr>
+            <tr><td><code>ZREM key m…</code></td><td>删除成员</td><td>O(M log N)</td></tr>
+            <tr><td><code>ZREMRANGEBYSCORE key min max</code></td><td>删除分值范围内的成员（定期清理过期数据）</td><td>O(log N+M)</td></tr>
+            <tr><td><code>ZCARD key</code></td><td>成员总数</td><td>O(1)</td></tr>
+            <tr><td><code>ZCOUNT key min max</code></td><td>分值范围内的成员数（<code>-inf +inf</code> 等价 ZCARD）</td><td>O(log N)</td></tr>
+            <tr><td><code>ZPOPMIN / ZPOPMAX key [n]</code></td><td>弹出最低/最高分值的 n 个成员。优先队列场景</td><td>O(M log N)</td></tr>
+            <tr><td><code>ZINTERSTORE / ZUNIONSTORE dst nkeys k… [WEIGHTS] [AGGREGATE]</code></td><td>加权交集/并集，WEIGHTS 调整各集合权重，AGGREGATE 选聚合方式（SUM/MIN/MAX）</td><td>O(N log N)</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Key -->
+      <p class="sub-body" style="margin-top:1.4rem;font-weight:600;color:var(--text-2)">Key 通用命令</p>
+      <div class="cmd-table-wrap" style="margin-top:0.4rem">
+        <table class="cmd-table">
+          <thead><tr><th style="min-width:230px">命令</th><th>说明</th><th style="min-width:60px;color:var(--text-3)">复杂度</th></tr></thead>
+          <tbody>
+            <tr><td><code>DEL key…</code></td><td>同步删除，大 key 会阻塞主线程（改用 UNLINK）</td><td>O(N)</td></tr>
+            <tr><td><code>UNLINK key…</code></td><td>异步删除（后台线程释放内存），大 key 必用（Redis 4.0+）</td><td>O(1)</td></tr>
+            <tr><td><code>EXISTS key…</code></td><td>判断存在，返回存在的 key 数量（同一 key 传多次会多次计数）</td><td>O(N)</td></tr>
+            <tr><td><code>TYPE key</code></td><td>返回类型：string / list / hash / set / zset / none</td><td>O(1)</td></tr>
+            <tr><td><code>RENAME key newkey</code></td><td>重命名（newkey 已存在则覆盖并继承原 TTL）</td><td>O(1)</td></tr>
+            <tr><td><code>EXPIRE key sec / PEXPIRE key ms</code></td><td>设相对过期（秒/毫秒）</td><td>O(1)</td></tr>
+            <tr><td><code>EXPIREAT key ts / PEXPIREAT key ms_ts</code></td><td>设绝对过期（Unix 时间戳）</td><td>O(1)</td></tr>
+            <tr><td><code>TTL key / PTTL key</code></td><td>剩余过期时间（-1=无过期，-2=key 不存在）</td><td>O(1)</td></tr>
+            <tr><td><code>PERSIST key</code></td><td>移除过期时间，变为永久 key</td><td>O(1)</td></tr>
+            <tr><td><code>SCAN cursor [MATCH p] [COUNT n] [TYPE t]</code></td><td>渐进式全量扫描，cursor=0 开始，返回 0 表示扫描完毕。生产替代 KEYS * 的唯一方式</td><td>O(1)/call</td></tr>
+            <tr><td><code>OBJECT ENCODING key</code></td><td>查底层编码（如 listpack / skiplist / intset / ziplist）。调优必用</td><td>O(1)</td></tr>
+            <tr><td><code>OBJECT FREQ / IDLETIME key</code></td><td>查 LFU 频率 / 空闲时间（配合淘汰策略分析）</td><td>O(1)</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Transaction + Lua -->
+      <p class="sub-body" style="margin-top:1.4rem;font-weight:600;color:var(--text-2)">事务 & Lua 脚本</p>
+      <div class="cmd-table-wrap" style="margin-top:0.4rem">
+        <table class="cmd-table">
+          <thead><tr><th style="min-width:160px">命令</th><th>说明</th><th style="min-width:60px;color:var(--text-3)">复杂度</th></tr></thead>
+          <tbody>
+            <tr><td><code>MULTI</code></td><td>开启事务，后续命令入队不执行</td><td>O(1)</td></tr>
+            <tr><td><code>EXEC</code></td><td>执行队列中所有命令。<strong>无原子回滚</strong>：语法错误全部取消，运行时错误跳过继续</td><td>O(N)</td></tr>
+            <tr><td><code>DISCARD</code></td><td>清空队列，退出事务</td><td>O(N)</td></tr>
+            <tr><td><code>WATCH key…</code></td><td>乐观锁：若被监视的 key 在 EXEC 前被修改，整个事务取消（CAS 语义）</td><td>O(N)</td></tr>
+            <tr><td><code>EVAL script numkeys key… arg…</code></td><td>执行 Lua 脚本，原子执行（执行期间阻塞其他命令），复杂原子操作（分布式锁释放、限流）首选</td><td>O(脚本)</td></tr>
+            <tr><td><code>EVALSHA sha numkeys key… arg…</code></td><td>执行已缓存的 Lua 脚本（SCRIPT LOAD 预加载，节省带宽）</td><td>O(脚本)</td></tr>
+            <tr><td><code>SCRIPT LOAD script</code></td><td>将脚本缓存到服务端，返回 SHA1 摘要</td><td>O(N)</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Server -->
+      <p class="sub-body" style="margin-top:1.4rem;font-weight:600;color:var(--text-2)">Server / 运维常用</p>
+      <div class="cmd-table-wrap" style="margin-top:0.4rem">
+        <table class="cmd-table">
+          <thead><tr><th style="min-width:200px">命令</th><th>说明</th></tr></thead>
+          <tbody>
+            <tr><td><code>INFO [section]</code></td><td>服务器信息。常用节：<code>memory</code>（内存用量）、<code>stats</code>（命中率）、<code>replication</code>（主从状态）、<code>clients</code>（连接数）</td></tr>
+            <tr><td><code>DBSIZE</code></td><td>当前库 key 数量（估算，基于哈希表 size）</td></tr>
+            <tr><td><code>CONFIG GET param / CONFIG SET k v</code></td><td>查看/动态修改配置（如 <code>CONFIG SET maxmemory 4gb</code>）</td></tr>
+            <tr><td><code>SLOWLOG GET n / SLOWLOG RESET</code></td><td>获取最近 n 条慢查询日志 / 清空（<code>slowlog-log-slower-than</code> 阈值默认 10ms）</td></tr>
+            <tr><td><code>DEBUG SLEEP n</code></td><td>模拟阻塞 n 秒（测试超时、哨兵切换场景）</td></tr>
+            <tr><td><code>MONITOR</code></td><td>实时打印所有命令（调试专用，生产禁止，严重影响性能）</td></tr>
+            <tr><td><code>FLUSHDB [ASYNC] / FLUSHALL [ASYNC]</code></td><td>清空当前库/所有库，必须加 ASYNC 避免阻塞</td></tr>
+            <tr><td><code>SELECT db</code></td><td>切换数据库（0-15）。生产不推荐多库（Cluster 只支持 db0）</td></tr>
+            <tr><td><code>WAIT numreplicas timeout</code></td><td>等待 numreplicas 个从节点同步完成，timeout=0 永久等。强一致读写场景</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- SCAN 用法示例 -->
+      <p class="sub-body" style="margin-top:1.4rem;font-weight:600;color:var(--text-2)">SCAN 完整用法（替代 KEYS 的正确姿势）</p>
+      <div class="arch-box" style="margin-top:0.5rem">
+        <pre class="arch-pre" style="font-size:0.77rem;line-height:1.8">
+# 遍历所有匹配 user:* 的 key（cursor 从 0 开始，返回 0 说明遍历完毕）
+cursor=0
+while True:
+    cursor, keys = redis.scan(cursor, match='user:*', count=100)
+    process(keys)
+    if cursor == 0:
+        break
+
+# 只扫描哈希类型（TYPE 过滤，Redis 6.0+）
+SCAN 0 MATCH order:* COUNT 200 TYPE hash
+
+# 哈希/集合/有序集合 的大 key 分批操作
+HSCAN bigHash 0 MATCH * COUNT 500
+SSCAN bigSet  0 COUNT 500
+ZSCAN bigZSet 0 COUNT 500</pre>
+      </div>
+
+      <!-- 生产注意事项 callout -->
+      <div class="callout callout-warn" style="margin-top:1.2rem">
+        <span class="callout-icon">⚠</span>
+        <div class="callout-body">
+          <strong>生产禁用 / 慎用命令：</strong>
+          <ul style="margin-top:6px;line-height:1.9">
+            <li><code>KEYS *</code> → 全量扫描 O(N)，阻塞主线程。<strong>唯一替代：SCAN</strong></li>
+            <li><code>DEL</code> 大 key → 同步释放内存，可能阻塞数百毫秒。<strong>替代：UNLINK（异步）</strong></li>
+            <li><code>HGETALL / SMEMBERS</code> 大集合 → 一次返回大量数据。<strong>替代：HSCAN / SSCAN 分批</strong></li>
+            <li><code>SORT</code> 大列表 → 排序+网络传输双重开销。<strong>能用 ZSet 提前维护有序就用 ZSet</strong></li>
+            <li><code>FLUSHDB / FLUSHALL</code> → 必须 <code>ASYNC</code> 参数，否则清空期间阻塞所有命令</li>
+            <li><code>MONITOR</code> → 严重影响 Redis 性能（每条命令都要额外广播），只在本地调试短暂使用</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
     <!-- ══ 8. 高频面试题 ══ -->
     <div class="subsection" id="redis-qa">
       <h3 class="sub-title"><span class="dot" style="background:#dc2626;box-shadow:0 0 0 3px rgba(220,38,38,0.15)"></span>Redis 高频面试题</h3>
@@ -1216,6 +1458,7 @@
   <nav id="toc-nav"></nav>
 </aside>
 
+<script src="style/search-data.js"></script>
 <script src="style/shared.js"></script>
 </body>
 </html>

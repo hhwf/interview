@@ -131,6 +131,17 @@
       </div>
 
       <p class="sub-body" style="margin-top:0.8rem"><strong>局部变量表</strong>以 Slot 为单位（32 bit），long 和 double 占 2 个 Slot。方法参数和局部变量都存放在此表。Slot 复用：一个局部变量超出作用域后，其 Slot 可被后续变量复用，减少内存占用。</p>
+
+      <div class="callout callout-info" style="margin-top:1.2rem">
+        <span class="callout-icon">↗</span>
+        <div class="callout-body">
+          <strong>堆的 GC 分区详解 → <a href="gc-principles.html" style="color:var(--accent-em)">GC 原理（G1 / ZGC / CMS）</a></strong><br>
+          堆的 <strong>Young Generation（Eden + S0 + S1）</strong>和 <strong>Old Generation</strong> 是 GC 的主战场。
+          G1 将堆拆分为等大的 Region 并按垃圾密度优先回收；ZGC 用染色指针实现亚毫秒并发标记——
+          这些机制的完整原理见独立页面，包含 SATB 算法、RSet 跨区引用、染色指针与读屏障、
+          以及 G1 vs ZGC 选型建议。
+        </div>
+      </div>
     </div>
 
     <!-- ── 2. 对象内存布局 ── -->
@@ -417,9 +428,9 @@
     <div class="subsection" id="jvm-qa">
       <h3 class="sub-title">
         <span class="dot" style="background:#0d9488;box-shadow:0 0 0 3px rgba(13,148,136,0.15)"></span>
-        JVM 面试题（15 题）
+        JVM 面试题
       </h3>
-      <p class="sub-body">覆盖运行时数据区、对象布局、Class 文件、类加载、双亲委派、JIT 编译等核心考点。</p>
+      <p class="sub-body">覆盖运行时数据区、对象布局、Class 文件、类加载、双亲委派、JIT 编译等核心考点，以及线上 OOM 和 GC 问题排查的实战方法。</p>
 
       <div class="qa-list" style="margin-top:1rem">
 
@@ -740,6 +751,158 @@
           </div></div>
         </div>
 
+        <div class="qa-item practical" id="q-jvm-p1">
+          <div class="qa-question" onclick="toggleQA('q-jvm-p1')">
+            <span class="qa-num">⚡ 实战</span>
+            <span class="qa-q-text">线上堆 OOM 了，jstat / jmap / MAT 排查全流程是什么？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <p><strong>第一步：确认 OOM 类型。</strong>从异常信息中判断是哪个区域溢出：</p>
+            <ul>
+              <li><code>java.lang.OutOfMemoryError: Java heap space</code> → 堆对象过多或内存泄漏</li>
+              <li><code>GC overhead limit exceeded</code> → GC 耗时超 98% 但回收不到 2% 内存，通常是泄漏</li>
+              <li><code>Metaspace</code> → 类加载过多，见 P2</li>
+              <li><code>Direct buffer memory</code> → NIO 直接内存超限，检查 ByteBuffer 泄漏</li>
+            </ul>
+            <p><strong>第二步：jstat 观察 GC 趋势（服务还活着时）。</strong></p>
+            <div class="arch-box"><pre class="arch-pre"># 每隔 1 秒采样 1 次 GC 使用率，观察 Old Gen (O) 是否持续上涨
+jstat -gcutil &lt;pid&gt; 1000
+
+# 输出样例：
+#  S0     S1     E      O      M     CCS    YGC     YGCT    FGC    FGCT     GCT
+#   0.00  98.71  63.45  87.23  94.10  90.20    342    8.246     3    0.962    9.208
+#
+# O（Old）已 87% → 即将满 → 频繁 Full GC → 内存泄漏信号</pre></div>
+            <p><strong>第三步：获取堆快照（Heap Dump）。</strong>推荐提前配置，OOM 发生时自动 dump，避免服务已崩溃后才想到：</p>
+            <div class="arch-box"><pre class="arch-pre"># 推荐：启动时预配置（OOM 时自动生成）
+-XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/data/dump/
+
+# 服务还活着时手动 dump（会暂停 JVM，生产谨慎使用）
+jmap -dump:format=b,live,file=/tmp/heap.hprof &lt;pid&gt;
+
+# 只想看对象分布（不 dump 全量，影响小）
+jmap -histo:live &lt;pid&gt; | head -30</pre></div>
+            <p><strong>第四步：用 MAT（Memory Analyzer Tool）分析 dump。</strong></p>
+            <ol>
+              <li>打开 heap.hprof → 运行 <strong>Leak Suspects</strong> 报告（自动识别最大嫌疑对象）</li>
+              <li>查看 <strong>Dominator Tree</strong>：按 Retained Heap 排序，找占用最多内存的对象树</li>
+              <li>右键目标对象 → <strong>Paths to GC Roots</strong>（排除弱/软引用）→ 找到谁持有它不被回收</li>
+              <li>结合引用链找到业务代码中的泄漏点：常见原因是 <strong>ThreadLocal 未 remove</strong>、<strong>静态集合无限增长</strong>、<strong>未关闭的 InputStream / Connection</strong>、<strong>缓存没有容量上限</strong></li>
+            </ol>
+            <p><strong>Arthas 快捷分析：</strong><code>heapdump /tmp/heap.hprof</code> 可在线 dump；<code>dashboard</code> 实时查看内存区域占用。</p>
+          </div></div>
+        </div>
+
+        <div class="qa-item practical" id="q-jvm-p2">
+          <div class="qa-question" onclick="toggleQA('q-jvm-p2')">
+            <span class="qa-num">⚡ 实战</span>
+            <span class="qa-q-text">Metaspace OOM 怎么定位？是什么原因导致的？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <p><strong>根因：类加载数量持续增长，ClassLoader 无法被 GC 回收。</strong>典型场景：</p>
+            <ul>
+              <li><strong>动态代理泄漏：</strong>CGLib / Javassist 每次调用时生成新的代理类但 ClassLoader 没有被释放（常见于未正确关闭的框架或测试代码循环创建代理）</li>
+              <li><strong>热部署失效：</strong>Tomcat/Spring DevTools 替换新 ClassLoader 后，旧 ClassLoader 因静态字段或线程引用无法被 GC 回收，新旧类并存导致 Metaspace 持续增长</li>
+              <li><strong>JSP / Groovy 脚本重复编译：</strong>每次修改都生成新 Class 对象，旧的未被卸载</li>
+            </ul>
+            <p><strong>排查步骤：</strong></p>
+            <div class="arch-box"><pre class="arch-pre"># 查看当前已加载的类数量和 ClassLoader 分布
+jmap -clstats &lt;pid&gt;
+# 关键字段：instances（该 ClassLoader 实例数），loaded（加载类数）
+
+# Arthas 更直观
+classloader -t           # 展示 ClassLoader 树和每个 CL 加载的类数量
+classloader -l           # 列出所有 ClassLoader 实例及其 hash
+classloader -c &lt;hash&gt;    # 查看指定 ClassLoader 加载的所有类
+
+# 监控 Metaspace 使用量变化
+jstat -gcmetacapacity &lt;pid&gt; 1000
+# MCMN=最小容量 MCMX=最大容量 MC=已使用容量 CCSC=压缩类空间</pre></div>
+            <p><strong>判断标志：</strong>某个 ClassLoader 的 loaded 数量持续上涨（正常运行的服务应该趋于稳定）。</p>
+            <p><strong>修复思路：</strong></p>
+            <ul>
+              <li>确保 ClassLoader 不被静态字段或 ThreadLocal 持有（用 MAT 查 GC Roots）</li>
+              <li>对于框架级动态代理，复用同一个代理实例而不是每次 new</li>
+              <li>设置 <code>-XX:MaxMetaspaceSize=256m</code> 限制上限（会触发 OOM 而非无限消耗），便于提前发现问题</li>
+            </ul>
+          </div></div>
+        </div>
+
+        <div class="qa-item practical" id="q-jvm-p3">
+          <div class="qa-question" onclick="toggleQA('q-jvm-p3')">
+            <span class="qa-num">⚡ 实战</span>
+            <span class="qa-q-text">容器（K8s / Docker）环境下 JVM 内存参数应该怎么设置？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <p><strong>核心问题：JVM 默认读取宿主机总内存而非容器 cgroup 限制。</strong></p>
+            <p>假设宿主机 96GB，容器 limit 4GB，JVM 默认按 96GB 的 25% 设 -Xmx = 24GB，
+            实际可用只有 4GB → 频繁触发容器 OOM Kill（进程被 Linux 强制 SIGKILL）。</p>
+            <p><strong>JDK 8u191+ / JDK 11+ 已内置 cgroup 感知：</strong></p>
+            <div class="arch-box"><pre class="arch-pre"># -XX:+UseContainerSupport（JDK 8u191+ 默认开启）
+# JVM 自动读取 cgroup v1/v2 的内存限制，不再使用宿主机总内存
+
+# 推荐配置：不写死 -Xmx，用百分比
+-XX:+UseContainerSupport
+-XX:MaxRAMPercentage=75.0      # 堆最多使用容器内存的 75%
+-XX:InitialRAMPercentage=50.0  # 初始堆
+
+# 例：容器 limit=4GB → -Xmx ≈ 3GB（75%）
+# 剩余 25%（~1GB）留给：Metaspace、直接内存、JVM 自身开销、OS 缓冲</pre></div>
+            <p><strong>不要设置 MaxRAMPercentage 过高（>80%）的原因：</strong>JVM 进程除了堆还需要 Metaspace、CodeCache、JVM 内部结构、GC 线程栈等 Native Memory，
+            如果 Native Memory + Heap 超过容器 limit，容器会被 OOM Kill 而不是触发 JVM GC。</p>
+            <p><strong>Kubernetes 的额外建议：</strong></p>
+            <ul>
+              <li><strong>requests = limits（内存）：</strong>若 requests &lt; limits，Pod 可能被调度到内存不足的节点，JVM 在 cgroup limit 内正常运行但随时会被 evicted</li>
+              <li><strong>验证生效：</strong>在容器内执行 <code>java -XX:+PrintFlagsFinal -version | grep HeapSize</code>，确认 MaxHeapSize = 75% × cgroup limit 而非宿主机内存</li>
+              <li><strong>JDK 8u191 以前：</strong>必须手动设 <code>-Xmx</code>，且值要低于容器 limit 的 75%，否则仍会 OOM Kill</li>
+            </ul>
+          </div></div>
+        </div>
+
+        <div class="qa-item practical" id="q-jvm-p4">
+          <div class="qa-question" onclick="toggleQA('q-jvm-p4')">
+            <span class="qa-num">⚡ 实战</span>
+            <span class="qa-q-text">服务 GC 停顿突然变长，怎么系统排查？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <p><strong>第一步：jstat 确认 GC 现状。</strong></p>
+            <div class="arch-box"><pre class="arch-pre"># 每秒采样 GC 统计，连续看 10 次
+jstat -gcutil &lt;pid&gt; 1000 10
+
+# 重点关注：
+# YGCT/YGC  → 平均 Young GC 时间（应 &lt; 50ms）
+# FGCT/FGC  → Full GC 次数和总耗时（应接近 0）
+# O          → Old Gen 占用率（持续 >80% 说明堆压力大或泄漏）</pre></div>
+            <p><strong>第二步：分析 GC 日志（需提前开启 <code>-Xlog:gc*:file=gc.log:time,uptime,level,tags</code>）。</strong></p>
+            <ul>
+              <li><strong>Young GC 停顿 >100ms：</strong>Young Gen 配置过大（每次 GC 要扫描/复制更多对象）→ 减小 <code>-Xmn</code> 或降低 <code>-XX:G1NewSizePercent</code></li>
+              <li><strong>Mixed GC 出现 <code>to-space exhausted</code>：</strong>G1 Evacuation Failure → Free Region 不足 → 调大堆或增加 <code>-XX:G1ReservePercent</code>（默认 10%）</li>
+              <li><strong>Full GC 频繁：</strong>并发标记跟不上分配速率（GC Ergonomics）→ 降低 <code>-XX:InitiatingHeapOccupancyPercent</code>（默认 45%，改 35%）提前触发并发标记</li>
+              <li><strong>Humongous 对象告警：</strong>单个对象 &gt; 0.5 × G1 Region 大小（如 Region=4MB，对象 &gt;2MB）→ 增大 <code>-XX:G1HeapRegionSize</code> 或减少大对象分配</li>
+            </ul>
+            <p><strong>第三步：定位具体代码。</strong></p>
+            <div class="arch-box"><pre class="arch-pre"># 查看当前堆中最大对象分布（触发一次 Full GC 后统计，谨慎使用）
+jmap -histo:live &lt;pid&gt; | head -30
+
+# Arthas trace 定位哪段代码产生大量短命对象（Young GC 压力来源）
+trace com.example.OrderService processOrder '#cost > 100'
+
+# 查看 JVM 内存各区域实时大小
+vmtool --action getInstances --className java.lang.Class --limit 10</pre></div>
+            <p><strong>常见根因汇总：</strong></p>
+            <ul>
+              <li>大量临时对象（日志拼接、序列化）→ 优化为 StringBuilder 或减少中间对象</li>
+              <li>内存泄漏导致 Old Gen 持续增长 → 用 MAT 定位（见实战 P1）</li>
+              <li>Metaspace 扩容触发 Full GC → 设 <code>-XX:MetaspaceSize = -XX:MaxMetaspaceSize</code> 避免动态扩容</li>
+              <li>GC 线程数不足 → 增加 <code>-XX:ParallelGCThreads</code>（STW 阶段）和 <code>-XX:ConcGCThreads</code>（并发阶段）</li>
+            </ul>
+          </div></div>
+        </div>
+
       </div><!-- end qa-list -->
     </div><!-- end jvm-qa -->
 
@@ -752,6 +915,7 @@
   <nav id="toc-nav"></nav>
 </div>
 
+<script src="style/search-data.js"></script>
 <script src="style/shared.js"></script>
 </body>
 </html>

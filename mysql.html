@@ -387,17 +387,76 @@
     <!-- ── 10. 分库分表 ── -->
     <div class="subsection" id="mysql-sharding">
       <h3 class="sub-title"><span class="dot" style="background:#0e7490;box-shadow:0 0 0 3px rgba(14,116,144,0.15)"></span>分库分表</h3>
-      <div class="kv-grid">
-        <div class="kv-item"><div class="kv-key">垂直拆分</div><div class="kv-val">按业务拆库：用户库、订单库、商品库。降低单库复杂度</div></div>
-        <div class="kv-item"><div class="kv-key">水平拆分</div><div class="kv-val">按数据拆表：按 user_id 取模、按时间范围。解决单表数据量问题</div></div>
-        <div class="kv-item"><div class="kv-key">分布式事务</div><div class="kv-val">2PC（强一致）/ TCC（最终一致）/ Saga / 本地消息表</div></div>
-        <div class="kv-item"><div class="kv-key">全局唯一 ID</div><div class="kv-val">雪花算法 / 号段模式（不用 UUID 作主键，无序导致页分裂）</div></div>
+      <p class="sub-body">单表数据量超过 <strong>2000 万行</strong>或单库 QPS 持续打满时，通常考虑分库分表。核心决策是选分片策略，代价是引入跨分片查询复杂度和数据迁移成本。</p>
+
+      <p class="sub-body" style="margin-top:1rem;font-weight:600;color:var(--text-2)">拆分策略</p>
+      <div class="kv-grid" style="margin-top:0.5rem">
+        <div class="kv-item"><div class="kv-key">垂直分库</div><div class="kv-val">按业务拆分：订单库、用户库、商品库。降低单库复杂度，各业务独立扩容</div></div>
+        <div class="kv-item"><div class="kv-key">水平分表</div><div class="kv-val">同一库内按 user_id / 时间等字段拆多张表，解决单表行数过多，索引膨胀</div></div>
+        <div class="kv-item"><div class="kv-key">哈希取模</div><div class="kv-val">user_id % N，数据分布均匀，但扩容需要迁移数据（建议一致性哈希或预分更多分片如 1024 个逻辑分片）</div></div>
+        <div class="kv-item"><div class="kv-key">范围分片</div><div class="kv-val">按时间或 ID 区间，天然支持范围查询，但有热点风险（最新分片写入集中）</div></div>
       </div>
+
+      <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">ShardingSphere 两种接入模式</p>
+      <div class="kv-grid" style="margin-top:0.5rem">
+        <div class="kv-row">
+          <span class="kv-key" style="color:#0e7490">JDBC 模式</span>
+          <span class="kv-val">以 JAR 包形式嵌入 Java 应用（ShardingSphere-JDBC），业务代码零改动，框架拦截 SQL 自动路由到目标分片。<strong>适合 Java 项目</strong>，低延迟（无网络跳转），读写分离 / 分库分表配置在 YAML 中声明</span>
+        </div>
+        <div class="kv-row">
+          <span class="kv-key" style="color:#0e7490">Proxy 模式</span>
+          <span class="kv-val">独立部署 MySQL 协议代理服务（ShardingSphere-Proxy），应用连接 Proxy 如同连接单个 MySQL，与语言无关。<strong>适合异构系统</strong>（PHP/Python/Go 等）或需要 DBA 统一管控的场景，额外引入一跳网络延迟</span>
+        </div>
+      </div>
+
+      <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">跨分片查询挑战与解决方案</p>
+      <div class="kv-grid" style="margin-top:0.5rem">
+        <div class="kv-row">
+          <span class="kv-key" style="color:#0e7490">跨分片 JOIN</span>
+          <span class="kv-val"><strong>① 全局表（广播表）：</strong>字典类小表（省市、类目）在每个分片全量冗余，JOIN 在本地完成。<strong>② 应用层聚合：</strong>分两次查询后在内存 JOIN，适合数据量不大的场景。<strong>③ 尽量避免：</strong>拆分时把强关联表放同一分片（同一 user_id 的订单+订单明细落同一分片）</span>
+        </div>
+        <div class="kv-row">
+          <span class="kv-key" style="color:#0e7490">ORDER BY + LIMIT 分页</span>
+          <span class="kv-val">每个分片返回 (offset+limit) 条，在内存归并排序后取 limit 条。深翻页（OFFSET 大）代价极高——改用<strong>游标分页</strong>（WHERE id > last_id）或 ES 检索 ID 再回库查数据</span>
+        </div>
+        <div class="kv-row">
+          <span class="kv-key" style="color:#0e7490">聚合 COUNT/SUM</span>
+          <span class="kv-val">各分片并行执行后在应用层累加。注意 AVG 要用 SUM/COUNT 分开聚合再计算，不能直接对各分片 AVG 取均值</span>
+        </div>
+        <div class="kv-row">
+          <span class="kv-key" style="color:#0e7490">复杂查询</span>
+          <span class="kv-val">非分片键条件（如按 status、city 查询）需要广播到所有分片，全量扫描代价高。通常引入 <strong>Elasticsearch</strong> 作为二级索引：写入时双写 ES，复杂条件查询先走 ES 拿到主键列表，再回 MySQL 批量 GET</span>
+        </div>
+      </div>
+
+      <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">在线数据迁移（不停机）</p>
+      <div class="arch-box" style="margin-top:0.5rem">
+        <pre class="arch-pre" style="font-size:0.76rem;line-height:1.8">
+  ① 全量同步（DataX / mysqldump）
+     原库 ─────────────────────────────► 新分片库（全量数据）
+     注意记录同步开始时的 binlog position
+
+  ② 增量同步（Canal 订阅 binlog CDC）
+     原库 binlog ─── Canal ──────────► 新分片库（实时追增量）
+     Canal 从①记录的 position 开始消费，不重不漏
+
+  ③ 双写验证期
+     应用层：写请求同时写原库 + 新分片库（先写原库，异步写新库）
+     定期抽样校验两库数据一致性（pt-table-checksum 或自研脚本）
+
+  ④ 切换
+     停止对原库的写入 → 等 Canal 追平 → 修改配置指向新分片库 → 恢复写入
+     整个停写窗口通常 &lt; 1 分钟（取决于 binlog 积压量）
+
+  ⑤ 回滚方案
+     保留原库只读一段时间（7天），发现问题可快速切回；确认无误后下线原库</pre>
+      </div>
+
       <div class="callout callout-warn">
         <span class="callout-icon">⚠</span>
         <div class="callout-body">
-          <strong>分片键选择原则：</strong>高频查询条件中必须包含分片键；数据分布均匀避免热点；
-          尽量避免跨分片事务。跨分片 JOIN/ORDER BY/分页需在应用层聚合或借助 Elasticsearch 二级索引。
+          <strong>分片键选择原则：</strong>① 高频查询条件必须包含分片键；② 数据分布均匀避免热点（user_id 优于 create_time）；
+          ③ 一旦上线极难更改，选型要慎重。跨分片事务优先用柔性事务（TCC / 本地消息表），尽量避免 2PC。
         </div>
       </div>
     </div>
@@ -817,6 +876,48 @@ SELECT WAIT_FOR_EXECUTED_GTID_SET('aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee:12345', 
           </div></div>
         </div>
 
+        <div class="qa-item practical" id="q-mysql-19">
+          <div class="qa-question" onclick="toggleQA('q-mysql-19')">
+            <span class="qa-num">⚡ 实战</span>
+            <span class="qa-q-text">分库分表后如何不停机迁移存量数据？有哪些关键风险点？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <p><strong>整体思路：全量同步 → 增量追平 → 双写验证 → 一键切换。</strong>核心目标是把停写窗口控制在 1 分钟以内。</p>
+            <p><strong>第一步：全量同步（历史数据）。</strong></p>
+            <ul>
+              <li>使用 <strong>DataX</strong>（阿里开源）或 <code>mysqldump</code> 将原库数据导入新分片库</li>
+              <li>全量开始时记录原库当前的 <strong>binlog position</strong>（File + Position 或 GTID），作为后续增量的起点</li>
+              <li>全量期间原库正常读写，不影响业务</li>
+            </ul>
+            <p><strong>第二步：增量同步（追实时变更）。</strong></p>
+            <ul>
+              <li>部署 <strong>Canal</strong> 订阅原库 binlog，从第一步记录的 position 开始消费，实时将增量变更应用到新分片库</li>
+              <li>Canal 消费滞后量（lag）持续下降直到接近 0，说明增量追平</li>
+            </ul>
+            <p><strong>第三步：双写验证期（可选但推荐）。</strong></p>
+            <ul>
+              <li>在应用层新增双写逻辑：写操作<strong>先写原库，异步写新库</strong>（原库为主，新库为辅）</li>
+              <li>定期用 <code>pt-table-checksum</code> 或自研脚本抽样比对两库数据一致性</li>
+              <li>发现不一致时排查 Canal 消费逻辑，修复后重新校验</li>
+            </ul>
+            <p><strong>第四步：切换（停写窗口）。</strong></p>
+            <ol>
+              <li>停止对<strong>原库的写入</strong>（可通过配置开关或流量染色实现）</li>
+              <li>等待 Canal 将剩余积压全部消费完（通常 &lt;1 分钟）</li>
+              <li>最终一致性校验（行数核对 + 关键字段抽样）</li>
+              <li>修改应用配置，将流量切到新分片库，恢复写入</li>
+            </ol>
+            <p><strong>关键风险点：</strong></p>
+            <ul>
+              <li><strong>双写顺序与幂等：</strong>Canal 消费可能和双写并发，需要用 binlog 的 timestamp 或版本号保证新库不被旧数据覆盖</li>
+              <li><strong>分布式 ID 连续性：</strong>迁移前后分片键（如 user_id）的生成方式要统一，切换前后不能出现 ID 碰撞</li>
+              <li><strong>事务一致性：</strong>跨分片写操作在双写期间要么两边都成功，要么回滚原库后不写新库，避免数据不一致</li>
+              <li><strong>回滚方案：</strong>切换后保留原库只读 7 天，一旦发现问题可快速切回。下线前要确认原库 binlog 保留周期足够长</li>
+            </ul>
+          </div></div>
+        </div>
+
       </div>
     </div>
 
@@ -830,6 +931,7 @@ SELECT WAIT_FOR_EXECUTED_GTID_SET('aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee:12345', 
   <nav id="toc-nav"></nav>
 </aside>
 
+<script src="style/search-data.js"></script>
 <script src="style/shared.js"></script>
 </body>
 </html>

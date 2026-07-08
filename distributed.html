@@ -35,6 +35,7 @@
   <a href="#dist-transaction"  class="nav-link">分布式事务</a>
   <a href="#dist-lock"         class="nav-link">分布式锁</a>
   <a href="#dist-registry"     class="nav-link">注册中心</a>
+  <a href="#dist-raft"         class="nav-link">Raft 算法</a>
   <a href="#dist-id"           class="nav-link">分布式 ID</a>
   <a href="#dist-ratelimit"    class="nav-link">限流与熔断</a>
   <a href="#dist-consistent"   class="nav-link">一致性哈希</a>
@@ -396,6 +397,96 @@
 
       <div class="callout callout-info" style="margin-top:1rem;border-left-color:#7c3aed;background:rgba(124,58,237,0.05)">
         <strong>面试要点：</strong>Nacos 支持 AP/CP 切换——服务注册推荐 AP（优先可用性），配置中心推荐 CP（配置不能错）。Eureka 已停止维护，新项目优先选 Nacos 或 Consul。ZK 的 Watch 机制虽然实时性好，但 CP 属性导致 Leader 选举期间服务不可用，不推荐作为注册中心。
+      </div>
+    </div>
+
+    <!-- ── Raft 共识算法 ── -->
+    <div class="subsection" id="dist-raft">
+      <h3 class="sub-title">
+        <span class="dot" style="background:#7c3aed;box-shadow:0 0 0 3px rgba(124,58,237,0.15)"></span>
+        Raft 共识算法
+      </h3>
+      <p class="sub-body">Raft 是一种<strong>易于理解的分布式共识算法</strong>，etcd、TiKV、Nacos CP 模式、Sentinel 选举均基于它。相比 Paxos，Raft 通过 Leader 唯一化将共识问题拆解为三个独立子问题：<strong>Leader 选举</strong>、<strong>日志复制</strong>、<strong>安全性保证</strong>。</p>
+
+      <p class="sub-body" style="margin-top:1rem;font-weight:600;color:var(--text-2)">三种节点角色</p>
+      <div class="kv-grid" style="margin-top:0.5rem">
+        <div class="kv-row">
+          <span class="kv-key" style="color:#7c3aed">Leader</span>
+          <span class="kv-val">同一时刻集群只有一个 Leader。接收所有客户端写请求、复制日志到 Follower、定期发心跳防止其他节点超时选举</span>
+        </div>
+        <div class="kv-row">
+          <span class="kv-key" style="color:#7c3aed">Follower</span>
+          <span class="kv-val">被动接收 Leader 的 AppendEntries 和心跳。Election Timeout 内未收到心跳则转为 Candidate 发起选举</span>
+        </div>
+        <div class="kv-row">
+          <span class="kv-key" style="color:#7c3aed">Candidate</span>
+          <span class="kv-val">选举过渡态。广播 RequestVote RPC，获多数票成为 Leader；收到更高 term 的消息退回 Follower</span>
+        </div>
+      </div>
+
+      <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">① Leader 选举</p>
+      <div class="arch-box" style="margin-top:0.5rem">
+        <pre class="arch-pre" style="font-size:0.76rem;line-height:1.75">
+  Follower Election Timeout 到期（随机 150-300 ms，避免同时超时）
+       │
+       ▼
+  转为 Candidate，currentTerm++，先投票给自己
+       │
+       ▼
+  并发广播 RequestVote RPC（携带自身 term 和最后日志的 index/term）
+       │
+       ├─── 获多数票（> N/2） ───────► 成为 Leader，立即广播心跳占位
+       │
+       ├─── 收到同 term 的其他 Leader ► 退回 Follower
+       │
+       └─── 选举超时（分票） ──────── ► 随机等待后重新选举</pre>
+      </div>
+      <p class="sub-body" style="margin-top:0.6rem"><strong>投票安全规则：</strong>只投给日志"至少一样新"的 Candidate——先比较最后日志的 term，term 相同再比 index。这保证了新 Leader 一定包含所有已提交的日志（至少在多数节点上存在的日志 = 已提交）。</p>
+
+      <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">② 日志复制</p>
+      <div class="arch-box" style="margin-top:0.5rem">
+        <pre class="arch-pre" style="font-size:0.76rem;line-height:1.75">
+  客户端写请求 → Leader
+       │
+       ▼ 追加到本地日志（未提交，状态 uncommitted）
+       │
+       ▼ 并发发送 AppendEntries RPC 给所有 Follower
+       │   ├─ 携带 (term, prevLogIndex, prevLogTerm, entries[], leaderCommit)
+       │   └─ Follower 执行日志一致性检查：prevLog 不匹配则拒绝，Leader 回退 nextIndex 重试
+       │
+       ▼ 多数 Follower 写入成功（N/2 + 1 包含 Leader 自身）
+       │
+       ▼ Leader 提交日志，apply 到状态机，回复客户端成功
+       │
+       ▼ 下一次心跳 / AppendEntries 携带 leaderCommit 通知 Follower 提交</pre>
+      </div>
+
+      <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">③ 安全性保证</p>
+      <div class="kv-grid" style="margin-top:0.5rem">
+        <div class="kv-row">
+          <span class="kv-key" style="color:#7c3aed">Leader 完整性</span>
+          <span class="kv-val">新 Leader 必定包含所有已提交日志。已提交 = 写入多数节点，选举要赢多数票 → 交集至少 1 个节点有已提交日志 → 投票规则拒绝日志落后的 Candidate</span>
+        </div>
+        <div class="kv-row">
+          <span class="kv-key" style="color:#7c3aed">日志匹配</span>
+          <span class="kv-val">两份日志在同一 (index, term) 位置相同，则该位置前所有条目完全一致（AppendEntries 的一致性检查递归保证）</span>
+        </div>
+        <div class="kv-row">
+          <span class="kv-key" style="color:#7c3aed">任期（Term）</span>
+          <span class="kv-val">单调递增的逻辑时钟。节点收到更大 term 的消息立即退回 Follower 并更新 term，旧 Leader 发出的过期命令被识别并丢弃</span>
+        </div>
+      </div>
+
+      <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">Raft vs Paxos 一句话对比</p>
+      <div class="kv-grid" style="margin-top:0.5rem">
+        <div class="kv-row">
+          <span class="kv-key" style="color:#7c3aed">Paxos</span>
+          <span class="kv-val">解决单值共识（Single-Decree Paxos），理论严谨但工程化复杂；Multi-Paxos 没有规范实现，各家实现差异大（Google Chubby、Spanner 均做了大量扩展）</span>
+        </div>
+        <div class="kv-row">
+          <span class="kv-key" style="color:#7c3aed">Raft</span>
+          <span class="kv-val">直接面向复制状态机和日志，Leader 唯一简化了并发问题；工程实现明确（etcd、TiKV、CockroachDB、Nacos、HashiCorp Consul 均采用）；代价是 Leader 成为写瓶颈</span>
+        </div>
       </div>
     </div>
 
@@ -912,6 +1003,35 @@
             </ul>
           </div></div>
         </div>
+        <div class="qa-item" id="q-dist-16">
+          <div class="qa-question" onclick="toggleQA('q-dist-16')">
+            <span class="qa-num" style="background:rgba(124,58,237,0.1);color:#7c3aed;border:1px solid rgba(124,58,237,0.25)">Q16</span>
+            <span class="qa-q-text">Raft 算法的 Leader 选举和日志复制流程是什么？和 Paxos 有什么区别？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <p><strong>Leader 选举（三步）：</strong></p>
+            <ol style="margin:0.4rem 0 0.4rem 1.2rem;line-height:1.9">
+              <li>Follower 超过 Election Timeout（随机 150-300ms）未收到心跳，转为 Candidate，term++，先投自己一票</li>
+              <li>并发广播 RequestVote RPC，携带自身最后日志的 (index, term) 用于比较日志新旧</li>
+              <li>获多数票（>N/2）成为 Leader，立即广播心跳；否则随机等待后重试</li>
+            </ol>
+            <p><strong>投票安全规则：</strong>只投给日志"至少一样新"的 Candidate——先比 term，再比 index。确保当选 Leader 一定包含所有已提交日志。</p>
+            <p><strong>日志复制（四步）：</strong></p>
+            <ol style="margin:0.4rem 0 0.4rem 1.2rem;line-height:1.9">
+              <li>写请求到达 Leader，追加到本地日志（未提交）</li>
+              <li>并发发 AppendEntries RPC 给所有 Follower，携带日志条目和前驱日志的 (index, term) 做一致性检查</li>
+              <li>多数 Follower 写入成功后，Leader 提交（apply 到状态机），回复客户端</li>
+              <li>下次心跳通知 Follower 更新 commitIndex，Follower 提交</li>
+            </ol>
+            <p><strong>Raft vs Paxos：</strong></p>
+            <ul>
+              <li><strong>Paxos</strong>：解决单值共识，理论严谨，但 Multi-Paxos 没有规范工程实现，各家（Chubby、Spanner）做了大量私有扩展，实现复杂、难以理解和验证正确性</li>
+              <li><strong>Raft</strong>：直接面向日志复制，Leader 唯一使写路径清晰；工程实现有参考规范（etcd、TiKV、Nacos CP、CockroachDB、Consul 均采用）；代价是 Leader 单点成为写瓶颈，可通过 Multi-Raft（多个 Raft 组分片）缓解</li>
+              <li><strong>面试答法：</strong>Raft 本质是 Multi-Paxos 的工程化简化版——限制了 Leader 的唯一性和日志只能从 Leader 流向 Follower，牺牲了一点灵活性，换取可理解性和实现确定性</li>
+            </ul>
+          </div></div>
+        </div>
         <div class="qa-item practical" id="q-dist-p1">
           <div class="qa-question" onclick="toggleQA('q-dist-p1')">
             <span class="qa-num">⚡ 实战</span>
@@ -998,6 +1118,7 @@
   <nav id="toc-nav"></nav>
 </div>
 
+<script src="style/search-data.js"></script>
 <script src="style/shared.js"></script>
 </body>
 </html>
