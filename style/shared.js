@@ -53,6 +53,7 @@ function toggleQA(id) {
     item.classList.remove('open');
   } else {
     item.classList.add('open');
+    item.classList.add('qa-read'); // mark as read (session-level)
     answer.style.maxHeight = (inner ? inner.scrollHeight : answer.scrollHeight) + 'px';
   }
 }

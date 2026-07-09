@@ -342,16 +342,33 @@ body {
 .cmp-table tr:hover td:nth-child(3) { background: rgba(109,40,217,0.06); }
 
 /* ── Callout ── */
-.callout { display: flex; gap: 14px; padding: 16px 18px; border-radius: 6px; margin: 20px 0; font-size: 13.5px; line-height: 1.8; }
+.callout {
+  display: block;
+  padding: 14px 18px 14px 16px;
+  border-radius: 6px; margin: 20px 0;
+  font-size: 13.5px; line-height: 1.85;
+}
 .callout-info  { background: rgba(109,40,217,0.05); border-left: 3px solid var(--zgc);    color: var(--text-2); }
 .callout-warn  { background: rgba(194,65,12,0.06);  border-left: 3px solid var(--orange); color: var(--text-2); }
 .callout-g1    { background: rgba(21,128,61,0.06);  border-left: 3px solid var(--g1);    color: var(--text-2); }
 .callout-redis { background: rgba(220,38,38,0.05);  border-left: 3px solid var(--red);   color: var(--text-2); }
 .callout-icon { flex-shrink: 0; font-size: 15px; padding-top: 1px; }
+
+/* "注意：" / "面试要点：" label inside callout */
+.callout > strong:first-child {
+  display: inline-block;
+  color: var(--text);
+  font-weight: 700;
+  margin-right: 4px;
+  white-space: nowrap;
+}
+.callout strong { color: var(--text); font-weight: 600; }
 .callout-body strong { color: var(--text); font-weight: 600; }
+.callout code,
 .callout-body code {
   font-family: var(--fm); font-size: 12px; background: var(--bg-2);
-  border: 1px solid var(--border); padding: 1px 6px; border-radius: 4px; color: var(--accent);
+  border: 1px solid var(--border); padding: 1px 6px; border-radius: 4px;
+  color: var(--accent); word-break: break-all;
 }
 
 /* ── KV Grid ── */
@@ -461,7 +478,15 @@ body {
 @keyframes fadeUp { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:translateY(0); } }
 .subsection { animation: fadeUp 0.5s ease both; }
 
-/* ── Responsive ── */
+/* ── Responsive : tablet (769 – 1024px) ── */
+@media (max-width: 1024px) and (min-width: 769px) {
+  .content-wrap { margin-left: 268px; margin-right: 0; padding: 12px 12px 12px 0; }
+  .main { padding: 0 28px 64px; max-width: 100%; }
+  .hero { padding: 32px 0 24px; }
+  .section-title { font-size: clamp(20px, 3vw, 28px); }
+}
+
+/* ── Responsive : mobile (≤768px) ── */
 @media (max-width: 768px) {
   /* Sidebar: full-height drawer from left edge */
   .sidebar {
@@ -476,33 +501,72 @@ body {
   .content-wrap { margin-left: 0; margin-right: 0; padding: 8px; }
   .main { padding: 0 16px 48px; border-radius: 10px; }
   .menu-btn { display: block; }
-  .hero { padding: 64px 0 28px; }
+
+  /* Hero: push down to avoid overlap with menu-btn */
+  .hero { padding: 56px 0 24px; }
+  .hero h1 { font-size: clamp(22px, 7vw, 34px); margin-bottom: 12px; }
+  .hero-desc { font-size: 13.5px; line-height: 1.75; }
+  .hero-eyebrow { font-size: 10px; letter-spacing: 0.14em; }
 
   /* Touch targets */
   .nav-link { padding: 11px 12px; font-size: 13px; }
   .tab { padding: 11px 12px; }
-  .qa-question { min-height: 48px; }
-  .qa-toggle { width: 28px; height: 28px; }
+  .qa-question { min-height: 52px; }
+  .qa-toggle { width: 30px; height: 30px; font-size: 18px; }
 
   /* Reduce vertical whitespace on mobile */
-  .gc-section    { padding: 36px 0 24px; }
-  .subsection    { margin-bottom: 36px; }
-  .section-intro { font-size: 14px; margin-bottom: 24px; }
-  .hero-desc     { font-size: 14px; }
-  .sub-body      { font-size: 14px; }
-  .sub-title     { font-size: 18px; }
+  .gc-section    { padding: 32px 0 20px; }
+  .subsection    { margin-bottom: 32px; }
+  .section-intro { font-size: 13.5px; margin-bottom: 20px; line-height: 1.8; }
+  .section-title { font-size: clamp(20px, 6vw, 28px); }
+  .sub-title     { font-size: 17px; gap: 8px; }
+  .sub-body      { font-size: 13.5px; line-height: 1.85; max-width: 100%; }
 
-  /* Tighter diagram & callout */
-  .diagram  { padding: 16px 12px; }
-  .callout  { padding: 12px 14px; font-size: 13px; }
+  /* KV grid: single column on mobile */
+  .kv-grid { grid-template-columns: 1fr; gap: 8px; }
+  .kv-item { padding: 12px 14px; }
+  .kv-val  { font-size: 12.5px; }
 
-  /* Tables: force min-width so .diagram overflow-x:auto kicks in */
-  .cmp-table { min-width: 460px; }
-  /* Q&A inline tables + tighter answer pane */
-  .qa-answer-inner { overflow-x: auto; padding: 16px 14px; font-size: 13px; }
-  .qa-q-text { font-size: 14px; }
+  /* KV row: stack key above value on very small screens */
+  .kv-row { flex-wrap: wrap; gap: 4px; padding: 8px 10px; }
+  .kv-row .kv-key { min-width: unset; }
+  .kv-row .kv-val { width: 100%; flex-basis: 100%; font-size: 12.5px; }
 
-  /* Pointer layout: scrollable instead of clipped */
+  /* Callout mobile: tighter, label stays on its own line */
+  .callout { padding: 11px 14px 11px 13px; font-size: 13px; line-height: 1.8; margin: 14px 0; }
+  .callout > strong:first-child {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 12.5px;
+    letter-spacing: 0.01em;
+  }
+  .callout code { font-size: 11.5px; word-break: break-all; }
+
+  /* Tables: force scrollable wrapper */
+  .cmp-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 0 -4px; }
+  .cmp-table { min-width: 420px; font-size: 12.5px; }
+  .cmp-table th, .cmp-table td { padding: 8px 10px; }
+
+  /* Code blocks: prevent horizontal overflow */
+  .arch-box  { margin: 12px -4px 8px; border-radius: 6px; }
+  .arch-pre  { font-size: 0.71rem !important; line-height: 1.65; padding: 14px 16px; }
+
+  /* Tighter diagram */
+  .diagram  { padding: 14px 10px; }
+
+  /* Q&A answer inner: tighter, scrollable */
+  .qa-answer-inner { overflow-x: auto; padding: 14px 12px; font-size: 13px; }
+  .qa-q-text { font-size: 13.5px; line-height: 1.55; }
+  .qa-num    { font-size: 9.5px; padding: 2px 7px; }
+  .qa-list   { gap: 10px; }
+
+  /* Q&A toggle-all button */
+  .qa-toggle-all { font-size: 12px; padding: 8px 14px; }
+
+  /* Section badge */
+  .section-badge { font-size: 9.5px; padding: 4px 11px; }
+
+  /* Pointer layout: scrollable */
   .pointer-layout { overflow-x: auto; overflow-y: visible; }
   .ptr-field { padding: 10px 4px; }
   .ptr-bits  { font-size: 9px; }
@@ -519,10 +583,27 @@ body {
   .arrow-col { flex-direction: row; padding: 4px 0; }
   .vaddr-space, .phys-space { width: 100%; min-width: unset; }
 
-  /* Load barrier decision flow: stack branches vertically to prevent overflow */
+  /* Load barrier decision flow */
   .lb-branch { flex-direction: column; align-items: stretch; gap: 12px; }
   .lb-box    { min-width: unset; }
+
+  /* Inline code in sub-body */
+  .sub-body code { font-size: 11.5px; padding: 1px 5px; }
 }
+
+/* ── Responsive : extra-small (≤400px) ── */
+@media (max-width: 400px) {
+  .main { padding: 0 12px 40px; }
+  .hero h1 { font-size: 20px; }
+  .sub-title { font-size: 16px; }
+  .section-title { font-size: 19px; }
+  .arch-pre { font-size: 0.67rem !important; padding: 12px; }
+  .cmp-table { min-width: 380px; font-size: 12px; }
+  .qa-q-text { font-size: 13px; }
+  .qa-answer-inner { font-size: 12.5px; padding: 12px 10px; }
+  .kv-val { font-size: 12px; }
+}
+
 
 /* ══════════════════════════════════════════════════
    ── 3. Code Block (arch-box / arch-pre) ──────────
@@ -753,6 +834,24 @@ body {
   transition: height 0.2s; align-self: stretch; margin: -16px 0;
 }
 .qa-item.open .qa-question::before { height: auto; }
+
+/* ── QA read state (session-level, added when first opened) ── */
+.qa-item.qa-read:not(.open) {
+  border-left: 3px solid var(--accent-nav);
+  background: linear-gradient(90deg, var(--accent-nav-d) 0%, transparent 100%);
+}
+.qa-item.qa-read:not(.open) .qa-num:not(.g1):not(.zgc):not(.cmp) {
+  background: var(--accent-nav-d);
+  color: var(--accent-nav);
+  border-color: rgba(22,163,74,0.3);
+}
+.qa-item.qa-read.practical:not(.open) {
+  border-left-color: #d97706;
+  background: linear-gradient(90deg, rgba(217,119,6,0.06) 0%, transparent 100%);
+}
+[data-theme="dark"] .qa-item.qa-read:not(.open) {
+  background: linear-gradient(90deg, rgba(22,163,74,0.06) 0%, transparent 100%);
+}
 
 /* ══════════════════════════════════════════════════
    ── Code Block Language Label ─────────────────────
