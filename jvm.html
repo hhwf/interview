@@ -169,7 +169,11 @@
   │ [数组长度]    │               │                          │
   │ (4 bytes)    │               │                          │
   └──────────────┴────────────────┴──────────────────────────┘</pre>
+  
+      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#0d9488;background:rgba(0,0,0,0.03)">
+        <strong>面试要点：</strong>对象内存布局：对象头（Mark Word 8B + 类型指针 4B 压缩 / 8B 非压缩）+ 实例数据 + 对齐填充（8 字节对齐）。<strong>对象大小估算</strong>：一个只有 int 字段的对象 = 12B 对象头 + 4B 数据 = 16B。<code>-XX:+UseCompressedOops</code>（默认开启，堆 < 32GB 时）将对象引用压缩为 4 字节，可节省 30–50% 堆空间。
       </div>
+    </div>
 
       <p class="sub-body" style="margin-top:1rem;font-weight:600;color:var(--text-2)">Mark Word（64 位 JVM，8 字节）</p>
       <div class="kv-grid" style="margin-top:0.5rem">
@@ -214,7 +218,11 @@
     u2   attributes_count;         // 类属性数量
     attribute_info attributes[];   // 类属性（SourceFile, InnerClasses...）
   }</pre>
+  
+      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#0d9488;background:rgba(0,0,0,0.03)">
+        <strong>面试要点：</strong>Class 文件是平台无关的字节码格式。面试常问：常量池（Constant Pool）的作用——存放字面量和符号引用，类加载时部分解析为直接引用。<code>javap -verbose</code> 可反编译 Class 文件查看字节码，是排查编译器行为（如 try-with-resources、lambda 脱糖）的利器。
       </div>
+    </div>
 
       <p class="sub-body" style="margin-top:1rem;font-weight:600;color:var(--text-2)">关键字段解读</p>
       <div class="kv-grid" style="margin-top:0.5rem">
@@ -260,7 +268,11 @@
                                                               │   卸载   │
                                                               │(Unload)  │
                                                               └──────────┘</pre>
+  
+      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#0d9488;background:rgba(0,0,0,0.03)">
+        <strong>面试要点：</strong>类加载五阶段：加载→验证→准备→解析→初始化。<strong>准备阶段</strong>为静态变量分配内存并赋默认值（int=0，引用=null）；<strong>初始化阶段</strong>执行 <clinit>（类初始化方法）赋真实值。触发初始化的 6 种场景（主动引用）：new、读写静态字段/方法、反射、初始化子类、启动类、MethodHandle。
       </div>
+    </div>
 
       <div class="kv-grid" style="margin-top:1rem">
         <div class="kv-row">
@@ -325,7 +337,11 @@
   │     重写 findClass() + defineClass()                  │
   │     场景: 热部署、插件隔离、加密 Class                 │
   └──────────────────────────────────────────────────────┘</pre>
+  
+      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#0d9488;background:rgba(0,0,0,0.03)">
+        <strong>面试要点：</strong>双亲委派模型的好处：避免同一类被不同类加载器加载（保证 <code>java.lang.Object</code> 唯一）。<strong>打破场景</strong>：① SPI（JDBC Driver 需 BootstrapClassLoader 加载接口、AppClassLoader 加载实现）→ 线程上下文类加载器；② Tomcat（同一 JVM 隔离不同 WebApp）→ 各 WebAppClassLoader 独立；③ OSGi 模块热部署。JDK 9 模块化后改为模块化路径优先。
       </div>
+    </div>
 
       <p class="sub-body" style="margin-top:1rem;font-weight:600;color:var(--text-2)">为什么需要双亲委派？</p>
       <div class="kv-grid" style="margin-top:0.5rem">
@@ -371,7 +387,11 @@
         <div class="kv-row">
           <span class="kv-key" style="color:#0d9488">C1 (Client)</span>
           <span class="kv-val">编译速度快，优化程度低。适合简单方法。插入 profiling 数据收集点（分支计数、类型 profile），为 C2 提供优化依据。</span>
-        </div>
+    
+      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#0d9488;background:rgba(0,0,0,0.03)">
+        <strong>面试要点：</strong>JIT 分层编译（Tiered Compilation，JDK 8+ 默认开启）：C0（解释）→ C1（简单优化）→ C2（激进优化）。常见优化：内联（Inlining）、逃逸分析（对象不逃逸则栈上分配 / 锁消除）、循环展开、分支预测。<strong>JIT 预热</strong>：启动初期大量 C0 解释执行，性能差；生产中可提前加载热方法。<code>-XX:+PrintCompilation</code> 可观察编译情况。
+      </div>
+    </div>
         <div class="kv-row">
           <span class="kv-key" style="color:#0d9488">C2 (Server)</span>
           <span class="kv-val">编译速度慢，激进优化（内联、逃逸分析、标量替换、锁消除、循环展开）。适合热点方法。使用 C1 收集的 profiling 数据做精确优化。</span>

@@ -157,7 +157,11 @@
           <div class="region old" title="Old">O</div>
           <div class="region old" title="Old">O</div>
           <div class="region free" title="Free">·</div>
-        </div>
+    
+      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#16a34a;background:rgba(0,0,0,0.03)">
+        <strong>面试要点：</strong>G1 的核心设计是将堆划分为大小相等的 Region（1–32MB），逻辑上仍有 Eden/Survivor/Old 分区，但物理上可以不连续。<strong>Humongous Region</strong>：对象大小超过 Region 的 50% 则直接分配到 H 区，横跨多个连续 Region。G1 的目标是在可控停顿时间内尽量回收最多垃圾，通过调整 CSet 的大小来控制 STW 时长（<code>-XX:MaxGCPauseMillis</code>）。
+      </div>
+    </div>
         <div class="heap-legend">
           <div class="legend-item"><div class="legend-dot" style="background:rgba(74,222,128,0.6)"></div>Eden（新生代）</div>
           <div class="legend-item"><div class="legend-dot" style="background:rgba(251,191,36,0.6)"></div>Survivor</div>
@@ -203,7 +207,11 @@
             <div style="font-family:var(--fm);font-size:22px;margin-bottom:8px;opacity:0.35">○</div>
             <div style="font-family:var(--fm);font-size:12px;color:var(--text-3);font-weight:600;margin-bottom:6px;letter-spacing:.05em">白色（White）</div>
             <div style="font-family:var(--fm);font-size:11px;color:var(--text-3);line-height:1.7">尚未被 GC 发现<br>或已确认不可达<br><br>GC 结束后仍为白色 → 回收</div>
-          </div>
+      
+      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#16a34a;background:rgba(0,0,0,0.03)">
+        <strong>面试要点：</strong>SATB（Snapshot At The Beginning）是 G1 并发标记的核心算法。并发标记期间，应用线程修改对象引用时，写屏障会将<strong>旧引用值</strong>记入 SATB 队列，确保「快照时刻活着的对象」不会被漏标（避免黑色对象指向白色对象且灰色对象失去该引用的场景）。与增量更新（CMS/G1 Final Remark 用）的区别：SATB 记录删除边，增量更新记录新增边。
+      </div>
+    </div>
           <div style="flex:1;min-width:150px;background:rgba(251,191,36,0.08);border:2px solid rgba(251,191,36,0.3);border-radius:10px;padding:16px 14px;text-align:center">
             <div style="font-family:var(--fm);font-size:22px;margin-bottom:8px;color:#fbbf24">◑</div>
             <div style="font-family:var(--fm);font-size:12px;color:#92400e;font-weight:600;margin-bottom:6px;letter-spacing:.05em">灰色（Gray）</div>
@@ -538,7 +546,11 @@
             <div class="rset-entries">
               <div>obj_α <span class="rset-arrow">──→</span></div>
               <div>obj_β <span class="rset-arrow">──→</span></div>
-            </div>
+        
+      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#16a34a;background:rgba(0,0,0,0.03)">
+        <strong>面试要点：</strong>RSet（Remembered Set）记录「哪些外部 Region 的对象引用了本 Region」，使 GC 时只扫描 RSet 而不必扫描全堆。<strong>代价</strong>：每次引用写操作都要更新 RSet（通过 dirty card queue → Refinement 线程异步维护），有写屏障开销。RSet 本身也占内存（典型 1–5% 堆空间）。大 Region 的 RSet 条目太多时触发 humongous evacuation failure。
+      </div>
+    </div>
           </div>
           <svg width="60" height="80" style="flex-shrink:0;margin-top:28px">
             <defs>
@@ -594,7 +606,11 @@
             <div style="flex:1;background:var(--bg-2);border-radius:4px;overflow:hidden;height:22px;display:flex">
               <div style="width:15%;background:rgba(74,222,128,0.4);display:flex;align-items:center;padding:0 6px;font-size:10px;color:var(--g1)">15%</div>
               <div style="width:85%;background:rgba(248,113,113,0.15);display:flex;align-items:center;justify-content:flex-end;padding:0 8px;font-size:10px;color:var(--red)">85% 垃圾 ← 优先回收</div>
-            </div>
+        
+      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#16a34a;background:rgba(0,0,0,0.03)">
+        <strong>面试要点：</strong>CSet（Collection Set）是本轮 GC 要回收的 Region 集合。G1 优先选择<strong>垃圾最多的 Region</strong>（Garbage First 命名来源），通过「每 Region 垃圾预估量 ÷ 回收耗时」计算性价比，在 MaxGCPauseMillis 预算内尽量多选高性价比 Region。Mixed GC 时 CSet 包含所有 Young Region + 部分 Old Region。
+      </div>
+    </div>
             <div style="color:var(--red);font-size:10px;width:60px;text-align:right">高价值</div>
           </div>
           <div style="display:flex;gap:8px;align-items:center;font-family:var(--fm);font-size:12px">
@@ -640,7 +656,11 @@
               <div style="height:20px;background:rgba(248,113,113,0.15);border-radius:3px;display:flex;align-items:center;padding:0 8px;font-family:var(--fm);font-size:10px;color:var(--red)">垃圾对象 × 5</div>
               <div style="height:20px;background:rgba(74,222,128,0.2);border-radius:3px;display:flex;align-items:center;padding:0 8px;font-family:var(--fm);font-size:10px;color:var(--g1)">存活对象 obj_b</div>
               <div style="height:20px;background:rgba(248,113,113,0.15);border-radius:3px;display:flex;align-items:center;padding:0 8px;font-family:var(--fm);font-size:10px;color:var(--red)">垃圾对象 × 3</div>
-            </div>
+        
+      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#16a34a;background:rgba(0,0,0,0.03)">
+        <strong>面试要点：</strong>Evacuation（疏散）= 将 CSet 中存活对象复制到空 Region，原 Region 整体释放（天然压缩，无碎片）。<strong>Evacuation Failure</strong>：没有足够空 Region 接收存活对象时触发，此时 G1 退化为全堆 Stop-The-World（类似 Full GC），是 G1 最需要避免的场景。预防：保留足够空 Region（避免堆使用率超 70–80%）、降低分配速率。
+      </div>
+    </div>
           </div>
           <div style="text-align:center">
             <div style="font-size:22px;color:var(--zgc)">→</div>
@@ -687,7 +707,11 @@
                   <div style="width:10px;height:14px;background:rgba(74,222,128,0.5);border-radius:2px"></div>
                   <div style="width:18px;height:14px;background:rgba(74,222,128,0.5);border-radius:2px"></div>
                   <div style="width:8px;height:14px;background:rgba(74,222,128,0.25);border-radius:2px;border:1px dashed rgba(74,222,128,0.4)"></div>
-                </div>
+            
+      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#16a34a;background:rgba(0,0,0,0.03)">
+        <strong>面试要点：</strong>Young GC 完全 STW（Parallel 多线程执行），只回收 Young Region（Eden + Survivor）。<strong>Minor GC 触发</strong>：Eden Region 分配满时。存活对象根据年龄（默认 15 次）晋升到 Old；Survivor 区大小由 G1 动态调整（<code>-XX:TargetSurvivorRatio</code>）。Young GC 结束后统计停顿时间，动态调整下次 Young 区 Region 数量以满足 MaxGCPauseMillis。
+      </div>
+    </div>
               </div>
               <div style="background:rgba(74,222,128,0.15);border:1px solid rgba(74,222,128,0.3);border-radius:6px;padding:8px 14px;font-family:var(--fm);font-size:11px">
                 <div style="color:var(--g1);margin-bottom:3px;font-size:10px;letter-spacing:.08em">Thread-2 TLAB</div>
@@ -992,7 +1016,11 @@
               <div style="flex:1.4;min-height:38px;background:rgba(74,222,128,0.2);border:2px solid rgba(74,222,128,0.5);border-radius:4px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:var(--fm);font-size:10px;color:var(--g1);text-align:center;line-height:1.3;position:relative">
                 <span>Young GC</span>
                 <span style="font-size:9px;color:var(--teal);margin-top:2px">+ Initial Mark ★</span>
-              </div>
+          
+      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#16a34a;background:rgba(0,0,0,0.03)">
+        <strong>面试要点：</strong>G1 完整流程：Young GC（STW）→ 并发标记（Initial Mark 借用 Young GC STW / Concurrent Mark / Remark STW / Cleanup）→ Mixed GC（STW，回收 Young + 部分 Old）。若并发回收速度跟不上分配速度，触发 Full GC（Serial 单线程，停顿极长）。关键参数：<code>-XX:InitiatingHeapOccupancyPercent=45</code>（Old 区占比超此值触发并发标记）。
+      </div>
+    </div>
               <div style="flex:0.6;min-height:38px;background:rgba(45,212,191,0.1);border:1px solid rgba(45,212,191,0.25);border-radius:4px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:9px;color:var(--teal);text-align:center;line-height:1.4">Conc<br>Mark</div>
               <div style="flex:0.45;min-height:38px;background:rgba(248,113,113,0.13);border:1px solid rgba(248,113,113,0.3);border-radius:4px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:9px;color:var(--red);text-align:center;line-height:1.4">Re<br>mark</div>
               <div style="flex:0.5;min-height:38px;background:rgba(45,212,191,0.07);border:1px solid rgba(45,212,191,0.18);border-radius:4px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:9px;color:var(--teal);text-align:center;line-height:1.4">Clean<br>up</div>
@@ -1283,7 +1311,11 @@
           <div class="ptr-field ptr-unused">
             <div class="ptr-field-name">Unused</div>
             <div class="ptr-bits">bits 63–46<br>（18 位）</div>
-          </div>
+      
+      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#16a34a;background:rgba(0,0,0,0.03)">
+        <strong>面试要点：</strong>ZGC 染色指针的本质是将元数据（Finalizable、Remapped、Marked1、Marked0）编码进指针的高 4 位，读对象时通过读屏障解码。<strong>好处</strong>：不需要 Card Table / RSet，降低 GC 元数据内存；<strong>代价</strong>：需要 64 位系统、多重映射支持，寻址空间限制（<64TB）。JDK 21 的 Generational ZGC 引入分代，进一步提升吞吐量。
+      </div>
+    </div>
           <div class="ptr-field ptr-fin">
             <div class="ptr-field-name">Finalizable</div>
             <div class="ptr-bits">bit 45</div>
@@ -1343,7 +1375,11 @@
             <div class="vaddr-space" style="margin-bottom:6px;border-color:rgba(249,115,22,0.25)">
               <div class="vaddr-title" style="color:var(--zgc)">Marked0 空间</div>
               <div class="vaddr-page" style="background:rgba(249,115,22,0.12);color:var(--zgc-2)">0x0100…0000 Page A</div>
-            </div>
+        
+      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#16a34a;background:rgba(0,0,0,0.03)">
+        <strong>面试要点：</strong>多重映射（Multi-Mapping）是 ZGC 实现染色指针的底层机制：将同一物理内存页映射到 3 个不同的虚拟地址空间（Marked0 / Marked1 / Remapped），应用程序访问不同颜色的指针都能访问到同一物理页，只是触发不同的读屏障逻辑。这使得 ZGC 可以在不 STW 的情况下修改指针颜色。
+      </div>
+    </div>
             <div class="vaddr-space" style="margin-bottom:6px;border-color:rgba(74,222,128,0.25)">
               <div class="vaddr-title" style="color:var(--g1)">Marked1 空间</div>
               <div class="vaddr-page" style="background:rgba(74,222,128,0.1);color:var(--g1-2)">0x0200…0000 Page A</div>
@@ -1393,7 +1429,11 @@
             <div style="display:flex;flex-direction:column;align-items:center">
               <div class="lb-yes">是（已重映射）</div>
               <div class="lb-box lb-return">直接返回对象引用<br>无额外开销</div>
-            </div>
+        
+      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#16a34a;background:rgba(0,0,0,0.03)">
+        <strong>面试要点：</strong>ZGC 读屏障（Load Barrier）在<strong>应用线程读取对象引用时</strong>触发（而非写时），检查指针是否需要更新（Remap）。这使 ZGC 能并发移动对象而不需要 STW：移动完成后，下次读该引用时读屏障将旧指针更新为新地址。代价是每次对象读都有额外检查开销（但 JIT 优化后约 10–20ns）。
+      </div>
+    </div>
             <div style="display:flex;flex-direction:column;align-items:center">
               <div class="lb-no">否（对象已移动）</div>
               <div class="lb-box lb-fix">查转发表 → 获取新地址<br>就地修复 *ptr = 新地址</div>
@@ -1433,7 +1473,11 @@
               <div class="t-pause" style="min-width:50px">等待</div>
               <div class="t-stw" style="min-width:40px" title="STW &lt;1ms">P3</div>
               <div class="t-run">运行中（与重定位并发）</div>
-            </div>
+        
+      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#16a34a;background:rgba(0,0,0,0.03)">
+        <strong>面试要点：</strong>ZGC 并发周期包含：① Pause Mark Start（STW，极短，标记 GC Root）② Concurrent Mark（并发，标记所有可达对象）③ Pause Mark End（STW，同步标记结果）④ Concurrent Prepare for Relocation（并发，选 CSet）⑤ Pause Relocate Start（STW，极短）⑥ Concurrent Relocate（并发移动对象）。全程 STW 仅 3 次且均极短（通常 < 1ms），停顿时间与堆大小无关。
+      </div>
+    </div>
           </div>
           <div class="timeline-row">
             <div class="timeline-label">GC 线程</div>
@@ -1646,7 +1690,11 @@
                 <div style="flex:2;height:28px;background:rgba(74,222,128,0.2);border:1px solid rgba(74,222,128,0.35);border-radius:5px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:10px;color:var(--g1)">Eden</div>
                 <div style="flex:0.7;height:28px;background:rgba(251,191,36,0.2);border:1px solid rgba(251,191,36,0.35);border-radius:5px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:10px;color:#fbbf24">S0</div>
                 <div style="flex:0.7;height:28px;background:rgba(251,191,36,0.2);border:1px solid rgba(251,191,36,0.35);border-radius:5px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:10px;color:#fbbf24">S1</div>
-              </div>
+          
+      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#16a34a;background:rgba(0,0,0,0.03)">
+        <strong>面试要点：</strong>CMS（Concurrent Mark Sweep）是 G1 之前最主流的低延迟收集器，只负责老年代。<strong>已在 JDK 9 标记废弃、JDK 14 彻底移除</strong>，新项目不应再用。理解 CMS 有助于理解 G1 设计取舍。最大问题：Concurrent Mode Failure（并发收集期间老年代填满，退化为 Full GC）和碎片化（Sweep 不压缩，碎片导致大对象分配失败）。
+      </div>
+    </div>
               <div style="height:40px;background:rgba(249,115,22,0.15);border:1px solid rgba(249,115,22,0.3);border-radius:5px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:10px;color:var(--zgc)">Old Gen（单块连续，free-list 管理）</div>
             </div>
             <div style="font-family:var(--fm);font-size:10px;color:var(--text-3);margin-top:8px;line-height:1.6">各代大小固定，只能通过参数调整<br>Young 区比例 = -XX:NewRatio</div>
@@ -1686,7 +1734,11 @@
           <div class="phase-bar phase-stw" style="padding:14px 16px">
             <div class="phase-label">① Initial Mark（STW · 短）</div>
             <div class="phase-desc">从 GC Roots 出发，标记所有<strong style="color:rgba(248,113,113,0.9)">直接可达</strong>的老年代对象。<br>工作量 = GC Root 数量，停顿极短（毫秒级）。</div>
-          </div>
+      
+      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#16a34a;background:rgba(0,0,0,0.03)">
+        <strong>面试要点：</strong>CMS 四阶段：Initial Mark（STW，标 GC Root 直接引用）→ Concurrent Mark（并发，不 STW）→ Remark（STW，修正并发期间变化，增量更新写屏障记录新增引用）→ Concurrent Sweep（并发清除，不压缩）。Remark 是最长 STW，可用 <code>-XX:+CMSScavengeBeforeRemark</code> 先触发 Minor GC 减少 Remark 扫描量。
+      </div>
+    </div>
           <div class="phase-bar phase-conc">
             <div class="phase-label">② Concurrent Mark（并发）</div>
             <div class="phase-desc">从 Initial Mark 的结果出发，DFS 遍历整个老年代对象图。<br>与应用线程并发，可能漏标（需 Remark 修正）。<br>耗时最长，通常占整个 CMS GC 80% 以上时间。</div>
@@ -1738,7 +1790,11 @@
         <div class="diagram-title">卡表结构与脏标记</div>
         <div style="font-family:var(--fm);font-size:12px;color:var(--text-2);line-height:1.8;margin-bottom:16px">
           Old Gen 按 512 字节切分为若干 Card，卡表数组中每个字节对应一个 Card：
-        </div>
+    
+      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#16a34a;background:rgba(0,0,0,0.03)">
+        <strong>面试要点：</strong>Card Table 是 CMS（和 G1 的部分场景）记录跨代引用的数据结构：将堆划分为 512B 的 Card，若 Old 区对象引用了 Young 区对象则标记该 Card 为脏（Dirty）。Minor GC 时只扫描脏 Card 而不必扫描全 Old 区，大幅减少根扫描开销。写屏障在每次引用写操作时标记 Card。
+      </div>
+    </div>
         <div style="overflow-x:auto">
           <div style="min-width:500px">
             <div style="display:flex;gap:2px;margin-bottom:6px">
@@ -1916,7 +1972,11 @@
         </table>
         <div style="font-family:var(--fm);font-size:11px;color:var(--text-3);margin-top:10px;line-height:1.7">
           G1 选择 SATB 而非增量更新的核心原因：<strong style="color:var(--text)">更短的 Remark STW 停顿</strong>，这与 G1 的低停顿目标高度一致。
-        </div>
+    
+      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#16a34a;background:rgba(0,0,0,0.03)">
+        <strong>面试要点：</strong>CMS 的并发阶段（Concurrent Mark / Concurrent Sweep）与应用线程同时运行，会与应用线程<strong>抢占 CPU</strong>（默认使用 (CPU数+3)/4 个线程），在 4 核以下机器上影响较明显。<code>-XX:CMSInitiatingOccupancyFraction</code>（默认 68%）控制何时触发 CMS，设太高会导致 Concurrent Mode Failure，设太低浪费 CPU。
+      </div>
+    </div>
       </div>
     </div>
 
@@ -1935,7 +1995,11 @@
               <strong style="color:var(--text)">触发：</strong>并发清除阶段，应用线程分配速度 &gt; CMS 回收速度，Old Gen 在 GC 结束前被填满。<br>
               <strong style="color:var(--text)">后果：</strong>CMS 中止，JVM 退化为 <span style="color:var(--red);font-weight:600">Serial Old 单线程 Full GC</span>（STW + 整堆标记压缩），停顿时间可达秒级。<br>
               <strong style="color:var(--g1)">预防：</strong>调低 <code style="font-family:var(--fm);background:rgba(0,0,0,0.05);padding:1px 5px;border-radius:3px;color:var(--zgc-2)">-XX:CMSInitiatingOccupancyFraction</code> 到 70~75%（提前触发 CMS）；增大堆；优化应用分配热点。
-            </div>
+        
+      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#16a34a;background:rgba(0,0,0,0.03)">
+        <strong>面试要点：</strong>CMS 核心问题：① <strong>浮动垃圾</strong>（并发标记/清除期间新产生的垃圾本轮无法回收）；② <strong>碎片化</strong>（Mark-Sweep 不压缩，大对象分配失败时触发 Full GC）；③ <strong>Concurrent Mode Failure</strong>（老年代在并发阶段满了，退化 Serial Old Full GC，停顿极长）。这三个问题推动了 G1 的设计，G1 通过 Region + Evacuation 同时解决碎片和 CMF。
+      </div>
+    </div>
           </div>
 
           <!-- Promotion Failure -->

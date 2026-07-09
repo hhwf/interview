@@ -73,7 +73,11 @@
         <div class="kv-item">
           <div class="kv-key" style="color:#d97706">解耦</div>
           <div class="kv-val">服务 A 只负责发消息，B / C / D 各自订阅独立消费，互不依赖。新增消费方无需改动 A；B 故障也不影响 A 的主链路。</div>
-        </div>
+    
+      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#d97706;background:rgba(0,0,0,0.03)">
+        <strong>面试要点：</strong>MQ 三大作用：<strong>解耦</strong>（生产者不关心消费者）、<strong>削峰</strong>（瞬时高并发写入 MQ 缓冲）、<strong>异步</strong>（非核心流程异步化）。引入 MQ 的代价：链路变长、调试难、需处理消息丢失/重复/乱序、运维 MQ 本身的成本。面试常问：什么场景适合 MQ？核心链路同步，旁路通知/审计/日志异步。
+      </div>
+    </div>
         <div class="kv-item">
           <div class="kv-key" style="color:#d97706">异步</div>
           <div class="kv-val">主流程不等待耗时操作（发短信、发邮件、更新积分），发完消息即返回。接口响应时间可从数百 ms 降至个位数 ms。</div>
@@ -328,7 +332,11 @@
                 <div style="background:#fff;border:1px solid rgba(0,0,0,0.07);border-radius:4px;padding:5px 10px;color:var(--text-2)">[Msg] Topic-B / Q1 &nbsp;offset:1 &nbsp;body…</div>
                 <div style="background:#fff;border:1px solid rgba(0,0,0,0.07);border-radius:4px;padding:5px 10px;color:var(--text-2)">[Msg] Topic-A / Q0 &nbsp;offset:2 &nbsp;body…</div>
                 <div style="color:var(--text-3);text-align:center;padding:4px;font-size:10px">↓ 所有 Topic 混合追加，始终顺序写</div>
-              </div>
+          
+      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#d97706;background:rgba(0,0,0,0.03)">
+        <strong>面试要点：</strong>RocketMQ 事务消息核心原理：① 发送半消息（half message，对消费者不可见）→ ② 执行本地事务 → ③ 成功则 Commit（消息可见），失败则 Rollback。若超时未确认，Broker 主动回查本地事务状态（最多 15 次）。适用于需要「本地事务 + 消息投递」原子性的场景。
+      </div>
+    </div>
             </div>
           </div>
           <div style="display:flex;align-items:center;color:var(--text-3);font-size:22px;padding:0 4px">⇄</div>
@@ -440,7 +448,11 @@
         <div class="kv-item">
           <div class="kv-key" style="color:#d97706">全局有序（慎用）</div>
           <div class="kv-val">Topic 只设 1 个 Partition / Queue，所有消息顺序追加。吞吐量极低，仅用于对账等低频严格顺序场景。</div>
-        </div>
+    
+      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#d97706;background:rgba(0,0,0,0.03)">
+        <strong>面试要点：</strong>Kafka 保证分区内有序；要实现全局有序则必须只用 1 个分区（吞吐量受限）。<strong>业务有序</strong>：将同一业务 ID（如 orderId）的消息路由到同一分区，可保证该业务维度有序。消费者单线程消费该分区即可，不需要全局单分区。RocketMQ 通过 MessageQueue 实现同类消息顺序消费。
+      </div>
+    </div>
         <div class="kv-item">
           <div class="kv-key" style="color:#d97706">分区内有序（推荐）</div>
           <div class="kv-val">同一业务 Key 的消息路由到同一 Partition，该 Partition 只分配一个 Consumer，Partition 内天然有序，吞吐不受影响。</div>
@@ -476,7 +488,11 @@
         <div style="flex:1;min-width:150px;background:rgba(220,38,38,0.05);border:1px solid rgba(220,38,38,0.18);border-radius:6px;padding:13px 14px">
           <div style="color:var(--red);font-weight:600;margin-bottom:6px">根源① 生产者重试</div>
           <div style="color:var(--text-2);line-height:1.8">网络抖动导致 ACK 超时 → Producer 重发 → Broker 已收到第一条 → 重复写入</div>
-        </div>
+    
+      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#d97706;background:rgba(0,0,0,0.03)">
+        <strong>面试要点：</strong>消息幂等的本质：<strong>消费逻辑天然幂等</strong>（如状态机转换）或<strong>外部去重</strong>（Redis SETNX / 数据库唯一索引 / 去重表）。推荐方案：每条消息携带全局唯一 ID（msgId），消费前查去重表，消费成功后写入去重表（与业务操作放同一事务）。消费失败需能重试，所以幂等是重试的前提。
+      </div>
+    </div>
         <div style="flex:1;min-width:150px;background:rgba(220,38,38,0.05);border:1px solid rgba(220,38,38,0.18);border-radius:6px;padding:13px 14px">
           <div style="color:var(--red);font-weight:600;margin-bottom:6px">根源② 消费者重平衡</div>
           <div style="color:var(--text-2);line-height:1.8">Consumer 处理完但未提交 offset 时宕机 / Rebalance → 新 Consumer 从上次 offset 重新消费</div>
@@ -520,7 +536,11 @@
           消息消费失败超过最大重试次数后，自动进入死信队列，不再重试，等待人工介入。<br>
           <strong style="color:var(--text)">RocketMQ：</strong>自动创建 <code>%DLQ%{ConsumerGroup}</code> Topic；默认重试 16 次，每次间隔递增（最长 2 小时）。<br>
           <strong style="color:var(--text)">Kafka：</strong>无原生 DLQ，需业务代码 catch 异常后写入专用 <code>.dead</code> Topic。
-        </div>
+    
+      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#d97706;background:rgba(0,0,0,0.03)">
+        <strong>面试要点：</strong>消息堆积处理：增加消费者实例数（不超过分区/队列数）、临时扩大队列容量、启用批量消费。死信队列：消费失败达到最大重试次数后进入 DLQ，需人工介入处理。延迟消息：RocketMQ 内置 18 个延迟级别；Kafka 原生不支持延迟，需借助时间轮或外部调度（如 Redisson 延迟队列）。
+      </div>
+    </div>
         <div class="kv-grid" style="grid-template-columns:repeat(auto-fill,minmax(160px,1fr))">
           <div class="kv-item">
             <div class="kv-key" style="color:#d97706">监控告警</div>

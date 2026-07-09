@@ -147,7 +147,11 @@
         </table>
       </div>
     </div>
-  </section>
+  
+      <div class="callout callout-info" style="border-left-color:#0369a1;background:rgba(0,0,0,0.03)">
+        <strong>面试要点：</strong>IoC 容器的本质是一个工厂 + 注册表，依赖注入的最佳实践是<strong>构造器注入</strong>（依赖可 final、可测试）。区分 BeanFactory（延迟加载）与 ApplicationContext（饥饿加载 + 事件机制）。@Autowired 按类型注入，@Resource 按名称注入，两者混用时注意歧义 Bean 的 @Primary / @Qualifier 处理。
+      </div>
+</section>
 
   <!-- Spring Bean 生命周期 -->
   <section class="gc-section" id="spring-lifecycle">
@@ -280,7 +284,11 @@
         </div>
       </div>
     </div>
-  </section>
+  
+      <div class="callout callout-info" style="border-left-color:#0369a1;background:rgba(0,0,0,0.03)">
+        <strong>面试要点：</strong>Bean 生命周期的扩展点顺序：<code>BeanPostProcessor.postProcessBeforeInitialization</code> → <code>@PostConstruct / init-method</code> → <code>postProcessAfterInitialization</code>（AOP 代理在此生成）。面试常问：为什么循环依赖不能用构造器注入？因为实例化阶段对象还未放入缓存，无法解决依赖。
+      </div>
+</section>
 
   <!-- Spring AOP -->
   <section class="gc-section" id="spring-aop">
@@ -344,7 +352,11 @@
         </div>
       </div>
     </div>
-  </section>
+  
+      <div class="callout callout-info" style="border-left-color:#0369a1;background:rgba(0,0,0,0.03)">
+        <strong>面试要点：</strong>AOP 代理选择规则：实现接口用 JDK 动态代理（基于 InvocationHandler），无接口或强制使用用 CGLIB（继承子类）。Spring Boot 2.x 起默认 CGLIB。<strong>self 调用失效</strong>：同类内部方法互调绕过代理，解决方案：注入自身 / AopContext.currentProxy() / 拆分类。
+      </div>
+</section>
 
   <!-- Spring 事务 -->
   <section class="gc-section" id="spring-tx">
@@ -404,7 +416,11 @@
         </div>
       </div>
     </div>
-  </section>
+  
+      <div class="callout callout-info" style="border-left-color:#0369a1;background:rgba(0,0,0,0.03)">
+        <strong>面试要点：</strong>事务失效常见场景：① 非 public 方法；② 同类 self 调用；③ 异常被 catch 吞掉；④ 抛出的是 Checked Exception（默认只回滚 RuntimeException）。传播行为面试重点：<code>REQUIRED</code>（默认，共用事务）vs <code>REQUIRES_NEW</code>（独立事务，外层回滚不影响）vs <code>NESTED</code>（嵌套事务，依赖 savepoint）。
+      </div>
+</section>
 
   <!-- Spring 循环依赖 -->
   <section class="gc-section" id="spring-circular">
@@ -473,7 +489,11 @@
         </div>
       </div>
     </div>
-  </section>
+  
+      <div class="callout callout-info" style="border-left-color:#0369a1;background:rgba(0,0,0,0.03)">
+        <strong>面试要点：</strong>三级缓存解决循环依赖的关键是<strong>提前暴露半成品对象</strong>。一级缓存存完整 Bean，二级存早期代理引用，三级存 ObjectFactory（延迟生成代理）。<strong>构造器注入无法解决</strong>（对象未创建就要注入），<code>@Lazy</code> 可绕过构造器循环。Spring Boot 2.6+ 默认禁止循环依赖，需显式开启。
+      </div>
+</section>
 
   <!-- Spring IoC 面试题 -->
   <section class="gc-section" id="interview-spring-ioc">

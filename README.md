@@ -7,13 +7,15 @@
 | 文件 | 内容 | 面试题 |
 |------|------|--------|
 | [index.html](index.html) | 首页导航总览 | — |
-| [juc.html](juc.html) | JUC 并发编程 — JMM / synchronized / volatile / CAS / AQS / 线程池 / 虚拟线程 | ×15 |
-| [spring.html](spring.html) | Spring — IoC / Bean 生命周期 / AOP / 事务 / 三级缓存循环依赖 | ×17 |
-| [gc-principles.html](gc-principles.html) | JVM GC — G1（Region / SATB / RSet / CSet / Evacuation / Young GC 机制 / 完整流程）& ZGC（染色指针 / 多重映射 / 读屏障 / 并发周期）& CMS | ×25 |
-| [mysql.html](mysql.html) | MySQL — B+ Tree 索引 / MVCC / 锁 / 日志 / 主从复制 | ×15 |
-| [redis.html](redis.html) | Redis — 数据结构 / 持久化 / 缓存三大问题 / 分布式锁 / 淘汰策略 / 哨兵 & Cluster | ×15 |
-| [mq.html](mq.html) | 消息队列 — Kafka / RocketMQ / 可靠性 / 顺序 / 幂等 | ×15 |
-| [distributed.html](distributed.html) | 分布式系统 — CAP / 分布式事务 / 分布式锁 / 注册中心 / Snowflake / 限流熔断 | ×15 |
+| [juc.html](juc.html) | JUC 并发编程 — JMM / synchronized / volatile / CAS / AQS / 线程池 / 虚拟线程 | ×19 |
+| [spring.html](spring.html) | Spring — IoC / Bean 生命周期 / AOP / 事务 / 三级缓存循环依赖 | ×19 |
+| [gc-principles.html](gc-principles.html) | JVM GC — G1（Region / SATB / RSet / CSet / Evacuation / Young GC 机制 / 完整流程）& ZGC（染色指针 / 多重映射 / 读屏障 / 并发周期）& CMS | ×27 |
+| [mysql.html](mysql.html) | MySQL — B+ Tree 索引 / MVCC / 锁 / 日志 / 主从复制 | ×19 |
+| [redis.html](redis.html) | Redis — 数据结构 / 持久化 / 缓存三大问题 / 分布式锁 / 淘汰策略 / 哨兵 & Cluster | ×18 |
+| [mq.html](mq.html) | 消息队列 — Kafka / RocketMQ / 可靠性 / 顺序 / 幂等 | ×17 |
+| [distributed.html](distributed.html) | 分布式系统 — CAP / 分布式事务 / 分布式锁 / 注册中心 / Snowflake / 限流熔断 | ×18 |
+| [jvm.html](jvm.html) | JVM 内存与类加载 — 运行时数据区 / 对象内存布局 / Class 文件结构 / 类加载机制 / 双亲委派 / JIT | ×19 |
+| [architecture.html](architecture.html) | 架构设计 — 微服务（拆分/通信/注册发现/配置中心/API 网关/分布式事务/服务容错/可观测性/灰度治理）与 DDD 领域驱动设计（战略设计/战术建模/贫血充血/领域事件/CQRS/四层架构落地），面试题以实战场景为主 | ×16 |
 
 ## 使用方式
 
@@ -41,7 +43,7 @@ open index.html
 
 ```
 interview/
-├── index.html            # 首页
+├── index.html            # 首页（引用 shared.css / index.css / shared.js / search-data.js）
 ├── juc.html              # JUC 并发编程
 ├── spring.html           # Spring 框架原理
 ├── gc-principles.html    # JVM GC 原理
@@ -49,9 +51,13 @@ interview/
 ├── redis.html            # Redis 原理
 ├── mq.html               # 消息队列
 ├── distributed.html      # 分布式系统
+├── jvm.html              # JVM 内存与类加载
+├── architecture.html     # 架构设计（微服务 / DDD 领域驱动，实战为主）
 ├── style/
 │   ├── shared.css        # 公共样式（设计 token、布局、移动端适配、深色模式）
-│   └── shared.js         # 公共脚本（侧边栏、手风琴、搜索、TOC、深色模式切换）
+│   ├── shared.js         # 公共脚本（侧边栏、手风琴、搜索、TOC、深色模式切换）
+│   ├── index.css         # 首页卡片专属样式
+│   └── search-data.js    # 全页搜索索引数据
 └── README.md
 ```
 

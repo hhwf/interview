@@ -226,7 +226,11 @@
               <span style="color:var(--text-3)">　　　</span>900s 内有 1 次写操作则触发<br>
               <span style="color:var(--text-3)">手动：</span><code>BGSAVE</code>（后台异步，推荐）<br>
               <span style="color:var(--text-3)">　　　</span><code>SAVE</code>（阻塞主线程，慎用）
-            </div>
+        
+      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#dc2626;background:rgba(0,0,0,0.03)">
+        <strong>面试要点：</strong>RDB 是全量快照，适合灾备和快速重启；AOF 是命令日志，更精确但体积大。<strong>实践推荐</strong>：AOF + everysec（最多丢 1 秒数据）+ 定期 BGREWRITEAOF 压缩。Redis 4.0+ 的 AOF-RDB 混合持久化兼顾两者优点。面试常问：BGSAVE / BGREWRITEAOF 如何不阻塞主线程——fork 子进程 + Copy-on-Write。
+      </div>
+    </div>
           </div>
           <div style="background:var(--bg-1);border:1px solid var(--border);border-radius:8px;padding:14px">
             <div style="font-family:var(--fm);font-size:10px;color:#dc2626;font-weight:700;margin-bottom:10px">执行流程（Copy-On-Write）</div>
@@ -451,7 +455,11 @@
               <div style="color:#dc2626;font-weight:700;font-size:18px;margin-bottom:4px">⚠</div>
               <div style="color:#dc2626;font-weight:700">现象</div>
               <div style="color:var(--text-3);margin-top:4px;font-size:10px;line-height:1.6">id=-1<br>每次穿透<br>直打 DB</div>
-            </div>
+        
+      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#dc2626;background:rgba(0,0,0,0.03)">
+        <strong>面试要点：</strong>缓存三大问题：① <strong>穿透</strong>（key 不存在）→ 布隆过滤器 / 缓存空值；② <strong>击穿</strong>（热点 key 过期）→ 互斥锁 / 逻辑过期；③ <strong>雪崩</strong>（大量 key 同时过期 / Redis 宕机）→ 过期时间加随机抖动 / 多级缓存 / 限流降级。缓存与数据库一致性：推荐「先更新 DB，再删除缓存」+ 订阅 binlog 补偿。
+      </div>
+    </div>
           </div>
           <div style="background:var(--bg-1);border:1px solid var(--border);border-left:none;border-radius:0 8px 8px 0;padding:16px 20px">
             <div style="font-family:var(--fb);font-size:13px;color:var(--text-2);line-height:1.85">
@@ -583,7 +591,11 @@
               <span style="color:var(--text-3)">  </span> 期间写命令写入 <span style="color:#dc2626">replication buffer</span><br>
               <span style="color:var(--text-3)">③</span> 传输 RDB → Slave 加载<br>
               <span style="color:var(--text-3)">④</span> 发送 buffer 中的增量命令
-            </div>
+        
+      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#dc2626;background:rgba(0,0,0,0.03)">
+        <strong>面试要点：</strong>哨兵模式：奇数个哨兵节点，主观下线 + 客观下线（超半数哨兵同意）后触发故障转移，选出新主库（优先级 > 复制偏移量最大 > runid 最小）。Cluster 模式：16384 个槽位分散到各分片，客户端通过 MOVED/ASK 路由，支持在线扩缩容（槽位迁移），<strong>最少 3 主 3 从</strong>，脑裂风险由 quorum 机制控制。
+      </div>
+    </div>
           </div>
           <div style="background:rgba(21,128,61,0.05);border:1px solid rgba(21,128,61,0.2);border-radius:8px;padding:16px">
             <div style="font-family:var(--fm);font-size:11px;color:var(--g1);font-weight:700;margin-bottom:12px">增量同步（断线重连）</div>
@@ -788,7 +800,11 @@
             <tr><td><code>STRLEN key</code></td><td>返回字节数（UTF-8 中文 3 字节/字符）</td><td>O(1)</td></tr>
           </tbody>
         </table>
+  
+      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#dc2626;background:rgba(0,0,0,0.03)">
+        <strong>面试要点：</strong>Redis 单线程执行命令（网络 I/O 多路复用），6.0 开始引入多线程处理网络 I/O，但命令执行仍单线程。<strong>避免大 key</strong>：单个 key 的 value 过大（String > 10KB / 集合 > 5000 元素）会阻塞主线程；可用 <code>OBJECT ENCODING</code> 查看编码，用 <code>UNLINK</code>（异步删除）代替 <code>DEL</code>。<code>SCAN</code> 分批遍历代替 <code>KEYS *</code>（会阻塞）。
       </div>
+    </div>
 
       <!-- List -->
       <p class="sub-body" style="margin-top:1.4rem;font-weight:600;color:var(--text-2)">List 列表</p>

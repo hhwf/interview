@@ -76,7 +76,11 @@
         <div class="kv-row">
           <span class="kv-key" style="color:#7c3aed">C — 一致性</span>
           <span class="kv-val">Consistency：所有节点在同一时刻看到相同的数据。写操作完成后，所有后续读都能读到最新值（强一致性）。</span>
-        </div>
+    
+      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#7c3aed;background:rgba(0,0,0,0.03)">
+        <strong>面试要点：</strong>CAP 定理的核心是：分布式系统在网络分区（P）发生时，只能在一致性（C）和可用性（A）中选一个。<strong>实践中 P 不可避免</strong>，所以真正的选择是 CP 还是 AP。CP 代表：ZooKeeper、etcd（优先一致性，分区时拒绝服务）。AP 代表：Eureka、Cassandra（优先可用性，允许短暂不一致）。BASE 理论是 AP 系统的理论基础：基本可用 + 软状态 + 最终一致。
+      </div>
+    </div>
         <div class="kv-row">
           <span class="kv-key" style="color:#7c3aed">A — 可用性</span>
           <span class="kv-val">Availability：每个请求都能收到响应（不一定是最新数据），系统不会拒绝服务。</span>
@@ -171,7 +175,11 @@
             <tr><td>事务消息（MQ）</td><td>最终一致</td><td>高</td><td>低</td><td>生产者与消费者解耦</td></tr>
           </tbody>
         </table>
+  
+      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#7c3aed;background:rgba(0,0,0,0.03)">
+        <strong>面试要点：</strong>分布式事务的选型原则：<strong>能不用就不用</strong>（业务合并 / 接受最终一致 / 转为幂等补偿）。需要强一致时：Seata AT（无侵入，自动 undo log）适合大多数场景；TCC（强侵入，需手写三步）适合对一致性要求极高的金融场景；本地消息表 / 事务消息适合跨服务最终一致；Saga 适合长流程多步骤。面试核心：必须能画出具体的事务执行和补偿流程。
       </div>
+    </div>
 
       <!-- 2PC -->
       <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">2PC（两阶段提交）</p>
@@ -276,7 +284,11 @@
       return 0
   end
   -- value 存 uuid，防止误删其他线程的锁</pre>
+  
+      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#7c3aed;background:rgba(0,0,0,0.03)">
+        <strong>面试要点：</strong>分布式锁选型：Redis 锁（高性能，但需注意锁超时、主从切换导致的非互斥）适合高并发场景；ZooKeeper 锁（强一致，基于 ephemeral + sequential node）适合对一致性要求高的场景。<strong>Redisson 的 WatchDog</strong> 解决锁续期问题（自动续 leaseTime，任务完成后取消）。RedLock 算法的争议：Antirez 提出，Martin Kleppmann 认为 GC Pause 等场景下仍有安全问题，实践中慎用。
       </div>
+    </div>
 
       <div class="kv-grid" style="margin-top:0.75rem">
         <div class="kv-row">
@@ -365,7 +377,11 @@
   │            │ ◄──────────────────────────────────
   │            │  ⑤ 本地缓存 → 负载均衡 → 直接调用
   └────────────┘</pre>
+  
+      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#7c3aed;background:rgba(0,0,0,0.03)">
+        <strong>面试要点：</strong>注册中心选型：Nacos 同时支持 CP（Raft，适合配置）和 AP（适合服务发现），且内置配置中心，是目前新项目的首选。Eureka 已停维护，仅 AP 模式，适合遗留系统。Consul 支持 CP + 健康检查 + KV 存储。<strong>注册中心高可用</strong>：客户端本地缓存服务列表，注册中心短暂不可用时仍能发现服务，防止雪崩。
       </div>
+    </div>
 
       <!-- 四种注册中心对比表 -->
       <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">主流注册中心对比</p>
@@ -413,7 +429,11 @@
         <div class="kv-row">
           <span class="kv-key" style="color:#7c3aed">Leader</span>
           <span class="kv-val">同一时刻集群只有一个 Leader。接收所有客户端写请求、复制日志到 Follower、定期发心跳防止其他节点超时选举</span>
-        </div>
+    
+      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#7c3aed;background:rgba(0,0,0,0.03)">
+        <strong>面试要点：</strong>Raft 三个核心问题：① <strong>领导选举</strong>：term + 随机选举超时，超时先投自己，获多数票成 Leader；② <strong>日志复制</strong>：Leader 接收请求，并发复制到 Follower，超半数确认后 commit 并回复客户端；③ <strong>安全性</strong>：只有日志最新的节点才能当选 Leader（防止已提交日志丢失）。与 Paxos 的区别：Raft 更易理解，明确分离选举/日志/快照三个子问题。
+      </div>
+    </div>
         <div class="kv-row">
           <span class="kv-key" style="color:#7c3aed">Follower</span>
           <span class="kv-val">被动接收 Leader 的 AppendEntries 和心跳。Election Timeout 内未收到心跳则转为 Candidate 发起选举</span>
@@ -504,7 +524,11 @@
         <div class="kv-row">
           <span class="kv-key" style="color:#7c3aed">全局唯一</span>
           <span class="kv-val">同一业务场景下 ID 不重复，是基本要求</span>
-        </div>
+    
+      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#7c3aed;background:rgba(0,0,0,0.03)">
+        <strong>面试要点：</strong>Snowflake ID 结构：1 bit 符号位 + 41 bit 时间戳（ms，约 69 年）+ 10 bit 机器 ID + 12 bit 序列号（每 ms 最多 4096 个）。<strong>时钟回拨</strong>是最大风险：需要处理（等待 / 拒绝请求 / 使用备用序列号）。百度 UidGenerator / 美团 Leaf 等均是 Snowflake 的改进版，主要解决时钟回拨和机器 ID 分配问题。号段模式（DB 预取一段 ID）适合对时间无序要求不高的场景。
+      </div>
+    </div>
         <div class="kv-row">
           <span class="kv-key" style="color:#7c3aed">趋势递增</span>
           <span class="kv-val">MySQL B+ Tree 的叶节点顺序写入时性能最优，随机 ID（UUID）导致页分裂，写性能下降</span>
@@ -613,7 +637,11 @@
             <tr><td><strong>令牌桶</strong></td><td>按固定速率向桶中放令牌；请求需取到令牌才能通过</td><td>允许（桶内令牌积累可应对突发）</td><td>允许突发但有上限（RateLimiter）</td></tr>
           </tbody>
         </table>
+  
+      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#7c3aed;background:rgba(0,0,0,0.03)">
+        <strong>面试要点：</strong>限流算法对比：① <strong>令牌桶</strong>：允许突发流量（桶内有令牌就放行），适合接口限流；② <strong>漏桶</strong>：严格匀速输出，适合平滑流量；③ <strong>滑动窗口</strong>：比固定窗口更精确，防止边界突刺。熔断状态机：Closed（正常）→ Open（快速失败）→ Half-Open（放少量请求探测）→ Closed。<strong>Sentinel vs Hystrix</strong>：Sentinel 基于滑动窗口计数，支持 QPS / 并发数多种规则，功能更丰富；Hystrix 已停维护，推荐迁移 Sentinel。
       </div>
+    </div>
 
       <!-- 令牌桶流程图 -->
       <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">令牌桶算法流程</p>
@@ -697,7 +725,11 @@
     4 节点：7 % 4 = 3  (Node3)  ← 映射完全改变
 
   结论：N 节点扩/缩时，约 (N-1)/N 的缓存失效，引发缓存雪崩</pre>
+  
+      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#7c3aed;background:rgba(0,0,0,0.03)">
+        <strong>面试要点：</strong>一致性哈希解决了取模分片的<strong>扩容迁移量大</strong>问题：增减节点时只影响相邻节点的数据，迁移量 ≈ 1/N（N 为节点总数）。<strong>虚拟节点</strong>（每个物理节点映射多个虚拟节点）解决数据倾斜问题，使负载更均匀。实际生产中，Consistent Hash 广泛用于 Redis Cluster 的槽位分配、分库分表路由、Nginx upstream 负载均衡。
       </div>
+    </div>
 
       <!-- 哈希环原理 -->
       <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">一致性哈希环原理</p>

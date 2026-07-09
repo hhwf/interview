@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>架构设计 — 微服务 / DDD 实战</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=DM+Mono:wght@400;500;600&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=DM+Mono:wght@400;500;600&display=swap"></noscript>
+<link rel="preload" as="style" href="https://fontsapi.zeoseven.com/161/main/result.css" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fontsapi.zeoseven.com/161/main/result.css"></noscript>
+<link rel="stylesheet" href="style/shared.css">
+<style>
+:root {
+  --arch: #2563eb; --arch-2: #1d4ed8;
+  --arch-d: rgba(37,99,235,0.08); --arch-b: rgba(37,99,235,0.28);
+  --bg-hi: #eff6ff;
+  --accent:     #2563eb;
+  --accent-nav: #2563eb; --accent-nav-d: rgba(37,99,235,0.08);
+  --accent-em:  #1d4ed8; --accent-em-d:  rgba(29,78,216,0.08);
+}
+</style>
+</head>
+<body>
+
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <span class="logo-badge" style="background:linear-gradient(135deg,#2563eb,#1d4ed8)">ARC</span>
+    <span class="logo-text">架构设计</span>
+  </div>
+  <div class="page-tabs"></div>
+  <div class="nav-section-label" style="color:rgba(37,99,235,0.65)">目 录</div>
+  <a href="#arch-ms"  class="nav-link">微服务架构</a>
+  <a href="#arch-ddd" class="nav-link">DDD 与领域建模</a>
+  <a href="#arch-qa"  class="nav-link">架构面试题（实战）</a>
+</nav>
+
+<div class="content-wrap">
+<button class="menu-btn" id="menuBtn" onclick="toggleSidebar()">☰</button>
+<main class="main">
+
+  <!-- ═════════ Hero ════════ -->
+  <section class="hero" id="overview">
+    <div class="hero-eyebrow" style="color:#2563eb">架构 · 微服务 / 领域驱动设计（DDD）</div>
+    <h1><span style="color:#2563eb">微服务 &amp; DDD</span> 核心实战</h1>
+    <p class="hero-desc">聚焦两大高频架构方向：<strong>微服务</strong>（服务拆分、通信、注册发现、配置中心、API 网关、分布式事务、服务容错、可观测性、灰度治理）与 <strong>DDD 领域驱动设计</strong>（战略设计、战术建模、贫血/充血、领域事件、CQRS、四层架构落地）。题目以实战场景为主，是大厂后端与架构岗面试的必考区。</p>
+  </section>
+
+  <!-- ═════════ 正文 ════════ -->
+  <section class="gc-section" id="arch-section">
+    <span class="section-badge" style="background:rgba(37,99,235,0.08);color:#2563eb;border:1px solid rgba(37,99,235,0.25)">● 架构</span>
+    <h2 class="section-title">微服务架构与 DDD 领域建模</h2>
+    <p class="section-intro">
+      微服务的难点不在「拆」，而在「治」——拆完之后如何做服务治理、保证一致性与高可用。<strong>DDD 恰好提供了拆分的依据（限界上下文）与建模的方法（聚合、领域事件）</strong>。
+      掌握这两块，既能回答「怎么拆、怎么落地」，也能把复杂业务代码写清楚、写稳健。
+    </p>
+
+    <!-- ── 1. 微服务架构 ── -->
+    <div class="subsection" id="arch-ms">
+      <h3 class="sub-title">
+        <span class="dot" style="background:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,0.15)"></span>
+        微服务架构
+      </h3>
+      <p class="sub-body">微服务是把单体按<strong>业务域</strong>拆成可独立部署、独立伸缩、故障隔离的服务。它的本质是「用分布式复杂度，换取业务与组织的可扩展性」。</p>
+
+      <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">① 微服务 vs 单体：本质区别与代价</p>
+      <div class="kv-grid" style="margin-top:0.6rem">
+        <div class="kv-item">
+          <div class="kv-k" style="color:#2563eb">区别</div>
+          <div class="kv-v">部署单元（进程 vs 多进程）、数据归属（共享库 vs 每服务自有库）、团队边界（大团队 vs 小团队拥有）、技术异构（统一栈 vs 按服务选型）。</div>
+    
+      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#2563eb;background:rgba(0,0,0,0.03)">
+        <strong>面试要点：</strong>微服务拆分的最常见反模式是<strong>按技术层拆</strong>（controller-service/dao 各一个服务），正确方式是按<strong>业务域（DDD 限界上下文）</strong>拆。服务容错口诀：超时兜底、重试谨慎（仅幂等接口）、熔断隔故障、降级保核心、隔离限爆炸，五者协同。分布式事务优先考虑业务合并或最终一致，避免强一致，必须强一致时再考虑 Seata。
+      </div>
+    </div>
+        <div class="kv-item">
+          <div class="kv-k" style="color:#2563eb">代价</div>
+          <div class="kv-v">分布式事务、网络不可靠（超时/重试/雪崩）、运维爆炸（服务数×监控/灰度/排障）、分布式调试难、跨服务数据一致性。</div>
+        </div>
+      </div>
+
+      <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">② 服务拆分方法论（重点）</p>
+      <ul class="sub-body" style="margin-top:0.4rem">
+        <li><strong>按业务域拆，不按技术层拆</strong>：应拆为「订单 / 库存 / 用户」而非「controller 服务 / service 服务 / dao 服务」（后者是分布式单体）。</li>
+        <li><strong>边界来自 DDD 限界上下文</strong>：一个上下文 = 一个服务候选；上下文内概念一致，之间防腐。</li>
+        <li><strong>粒度</strong>：能独立开发部署 + 故障隔离 + 小团队拥有为宜；过粗退化单体，过细带来分布式 overhead 与协作爆炸。</li>
+        <li><strong>演进式</strong>：先粗后细，随业务与团队规模逐步拆，避免一开始过度设计。</li>
+        <li><strong>反模式</strong>：共享数据库（绕过服务直读别人库）、分布式单体（强耦合、一挂全挂）、上帝服务（啥都管）。</li>
+      </ul>
+
+      <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">③ 服务通信：同步 vs 异步怎么选</p>
+      <ul class="sub-body" style="margin-top:0.4rem">
+        <li><strong>同步</strong>：REST/OpenFeign（易调试）、gRPC（Protobuf，性能好、强契约）。适用<strong>实时、强一致、简单调用链</strong>。</li>
+        <li><strong>异步</strong>：MQ（Kafka / RocketMQ）。适用<strong>削峰、解耦、最终一致、事件驱动</strong>（如发短信、记日志、更新统计）。</li>
+        <li><strong>口诀</strong>：核心链路同步 + 事务保证；旁路通知 / 审计 / 日志异步走 MQ。</li>
+      </ul>
+
+      <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">④ 服务治理三件套</p>
+      <ul class="sub-body" style="margin-top:0.4rem">
+        <li><strong>注册发现</strong>：Nacos / Eureka / Consul，心跳健康检查，客户端或服务端发现，调用方拿到可用实例列表做负载均衡。</li>
+        <li><strong>配置中心</strong>：Nacos / Apollo，配置外置、环境隔离、<strong>热更新</strong>（长轮询 / 推送，应用无需重启）。</li>
+        <li><strong>API 网关</strong>：路由、鉴权、限流、灰度、协议转换、请求聚合；区别于 Nginx（Nginx 偏 L4/L7 流量转发，网关偏业务治理）。</li>
+      </ul>
+
+      <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">⑤ 微服务下的分布式事务（落地视角）</p>
+      <ul class="sub-body" style="margin-top:0.4rem">
+        <li><strong>原则</strong>：能避免就避免（合并服务 / 同库 / 接受最终一致），不要一上来就强一致。</li>
+        <li><strong>Seata AT</strong>：无侵入、自动生成 undo log 补偿，适合大多数场景。</li>
+        <li><strong>TCC</strong>：Try/Confirm/Cancel 三阶段，强一致但侵入业务、需手写补偿。</li>
+        <li><strong>本地消息表 / 事务消息 / Saga</strong>：长流程、跨多服务的最终一致，靠「消息 + 重试 + 补偿」。</li>
+        <li><strong>场景</strong>：下单 = 创建订单 + 扣库存 + 扣积分 → 用事务消息 / Saga 编排，失败则补偿回滚。</li>
+      </ul>
+
+      <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">⑥ 服务容错（防雪崩，必考）</p>
+      <ul class="sub-body" style="margin-top:0.4rem">
+        <li><strong>超时</strong>：任何远程调用必须设，避免线程 / 连接被无限占用拖垮整体。</li>
+        <li><strong>重试</strong>：仅对幂等接口，配合指数退避 + 抖动与次数上限，防重试风暴。</li>
+        <li><strong>熔断</strong>：依赖异常率 / 慢调用超阈值「打开」快速失败，半开探测恢复，防级联雪崩。</li>
+        <li><strong>降级</strong>：关闭非核心功能、返回兜底，保主链路。</li>
+        <li><strong>隔离（舱壁）</strong>：线程池 / 信号量隔离，避免一个慢依赖耗尽全部资源（如 Hystrix / Sentinel）。</li>
+      </ul>
+
+      <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">⑦ 可观测性三支柱</p>
+      <ul class="sub-body" style="margin-top:0.4rem">
+        <li><strong>Logging</strong>：集中日志（ELK），结构化、带 TraceID。</li>
+        <li><strong>Metrics</strong>：指标（Prometheus + Grafana），QPS / 延迟 / 错误率 / 饱和度。</li>
+        <li><strong>Tracing</strong>：链路追踪（SkyWalking / Jaeger），TraceID 跨服务透传，无侵入 agent 接入。</li>
+      </ul>
+
+      <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">⑧ 灰度与流量治理</p>
+      <ul class="sub-body" style="margin-top:0.4rem">
+        <li><strong>发布方式</strong>：蓝绿（整体切流、回滚秒级）、金丝雀（小流量验证再放量）、滚动（逐批替换）。</li>
+        <li><strong>特性开关（Feature Flag）</strong>：代码不变仅切行为，回滚最快。</li>
+        <li><strong>标签路由</strong>：实例在注册中心打 version 标签，网关按标签把流量导向指定版本，实现按比例 / 按人群灰度。</li>
+      </ul>
+    </div>
+
+    <!-- ── 2. DDD 与领域建模 ── -->
+    <div class="subsection" id="arch-ddd">
+      <h3 class="sub-title">
+        <span class="dot" style="background:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,0.15)"></span>
+        DDD 与领域建模
+      </h3>
+      <p class="sub-body">领域驱动设计（DDD）是驯服复杂业务的建模方法论，核心是<strong>统一语言</strong>与<strong>领域建模</strong>。微服务拆分的边界，往往就来自 DDD 的限界上下文。</p>
+
+      <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">① 战略设计（Strategic）</p>
+      <ul class="sub-body" style="margin-top:0.4rem">
+        <li><strong>统一语言（Ubiquitous Language）</strong>：业务与技术共用一套词汇，并直接写进代码（类名、方法名就是业务术语）。</li>
+        <li><strong>限界上下文（Bounded Context）</strong>：明确划定的语义边界，上下文内概念一致；上下文之间用<strong>防腐层（ACL）</strong>隔离，避免概念互相污染。</li>
+        <li><strong>上下文映射（Context Map）</strong>：合作关系、客户-供应商、<strong>防腐层 ACL</strong>、开放主机服务（OHS）、共享内核、大泥球（Big Ball of Mud）。</li>
+      </ul>
+
+      <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">② 战术设计（Tactical）</p>
+      <ul class="sub-body" style="margin-top:0.4rem">
+        <li><strong>实体（Entity）</strong>：有唯一标识（ID）、有生命周期，标识不变而属性可变。</li>
+        <li><strong>值对象（Value Object）</strong>：无标识、靠属性值相等（如 Money、Address），<strong>不可变</strong>，可安全共享。</li>
+        <li><strong>聚合（Aggregate）与聚合根</strong>：一组必须保持一致性边界的对象集合，<strong>聚合根是唯一对外入口</strong>，外部只能经根修改内部，保证不变量（Invariant）。</li>
+        <li><strong>领域服务（Domain Service）</strong>：不属于任何实体的跨实体行为（如「转账」涉及两个账户）。</li>
+        <li><strong>工厂（Factory）/ 仓储（Repository）</strong>：封装复杂对象创建 / 提供领域对象的持久化抽象（不暴露 ORM 细节）。</li>
+      </ul>
+
+      <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">③ 贫血模型 vs 充血模型（代码对比）</p>
+      <div class="arch-box" style="margin-top:0.5rem">
+        <pre class="arch-pre" style="font-size:0.74rem;line-height:1.7">
+// ❌ 贫血模型：对象只是数据容器，逻辑全在 Service
+class Order { Long id; List&lt;OrderItem&gt; items; String status;
+            // 只有 getter/setter }
+
+void addItem(Order o, Product p, int n) {
+    if (o.items.size() &gt;= 20) throw ...;     // 不变量散落在 Service
+    o.items.add(new OrderItem(p, n));
+    if ("CLOSED".equals(o.status)) throw ...;   // 状态校验也得各处重复
+}
+
+// ✅ 充血模型：行为内聚在领域对象内
+class Order {
+    private List&lt;OrderItem&gt; items;
+    private OrderStatus status;
+    void addItem(Product p, int n) {            // 自己知道规则
+        if (status != OrderStatus.OPEN) throw new IllegalStateException("已关闭订单不可修改");
+        if (items.size() &gt;= 20) throw new BizException("单笔订单最多 20 项");
+        items.add(new OrderItem(p, n));
+    }
+}</pre>
+  
+      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#2563eb;background:rgba(0,0,0,0.03)">
+        <strong>面试要点：</strong>DDD 落地最大难点不是概念，而是<strong>领域建模</strong>：哪些属于同一聚合？聚合粒度过粗导致锁竞争，过细则无法保证不变量。实践建议：从充血模型开始，把校验逻辑搬进实体/值对象，再逐步引入聚合根；不要一开始就设计完美的领域模型，用演进式 DDD。<strong>防腐层（ACL）</strong>是上下文集成的关键，别把外部模型直接用进核心域。
+      </div>
+    </div>
+
+      <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">④ 领域事件（Domain Event）</p>
+      <ul class="sub-body" style="margin-top:0.4rem">
+        <li><strong>是什么</strong>：聚合内发生的重要业务事实（如 <code>OrderPaid</code>），用于解耦上下文间的状态传播。</li>
+        <li><strong>可靠投递</strong>：事件先落「事件表」→ 后台任务 / Canal binlog 投递到 MQ → 消费方幂等处理（去重表 / 唯一索引），避免丢失与重复。</li>
+      </ul>
+
+      <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">⑤ CQRS 与 Event Sourcing</p>
+      <ul class="sub-body" style="margin-top:0.4rem">
+        <li><strong>CQRS</strong>（命令/查询职责分离）：写模型（领域聚合）与读模型（专为查询优化的 DTO / 宽表）分离，各自独立优化，适合<strong>读写负载与模型差异大</strong>的系统。</li>
+        <li><strong>Event Sourcing</strong>：不存当前状态，而存「事件流」，当前状态由事件回放得到；天然审计、可追溯，代价是事件 schema 演进与重放性能。</li>
+      </ul>
+
+      <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">⑥ DDD 落地微服务的代码组织（四层架构）</p>
+      <div class="arch-box" style="margin-top:0.5rem">
+        <pre class="arch-pre" style="font-size:0.74rem;line-height:1.7">
+order-service/
+├── interface/        # 用户接口层：Controller、DTO、入站适配
+│   └── OrderController.java
+├── application/      # 应用层：用例编排、应用服务、事件订阅（不含业务规则）
+│   ├── OrderAppService.java
+│   └── listener/OrderPaidEventListener.java
+├── domain/           # 领域层：核心业务逻辑（不依赖任何框架/DB）
+│   ├── model/Order.java (聚合根)  OrderItem.java (实体)  Money.java (值对象)
+│   ├── service/OrderDomainService.java
+│   └── repository/OrderRepository.java (接口，由 infra 实现)
+└── infrastructure/   # 基础设施层：DB、MQ、第三方适配（实现 domain 的接口）
+    ├── OrderRepositoryImpl.java
+    └── mq/OrderEventPublisher.java</pre>
+      </div>
+      <p class="sub-body" style="margin-top:0.5rem"><em>依赖方向：interface → application → domain ← infrastructure，<strong>领域层不依赖任何外部技术</strong>，可独立单测。</em></p>
+    </div>
+
+    <!-- ═════════ 实战面试题 ════════ -->
+    <div class="subsection" id="arch-qa">
+      <h3 class="sub-title">
+        <span class="dot" style="background:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,0.15)"></span>
+        架构面试题（实战）
+      </h3>
+      <p class="sub-body">以下题目以<strong>场景 / 实战</strong>为主，重点看「怎么拆、怎么落地、怎么权衡」，而非背概念。</p>
+
+      <div class="qa-list" id="arch-qa-list">
+
+        <!-- ⚡ 实战案例 1 -->
+        <div class="qa-item practical" id="q-arch-p1">
+          <div class="qa-question" onclick="toggleQA('q-arch-p1')">
+            <span class="qa-num">⚡ 实战</span>
+            <span class="qa-q-text">用 DDD 建模「订单子域」：从限界上下文到四层代码</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <p><strong>一、战略设计（划边界）</strong></p>
+            <ul>
+              <li>识别出「订单」是一个独立限界上下文，与「库存」「用户」「支付」是不同上下文。</li>
+              <li>订单上下文对外提供语言：Order（订单）、OrderItem（订单项）、OrderStatus；其它上下文通过 ACL 防腐层调用，不共享实体。</li>
+            </ul>
+            <p><strong>二、战术建模（定对象）</strong></p>
+            <ul>
+              <li><strong>聚合根 Order</strong>：唯一标识 orderId，持有订单项列表与状态，是外部修改的唯一入口。</li>
+              <li><strong>实体 OrderItem</strong>：依赖订单而存在，无独立生命周期。</li>
+              <li><strong>值对象 Money / Address</strong>：不可变，靠值相等。</li>
+              <li><strong>不变量</strong>：已关闭订单不可再添加商品；单笔订单项上限 20——这些规则写在 Order 内部，由聚合根强制保证。</li>
+            </ul>
+            <p><strong>三、代码落地（四层）</strong></p>
+            <ul>
+              <li>domain 放 Order / OrderItem / Money / OrderRepository(接口) / OrderDomainService；</li>
+              <li>application 放 OrderAppService（编排用例、发 OrderPaid 领域事件）；</li>
+              <li>interface 放 Controller 与 DTO；</li>
+              <li>infrastructure 放 OrderRepositoryImpl（JPA/MyBatis）与 MQ 发布器。</li>
+            </ul>
+            <p><strong>四、为什么这样</strong>：业务规则集中在领域层、可单测；infrastructure 可替换（换存储不影响领域）；上下文边界即未来拆服务的天然边界。</p>
+          </div></div>
+        </div>
+
+        <!-- ⚡ 实战案例 2 -->
+        <div class="qa-item practical" id="q-arch-p2">
+          <div class="qa-question" onclick="toggleQA('q-arch-p2')">
+            <span class="qa-num">⚡ 实战</span>
+            <span class="qa-q-text">设计一个高可用订单微服务（拆分 / 通信 / 事务 / 容错 / 灰度）</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <p><strong>一、服务拆分</strong></p>
+            <ul>
+              <li>订单服务、库存服务、用户服务、支付服务各自独立库；边界来自 DDD 限界上下文。</li>
+            </ul>
+            <p><strong>二、通信选择</strong></p>
+            <ul>
+              <li>下单主链路（创建订单→扣库存→扣积分）用<strong>同步 + 分布式事务</strong>（Seata / Saga）保证一致；</li>
+              <li>支付结果通知、发货、积分账单等走 <strong>MQ 异步</strong>，解耦削峰。</li>
+            </ul>
+            <p><strong>三、分布式事务</strong></p>
+            <ul>
+              <li>用 Saga 编排：下单成功 → 发「扣库存」命令 → 成功发「扣积分」→ 任一步失败发补偿事件回滚前序步骤。</li>
+              <li>或用事务消息：本地事务 + 半消息，确保「订单创建」与「消息投递」原子。</li>
+            </ul>
+            <p><strong>四、服务容错</strong></p>
+            <ul>
+              <li>调用库存/支付设超时；非核心依赖（如积分）用熔断+降级（降级为「稍后补发」）；线程池隔离防雪崩。</li>
+            </ul>
+            <p><strong>五、灰度发布</strong></p>
+            <ul>
+              <li>新版本实例打 <code>version=canary</code> 标签，网关按 10% 流量 / 白名单用户路由；异常则特性开关秒级回滚。</li>
+            </ul>
+          </div></div>
+        </div>
+
+        <!-- Q1 -->
+        <div class="qa-item" id="q-arch-1">
+          <div class="qa-question" onclick="toggleQA('q-arch-1')">
+            <span class="qa-num" style="background:rgba(37,99,235,0.1);color:#2563eb;border:1px solid rgba(37,99,235,0.25)">Q1</span>
+            <span class="qa-q-text">把一个单体电商系统拆成微服务，你会怎么拆？拆哪些、不拆哪些、粒度怎么控？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <ul>
+              <li><strong>拆的依据</strong>：按 DDD 业务域拆——订单、库存、用户、商品、支付各成服务；<strong>不按技术层拆</strong>（否则是分布式单体）。</li>
+              <li><strong>不急着拆的</strong>：变化不频繁、强耦合、调用极密的模块（如「订单」与「订单项」本就一个聚合，硬拆反而要跨服务事务，得不偿失）。</li>
+              <li><strong>粒度</strong>：以「能独立开发部署、故障隔离、一个小团队拥有」为准；过粗=单体，过细=分布式 overhead + 协作爆炸。</li>
+              <li><strong>演进式</strong>：先粗后细，随业务量增长逐步拆，避免一开始过度设计。</li>
+            </ul>
+          </div></div>
+        </div>
+
+        <!-- Q2 -->
+        <div class="qa-item" id="q-arch-2">
+          <div class="qa-question" onclick="toggleQA('q-arch-2')">
+            <span class="qa-num" style="background:rgba(37,99,235,0.1);color:#2563eb;border:1px solid rgba(37,99,235,0.25)">Q2</span>
+            <span class="qa-q-text">一次下单要「创建订单 + 扣库存 + 扣积分」，如何保证数据最终一致？请画方案。</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <ul>
+              <li><strong>方案 A（事务消息 / 本地消息表）</strong>：本地事务写订单 + 写「待发送消息表」→ 投递 MQ → 库存/积分服务消费并落库，消费失败重试，保证最终一致。</li>
+              <li><strong>方案 B（Saga 编排）</strong>：下单服务发「创建订单」命令 → 成功发「扣库存」→ 成功发「扣积分」；任一步失败，反向发补偿事件（加回库存/积分）回滚。</li>
+              <li><strong>关键</strong>：所有消费方必须<strong>幂等</strong>（唯一消息 ID / 去重表），避免重试导致重复扣减；库存这类强一致可用 Redis 预扣 + DB 兜底（见实战案例 2）。</li>
+              <li><strong>结论</strong>：微服务下不追求强一致，用「消息 + 重试 + 补偿」换最终一致与可用性。</li>
+            </ul>
+          </div></div>
+        </div>
+
+        <!-- Q3 -->
+        <div class="qa-item" id="q-arch-3">
+          <div class="qa-question" onclick="toggleQA('q-arch-3')">
+            <span class="qa-num" style="background:rgba(37,99,235,0.1);color:#2563eb;border:1px solid rgba(37,99,235,0.25)">Q3</span>
+            <span class="qa-q-text">服务注册中心选 Nacos 还是 Eureka？区别在哪？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <ul>
+              <li><strong>Eureka</strong>：AP 架构（优先可用性），节点对等、客户端缓存兜底，网络分区时仍可注册/发现；但<strong>弃维护</strong>，功能单一（只有注册发现）。</li>
+              <li><strong>Nacos</strong>：同时支持 <strong>CP（Raft，配置/强一致场景）与 AP（注册发现）</strong>两种模式可切换；还内置配置中心，支持 DNS / gRPC，生态活跃。</li>
+              <li><strong>选型</strong>：新项目更倾向 Nacos——一套组件搞定注册发现 + 配置，且 CP/AP 灵活；老 Spring Cloud Netflix 栈才多见 Eureka。</li>
+              <li><strong>补充</strong>：注册中心本质是「服务目录」，无论选哪个，调用方都要配合<strong>客户端负载均衡（如 LoadBalancer）</strong>与超时/重试。</li>
+            </ul>
+          </div></div>
+        </div>
+
+        <!-- Q4 -->
+        <div class="qa-item" id="q-arch-4">
+          <div class="qa-question" onclick="toggleQA('q-arch-4')">
+            <span class="qa-num" style="background:rgba(37,99,235,0.1);color:#2563eb;border:1px solid rgba(37,99,235,0.25)">Q4</span>
+            <span class="qa-q-text">API 网关和 Nginx 反向代理有什么区别？网关必须做哪些事？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <ul>
+              <li><strong>本质差异</strong>：Nginx 偏 L4/L7 流量转发与负载均衡，业务无感知；网关是<strong>业务治理层</strong>，理解路由规则与请求语义。</li>
+              <li><strong>网关职责</strong>：① 统一路由（按路径/服务名转发）② 鉴权（token 校验、黑白名单）③ 限流熔断 ④ 灰度/金丝雀（标签路由）⑤ 协议转换与请求聚合 ⑥ 日志/埋点。</li>
+              <li><strong>组合</strong>：Nginx/LB 在最外层做流量接入，网关在内部做业务治理，二者不冲突、常串行。</li>
+            </ul>
+          </div></div>
+        </div>
+
+        <!-- Q5 -->
+        <div class="qa-item" id="q-arch-5">
+          <div class="qa-question" onclick="toggleQA('q-arch-5')">
+            <span class="qa-num" style="background:rgba(37,99,235,0.1);color:#2563eb;border:1px solid rgba(37,99,235,0.25)">Q5</span>
+            <span class="qa-q-text">微服务雪崩怎么防？超时 / 重试 / 熔断 / 降级 / 隔离分别怎么配？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <ul>
+              <li><strong>超时</strong>：每个下游调用设合理超时（如 500ms-1s），避免线程/连接被慢依赖占满。</li>
+              <li><strong>重试</strong>：仅对<strong>幂等</strong>接口，指数退避 + 抖动 + 上限（如 3 次），防重试风暴放大故障。</li>
+              <li><strong>熔断</strong>（Sentinel/Hystrix）：错误率或慢调用超阈值→「打开」快速失败，半开探测恢复，切断故障传播。</li>
+              <li><strong>降级</strong>：非核心依赖（如推荐、积分）失败时返回兜底值/默认值，保主链路。</li>
+              <li><strong>隔离（舱壁）</strong>：不同依赖用独立线程池/信号量，一个慢依赖耗尽的只是自己的池，不会拖垮全局。</li>
+              <li><strong>关系</strong>：超时兜底 → 重试谨慎 → 熔断隔故障 → 降级保核心 → 隔离限爆炸，五者协同防雪崩。</li>
+            </ul>
+          </div></div>
+        </div>
+
+        <!-- Q6 -->
+        <div class="qa-item" id="q-arch-6">
+          <div class="qa-question" onclick="toggleQA('q-arch-6')">
+            <span class="qa-num" style="background:rgba(37,99,235,0.1);color:#2563eb;border:1px solid rgba(37,99,235,0.25)">Q6</span>
+            <span class="qa-q-text">怎么把贫血的 OrderService 改造成充血模型？给代码前后对比。</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <ul>
+              <li><strong>前（贫血）</strong>：<code>Order</code> 只有属性 + getter/setter，<code>OrderService.addItem(order, product, n)</code> 里写状态校验与业务规则。</li>
+              <li><strong>后（充血）</strong>：把规则搬进 <code>Order</code> 自身：<code>order.addItem(product, n)</code> 内部校验「已关闭不可改」「超过 20 项抛异常」，Service 只负责编排与持久化。</li>
+              <li><strong>收益</strong>：业务规则内聚、不变量由聚合根强制、减少「上帝 Service」与过程式代码，也更贴合 DDD。</li>
+              <li><strong>注意</strong>：充血模型要配合 ORM 的延迟加载与事务边界，避免「在集合里触发 DB 查询」；复杂跨实体行为仍放 DomainService。</li>
+            </ul>
+            <p style="margin-top:0.4rem">代码对比见上文「DDD 与领域建模 → ③ 贫血 vs 充血」。</p>
+          </div></div>
+        </div>
+
+        <!-- Q7 -->
+        <div class="qa-item" id="q-arch-7">
+          <div class="qa-question" onclick="toggleQA('q-arch-7')">
+            <span class="qa-num" style="background:rgba(37,99,235,0.1);color:#2563eb;border:1px solid rgba(37,99,235,0.25)">Q7</span>
+            <span class="qa-q-text">聚合根 Order 包含多个 OrderItem，为什么外部不能直接改 OrderItem？聚合根如何保证不变量？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <ul>
+              <li><strong>为什么</strong>：聚合是一致性边界，<strong>聚合根是唯一对外入口</strong>。若允许外部直接拿 OrderItem 改数量，就绕过了 Order 的校验，不变量（如「已支付订单不可改」「总价必须重算」）会被破坏。</li>
+              <li><strong>怎么做</strong>：OrderItem 不暴露 setter 给外部，外部只能通过 <code>order.addItem()/removeItem()</code> 等根方法修改；根方法内统一校验并更新关联状态（总价、状态机）。</li>
+              <li><strong>不变量保证</strong>：所有修改入口集中、每次修改后校验业务规则、持久化时整聚合同步保存（事务边界 = 聚合边界）。</li>
+            </ul>
+          </div></div>
+        </div>
+
+        <!-- Q8 -->
+        <div class="qa-item" id="q-arch-8">
+          <div class="qa-question" onclick="toggleQA('q-arch-8')">
+            <span class="qa-num" style="background:rgba(37,99,235,0.1);color:#2563eb;border:1px solid rgba(37,99,235,0.25)">Q8</span>
+            <span class="qa-q-text">领域事件 OrderPaidEvent 发布后，积分服务和通知服务要消费，如何保证不丢失、不重复？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <ul>
+              <li><strong>不丢失</strong>：事件先随业务事务落「事件表」（同库事务保证「业务完成 ⇒ 事件已记录」），再由后台任务 / Canal 读取投递到 MQ；MQ 本身用生产确认（acks=all）防丢。</li>
+              <li><strong>不重复</strong>：消费方做<strong>幂等</strong>——用事件 ID 落去重表 / 唯一索引，重复消息直接跳过；业务本身也设计成可重试（如「增加积分」带幂等键）。</li>
+              <li><strong>顺序</strong>：同一聚合的事件按发生顺序投递（同一分片），避免状态乱序。</li>
+            </ul>
+          </div></div>
+        </div>
+
+        <!-- Q9 -->
+        <div class="qa-item" id="q-arch-9">
+          <div class="qa-question" onclick="toggleQA('q-arch-9')">
+            <span class="qa-num" style="background:rgba(37,99,235,0.1);color:#2563eb;border:1px solid rgba(37,99,235,0.25)">Q9</span>
+            <span class="qa-q-text">CQRS 适用什么场景？订单「我的订单列表（读）」和「下单（写）」如何拆分？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <ul>
+              <li><strong>适用</strong>：读写负载与模型差异大的系统（如写很少、读极多 / 读需要复杂 join 宽表），或需审计回溯（配合 ES）。</li>
+              <li><strong>写侧</strong>：下单走领域聚合，维护订单一致性，写完成后发布领域事件。</li>
+              <li><strong>读侧</strong>：订阅事件，维护一张「我的订单列表」宽表（含用户名、商品缩略、状态），查询直接读宽表，无需跨服务 join。</li>
+              <li><strong>取舍</strong>：CQRS 引入了「读模型滞后 + 双写复杂度」，简单 CRUD 没必要上，只在读写分化明显时值回票价。</li>
+            </ul>
+          </div></div>
+        </div>
+
+        <!-- Q10 -->
+        <div class="qa-item" id="q-arch-10">
+          <div class="qa-question" onclick="toggleQA('q-arch-10')">
+            <span class="qa-num" style="background:rgba(37,99,235,0.1);color:#2563eb;border:1px solid rgba(37,99,235,0.25)">Q10</span>
+            <span class="qa-q-text">如何用 DDD 四层架构组织一个 Spring Boot 项目的目录？给结构。</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <ul>
+              <li>分 <code>interface</code>（Controller/DTO）、<code>application</code>（用例编排、事件订阅）、<code>domain</code>（实体/值对象/聚合根/领域服务/仓储接口）、<code>infrastructure</code>（DB/MQ/第三方适配，实现 domain 的接口）。</li>
+              <li><strong>依赖方向</strong>：interface → application → domain ← infrastructure；领域层不依赖任何框架/DB，可独立单测。</li>
+              <li>完整目录结构见上文「DDD 与领域建模 → ⑥ 四层架构」代码块。</li>
+            </ul>
+          </div></div>
+        </div>
+
+        <!-- Q11 -->
+        <div class="qa-item" id="q-arch-11">
+          <div class="qa-question" onclick="toggleQA('q-arch-11')">
+            <span class="qa-num" style="background:rgba(37,99,235,0.1);color:#2563eb;border:1px solid rgba(37,99,235,0.25)">Q11</span>
+            <span class="qa-q-text">如何实现金丝雀 / 灰度发布？结合网关 + 注册中心标签路由如何按比例切流？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <ul>
+              <li><strong>打标签</strong>：新版本实例在注册中心（Nacos）注册时带上 <code>version=canary</code> 元数据。</li>
+              <li><strong>网关路由</strong>：网关读请求特征（白名单用户 / 比例随机数 / Header），按规则把 10% 流量或指定人群导向 canary 实例，其余走 stable。</li>
+              <li><strong>观测与放量</strong>：对比两版监控（错误率/延迟），无异常则逐步调大比例至 100%，最后下线旧版。</li>
+              <li><strong>秒级回滚</strong>：配合<strong>特性开关</strong>，无需重新部署即可把流量切回 stable。</li>
+            </ul>
+          </div></div>
+        </div>
+
+        <!-- Q12 -->
+        <div class="qa-item" id="q-arch-12">
+          <div class="qa-question" onclick="toggleQA('q-arch-12')">
+            <span class="qa-num" style="background:rgba(37,99,235,0.1);color:#2563eb;border:1px solid rgba(37,99,235,0.25)">Q12</span>
+            <span class="qa-q-text">微服务配置中心（Nacos / Apollo）解决了什么？配置热更新原理？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <ul>
+              <li><strong>解决什么</strong>：配置散落各服务、改配置要重启、多环境（dev/test/prod）难管理、无版本与回滚。</li>
+              <li><strong>能力</strong>：配置外置、环境/命名空间隔离、灰度发布配置、监听变更、权限审计。</li>
+              <li><strong>热更新原理</strong>：客户端长轮询（如 30s）向服务端拉取；服务端在配置变更时主动 push 或客户端轮询返回「有变更」，客户端拉取新值并更新到 Spring 环境（@RefreshScope / 发布 RefreshEvent），<strong>应用无需重启</strong>。</li>
+            </ul>
+          </div></div>
+        </div>
+
+        <!-- Q13 -->
+        <div class="qa-item" id="q-arch-13">
+          <div class="qa-question" onclick="toggleQA('q-arch-13')">
+            <span class="qa-num" style="background:rgba(37,99,235,0.1);color:#2563eb;border:1px solid rgba(37,99,235,0.25)">Q13</span>
+            <span class="qa-q-text">TraceID 怎么在跨服务调用中传递？SkyWalking 如何无侵入接入？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <ul>
+              <li><strong>传递</strong>：入口生成 TraceID，存入 MDC / 请求上下文；每次下游调用（HTTP/gRPC/MQ）通过<strong>消息头</strong>（如 traceparent / sw8）透传；各服务把同一 TraceID 写进日志，串起整条链路。</li>
+              <li><strong>SkyWalking 无侵入</strong>：以 <strong>Java Agent</strong>（字节码增强）方式启动（<code>-javaagent:skywalking-agent.jar</code>），自动拦截 Spring / RPC / JDBC / MQ 等组件，无需改业务代码即可采集 span。</li>
+              <li><strong>价值</strong>：可视化调用拓扑、定位慢调用与异常节点、关联日志，是微服务排障的核心。</li>
+            </ul>
+          </div></div>
+        </div>
+
+        <!-- Q14 -->
+        <div class="qa-item" id="q-arch-14">
+          <div class="qa-question" onclick="toggleQA('q-arch-14')">
+            <span class="qa-num" style="background:rgba(37,99,235,0.1);color:#2563eb;border:1px solid rgba(37,99,235,0.25)">Q14</span>
+            <span class="qa-q-text">两个服务都要用「用户」概念（账号 vs 画像），如何避免概念耦合？防腐层（ACL）怎么设计？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <ul>
+              <li><strong>问题</strong>：账号服务眼里 User = 用户名/密码/状态；画像服务眼里 User = 年龄/偏好/标签。直接复用同一实体会让两个上下文互相污染。</li>
+              <li><strong>各自建模</strong>：每个限界上下文定义自己的模型（Account / UserProfile），不共享实体。</li>
+              <li><strong>ACL 防腐层</strong>：在消费方（如画像服务）与提供方（账号服务）之间加一层适配：调用对方接口后，把返回的「账号 DTO」转换为本上下文的「UserProfile」领域对象，隔离外部模型与概念差异（含字段裁剪、命名转换、异常封装）。</li>
+              <li><strong>收益</strong>：提供方模型变更只影响 ACL，不波及本上下文；上下文边界清晰，未来拆库/拆服务无碍。</li>
+            </ul>
+          </div></div>
+        </div>
+
+      </div>
+    </div>
+
+  </section>
+</main>
+</div>
+
+<div class="toc-panel" id="toc-panel">
+  <div class="toc-title">ON THIS PAGE</div>
+  <nav id="toc-nav"></nav>
+</div>
+
+<script src="style/search-data.js"></script>
+<script src="style/shared.js"></script>
+</body>
+</html>

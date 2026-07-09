@@ -20,6 +20,20 @@
   --accent-nav: #4f46e5; --accent-nav-d: rgba(79,70,229,0.08);
   --accent-em:  #4338ca; --accent-em-d:  rgba(67,56,202,0.08);
 }
+
+/* ── JUC Mobile: page-specific overrides ── */
+@media (max-width: 768px) {
+  /* Mark Word table: fewer cols wrap better at small sizes */
+  .cmp-table[style*="text-align:center"] { min-width: 360px; font-size: 11px; }
+  .cmp-table[style*="text-align:center"] th,
+  .cmp-table[style*="text-align:center"] td { padding: 6px 6px; }
+
+  /* Lock upgrade flow code block: smaller font, still readable */
+  .arch-pre { white-space: pre; word-break: normal; }
+
+  /* AQS state/queue diagrams don't need extra margin on mobile */
+  .subsection .arch-box + .arch-box { margin-top: 8px; }
+}
 </style>
 </head>
 <body>

@@ -16,14 +16,23 @@
 <body>
 
 <div class="header">
+  <button id="dark-toggle-index" title="切换深色模式">☽</button>
   <div class="eyebrow">Java Backend Interview</div>
   <h1>面试知识库</h1>
-  <p class="subtitle">JVM 垃圾收集 · JVM 内存与类加载 · Spring 框架原理 · MySQL 核心知识 · Redis 原理 · 消息队列</p>
+  <div class="header-stats">
+    <span class="stat-badge"><span class="stat-num">9</span> 大主题</span>
+    <span class="stat-dot">·</span>
+    <span class="stat-badge"><span class="stat-num">156+</span> 道高频题</span>
+    <span class="stat-dot">·</span>
+    <span class="stat-badge">纯静态 · 无需安装</span>
+  </div>
+  <p class="subtitle">JVM · Spring · MySQL · Redis · 消息队列 · 并发编程 · 分布式 · 架构设计</p>
 </div>
 
 <div class="cards">
 
   <a class="card juc" href="juc.html">
+    <span class="card-count">×19</span>
     <div class="card-icon">JUC</div>
     <div class="card-title">并发编程</div>
     <p class="card-desc">Java 内存模型、synchronized 锁升级、volatile 内存屏障、CAS 与 AQS 底层原理、线程池参数调优、并发容器实现。</p>
@@ -33,7 +42,6 @@
       <span class="tag">synchronized</span>
       <span class="tag">volatile</span>
       <span class="tag">CAS</span>
-      <span class="tag">面试题 ×16</span>
     </div>
     <div class="card-cta">进入学习 →</div>
     <div class="card-preview">
@@ -52,6 +60,7 @@
   </a>
 
   <a class="card spring" href="spring.html">
+    <span class="card-count">×19</span>
     <div class="card-icon">SPR</div>
     <div class="card-title">Spring 原理</div>
     <p class="card-desc">IoC 容器与依赖注入、Bean 生命周期、AOP 代理机制、声明式事务与三级缓存循环依赖。</p>
@@ -61,7 +70,6 @@
       <span class="tag">AOP</span>
       <span class="tag">事务传播</span>
       <span class="tag">三级缓存</span>
-      <span class="tag">面试题 ×17</span>
     </div>
     <div class="card-cta">进入学习 →</div>
     <div class="card-preview">
@@ -78,7 +86,8 @@
   </a>
 
   <a class="card gc" href="gc-principles.html">
-    <div class="card-icon">JVM</div>
+    <span class="card-count">×27</span>
+    <div class="card-icon">GC</div>
     <div class="card-title">GC 原理</div>
     <p class="card-desc">深入剖析 G1 / ZGC / CMS 的核心设计——堆分区模型、并发标记算法、内存屏障、染色指针。</p>
     <div class="card-tags">
@@ -87,7 +96,6 @@
       <span class="tag">CMS</span>
       <span class="tag">SATB</span>
       <span class="tag">染色指针</span>
-      <span class="tag">面试题 ×25</span>
     </div>
     <div class="card-cta">进入学习 →</div>
     <div class="card-preview">
@@ -106,6 +114,7 @@
   </a>
 
   <a class="card mysql" href="mysql.html">
+    <span class="card-count">×19</span>
     <div class="card-icon">SQL</div>
     <div class="card-title">MySQL 知识</div>
     <p class="card-desc">B+ Tree 索引、MVCC 多版本并发控制、Next-Key Lock、日志体系与两阶段提交、主从复制。</p>
@@ -115,7 +124,6 @@
       <span class="tag">事务隔离</span>
       <span class="tag">锁机制</span>
       <span class="tag">主从复制</span>
-      <span class="tag">面试题 ×15</span>
     </div>
     <div class="card-cta">进入学习 →</div>
     <div class="card-preview">
@@ -133,6 +141,7 @@
   </a>
 
   <a class="card redis" href="redis.html">
+    <span class="card-count">×18</span>
     <div class="card-icon">RDS</div>
     <div class="card-title">Redis 原理</div>
     <p class="card-desc">数据类型与底层编码、RDB/AOF 持久化、内存淘汰策略、缓存三大问题、哨兵与 Cluster 集群、分布式锁。</p>
@@ -142,7 +151,6 @@
       <span class="tag">缓存穿透</span>
       <span class="tag">分布式锁</span>
       <span class="tag">Cluster</span>
-      <span class="tag">面试题 ×15</span>
     </div>
     <div class="card-cta">进入学习 →</div>
     <div class="card-preview">
@@ -160,6 +168,7 @@
   </a>
 
   <a class="card mq" href="mq.html">
+    <span class="card-count">×17</span>
     <div class="card-icon">MQ</div>
     <div class="card-title">消息队列</div>
     <p class="card-desc">Kafka 高性能原理与副本机制、RocketMQ 事务消息、消息可靠性三段保障、顺序性与幂等消费、死信队列与延迟消息。</p>
@@ -169,7 +178,6 @@
       <span class="tag">ISR / HW</span>
       <span class="tag">事务消息</span>
       <span class="tag">消息幂等</span>
-      <span class="tag">面试题 ×15</span>
     </div>
     <div class="card-cta">进入学习 →</div>
     <div class="card-preview">
@@ -187,6 +195,7 @@
   </a>
 
   <a class="card dist" href="distributed.html">
+    <span class="card-count">×18</span>
     <div class="card-icon">DST</div>
     <div class="card-title">分布式系统</div>
     <p class="card-desc">CAP/BASE 理论、分布式事务（2PC/TCC/Saga）、Redis 与 ZK 分布式锁、注册中心选型、Snowflake ID、令牌桶限流与熔断、一致性哈希。</p>
@@ -196,7 +205,6 @@
       <span class="tag">分布式锁</span>
       <span class="tag">限流熔断</span>
       <span class="tag">Snowflake</span>
-      <span class="tag">面试题 ×15</span>
     </div>
     <div class="card-cta">进入学习 →</div>
     <div class="card-preview">
@@ -215,6 +223,7 @@
   </a>
 
   <a class="card jvm" href="jvm.html">
+    <span class="card-count">×19</span>
     <div class="card-icon">JVM</div>
     <div class="card-title">JVM 内存与类加载</div>
     <p class="card-desc">运行时数据区划分、对象内存布局与压缩指针、Class 文件结构、类加载五阶段、双亲委派与打破场景、JIT 分层编译与调优参数。</p>
@@ -224,7 +233,6 @@
       <span class="tag">双亲委派</span>
       <span class="tag">JIT</span>
       <span class="tag">Metaspace</span>
-      <span class="tag">面试题 ×15</span>
     </div>
     <div class="card-cta">进入学习 →</div>
     <div class="card-preview">
@@ -241,6 +249,30 @@
     </div>
   </a>
 
+  <a class="card arch" href="architecture.html">
+    <span class="card-count">×16</span>
+    <div class="card-icon">ARC</div>
+    <div class="card-title">架构设计</div>
+    <p class="card-desc">聚焦微服务（服务拆分 / 通信 / 注册发现 / 配置中心 / API 网关 / 分布式事务 / 服务容错 / 可观测性 / 灰度治理）与 DDD 领域驱动设计（战略设计 / 战术建模 / 贫血充血 / 领域事件 / CQRS / 四层架构落地），题目以实战场景为主。</p>
+    <div class="card-tags">
+      <span class="tag">微服务</span>
+      <span class="tag">DDD</span>
+      <span class="tag">分布式事务</span>
+      <span class="tag">服务容错</span>
+      <span class="tag">四层架构</span>
+    </div>
+    <div class="card-cta">进入学习 →</div>
+    <div class="card-preview">
+      <div class="preview-heading">目 录</div>
+      <ul class="preview-list">
+        <li>微服务架构</li>
+        <li>DDD 与领域建模</li>
+        <li>架构面试题（实战）</li>
+      </ul>
+      <div class="preview-cta" style="color:#2563eb">进入学习 →</div>
+    </div>
+  </a>
+
 </div>
 
 <script src="style/search-data.js"></script>
@@ -251,9 +283,7 @@
   var K = 'interview-dark', h = document.documentElement;
   var s = localStorage.getItem(K);
   if (s === 'dark') h.setAttribute('data-theme', 'dark');
-  var btn = document.createElement('button');
-  btn.id = 'dark-toggle-index';
-  btn.title = '切换深色模式';
+  var btn = document.getElementById('dark-toggle-index');
   var isD = function() { return h.getAttribute('data-theme') === 'dark'; };
   btn.textContent = isD() ? '☀' : '☽';
   btn.addEventListener('click', function() {
@@ -262,7 +292,6 @@
     localStorage.setItem(K, d ? 'dark' : 'light');
     btn.textContent = d ? '☀' : '☽';
   });
-  document.body.appendChild(btn);
 })();
 </script>
 
