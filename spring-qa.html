@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spring/SpringBoot 原理 — 高频面试题</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=DM+Mono:wght@400;500;600&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=DM+Mono:wght@400;500;600&display=swap"></noscript>
+<link rel="preload" as="style" href="https://fontsapi.zeoseven.com/161/main/result.css" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fontsapi.zeoseven.com/161/main/result.css"></noscript>
+<link rel="stylesheet" href="style/shared.css">
+<style>
+:root {
+  --accent:     #0369a1;
+  --accent-nav: #0369a1; --accent-nav-d: rgba(3,105,161,0.08);
+  --accent-em:  #6d28d9; --accent-em-d:  rgba(109,40,217,0.08);
+}
+</style>
+</head>
+<body>
+
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <span class="logo-badge" style="background:linear-gradient(135deg,#0369a1,#0e7490)">SPR</span>
+    <span class="logo-text">Spring 面试题</span>
+  </div>
+  <div class="page-tabs"></div>
+  <a href="spring.html" class="nav-link" style="margin-bottom:4px;color:rgba(3,105,161,0.7);font-size:12px">← 返回 Spring 原理篇</a>
+  <div class="nav-section-label" style="color:rgba(3,105,161,0.65)">面试题分类</div>
+  <a href="#interview-spring-ioc"  class="nav-link" data-section="interview-spring-ioc">Spring IoC 面试题</a>
+  <a href="#interview-spring-aop"  class="nav-link" data-section="interview-spring-aop">Spring AOP 面试题</a>
+  <a href="#interview-spring-tx"   class="nav-link" data-section="interview-spring-tx">Spring 事务面试题</a>
+  <a href="#interview-spring-boot" class="nav-link" data-section="interview-spring-boot">Spring Boot 面试题</a>
+</nav>
+
+<div class="content-wrap">
+<button class="menu-btn" id="menuBtn" onclick="toggleSidebar()">☰</button>
+<main class="main">
+
+  <section class="hero" id="overview">
+    <div class="hero-eyebrow" style="color:#0369a1">Spring/SpringBoot · 高频面试题 · 29 道</div>
+    <h1><span style="color:#0369a1">Spring/SpringBoot</span> 面试题</h1>
+    <p class="hero-desc">涵盖 IoC 容器、Bean 生命周期、AOP 代理、事务传播、循环依赖，以及 Spring Boot 启动流程、自动配置、配置体系与实战排查。</p>
+    <div style="margin-top:14px">
+      <a href="spring.html" style="display:inline-flex;align-items:center;gap:6px;background:rgba(3,105,161,0.08);border:1px solid rgba(3,105,161,0.25);border-radius:8px;padding:7px 16px;font-size:13px;color:#0369a1;text-decoration:none;font-weight:500">← Spring 原理篇（知识点 + 图示）</a>
+    </div>
+  </section>
+
+  <!-- Spring IoC 面试题 -->
+  <section class="gc-section" id="interview-spring-ioc">
+    <span class="section-badge" style="background:rgba(3,105,161,0.08);color:#0369a1;border:1px solid rgba(3,105,161,0.28)">● Interview · Spring IoC</span>
+    <h2 class="section-title">Spring IoC 面试题</h2>
+    <p class="section-intro">涵盖容器原理、Bean 生命周期、作用域与依赖注入等高频考点。</p>
+    <div class="subsection">
+      <div class="qa-list">
+        <div class="qa-item" id="q-sp-ioc-1">
+          <div class="qa-question" onclick="toggleQA('q-sp-ioc-1')">
+            <span class="qa-num" style="background:rgba(3,105,161,0.08);color:#0369a1;border:1px solid rgba(3,105,161,0.25)">IoC·01</span>
+            <span class="qa-q-text">Spring IoC 容器的实现原理是什么？BeanFactory 和 ApplicationContext 有什么区别？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            IoC 容器本质是一个 <strong>Bean 工厂</strong>，通过读取配置（XML / 注解 / Java Config）生成 <strong>BeanDefinition</strong>（Bean 的元数据），再通过反射创建对象、完成依赖注入，最终注册到缓存供使用。
+            <ul>
+              <li><strong>BeanFactory</strong>：根接口，懒加载（首次 getBean 才实例化），功能基础。</li>
+              <li><strong>ApplicationContext</strong>：BeanFactory 子接口，启动时<strong>饥饿加载所有单例</strong>，额外支持：国际化、事件发布、AOP/事务集成。</li>
+              <li>Spring Boot 使用 <code>AnnotationConfigServletWebServerApplicationContext</code>，内嵌 Tomcat。</li>
+            </ul>
+          </div></div>
+        </div>
+        <div class="qa-item" id="q-sp-ioc-2">
+          <div class="qa-question" onclick="toggleQA('q-sp-ioc-2')">
+            <span class="qa-num" style="background:rgba(3,105,161,0.08);color:#0369a1;border:1px solid rgba(3,105,161,0.25)">IoC·02</span>
+            <span class="qa-q-text">请描述 Spring Bean 完整的生命周期，并说明哪个阶段创建了 AOP 代理？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <ul>
+              <li>① <strong>实例化</strong>：反射调用构造方法</li>
+              <li>② <strong>属性填充</strong>：@Autowired / @Value 注入</li>
+              <li>③ <strong>Aware 回调</strong>：BeanNameAware → BeanFactoryAware → ApplicationContextAware</li>
+              <li>④ <strong>BPP#beforeInitialization</strong>：@PostConstruct 在此调用</li>
+              <li>⑤ <strong>InitializingBean.afterPropertiesSet()</strong></li>
+              <li>⑥ <strong>自定义 init-method</strong></li>
+              <li>⑦ <strong>BPP#afterInitialization</strong>：<em>AOP 代理在此创建！</em> AnnotationAwareAspectJAutoProxyCreator 检查是否需要代理，若匹配切点则返回代理对象</li>
+              <li>⑧ <strong>Bean 就绪</strong>，注册到一级缓存</li>
+              <li>⑨~⑩ <strong>销毁</strong>：@PreDestroy → DisposableBean.destroy() → destroy-method</li>
+            </ul>
+            <span class="ans-tag key" style="background:rgba(3,105,161,0.08);color:#0369a1;border-color:rgba(3,105,161,0.25)">关键点</span> 容器中注册的是第⑦步产生的<strong>代理对象</strong>。@Transactional、@Async 的增强逻辑都通过这个代理执行。
+          </div></div>
+        </div>
+        <div class="qa-item" id="q-sp-ioc-3">
+          <div class="qa-question" onclick="toggleQA('q-sp-ioc-3')">
+            <span class="qa-num" style="background:rgba(3,105,161,0.08);color:#0369a1;border:1px solid rgba(3,105,161,0.25)">IoC·03</span>
+            <span class="qa-q-text">@Autowired 和 @Resource 有什么区别？注入时发现多个匹配 Bean 怎么处理？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <ul>
+              <li><strong>@Autowired</strong>（Spring 原生）：默认<strong>按类型注入</strong>，多个候选 Bean 时用 @Qualifier 指定，或 @Primary 标记优先 Bean。</li>
+              <li><strong>@Resource</strong>（JSR-250）：默认<strong>按名称注入</strong>（先 name → 再 type），适合需要按名精准注入的场景。</li>
+              <li><strong>多 Bean 冲突处理：</strong>@Primary 首选 / @Qualifier 精确 / 注入 List&lt;T&gt; 收集所有 / @ConditionalOnXxx 控制注册。</li>
+            </ul>
+          </div></div>
+        </div>
+        <div class="qa-item" id="q-sp-ioc-4">
+          <div class="qa-question" onclick="toggleQA('q-sp-ioc-4')">
+            <span class="qa-num" style="background:rgba(3,105,161,0.08);color:#0369a1;border:1px solid rgba(3,105,161,0.25)">IoC·04</span>
+            <span class="qa-q-text">singleton Bean 注入 prototype Bean 时为什么只有一个实例？如何获取每次不同的实例？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <span class="ans-tag warn">问题根因</span><br>
+            singleton Bean 只初始化一次，注入在属性填充时完成，之后字段不再变化。即使注入 prototype Bean，<strong>注入动作只发生一次</strong>，后续调用永远拿到那个初始实例。
+            <ul>
+              <li><strong>方案①</strong>：注入 ApplicationContext，每次手动 <code>context.getBean(PrototypeBean.class)</code></li>
+              <li><strong>方案②</strong>：注入 <code>ObjectFactory&lt;PrototypeBean&gt;</code>，调用 <code>.getObject()</code></li>
+              <li><strong>方案③</strong>：使用 <code>@Lookup</code> 注解，Spring 用 CGLIB 重写该方法每次返回新实例（最优雅）</li>
+            </ul>
+          </div></div>
+        </div>
+        <div class="qa-item" id="q-sp-ioc-5">
+          <div class="qa-question" onclick="toggleQA('q-sp-ioc-5')">
+            <span class="qa-num" style="background:rgba(3,105,161,0.08);color:#0369a1;border:1px solid rgba(3,105,161,0.25)">IoC·05</span>
+            <span class="qa-q-text">Spring Boot 自动配置（Auto-Configuration）的原理是什么？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <code>@SpringBootApplication</code> 组合了 <code>@EnableAutoConfiguration</code>，后者通过 <code>@Import(AutoConfigurationImportSelector.class)</code> 触发加载。
+            <ul>
+              <li><strong>Spring Boot 2.x</strong>：读取所有 jar 包下的 <code>META-INF/spring.factories</code> 获取自动配置类列表。</li>
+              <li><strong>Spring Boot 3.x</strong>：改为 <code>META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports</code>。</li>
+              <li><strong>条件过滤</strong>：<code>@ConditionalOnClass</code>（classpath 有某类才生效）、<code>@ConditionalOnMissingBean</code>（用户未自定义时才生效）确保"有需要才注册、用户优先"。</li>
+            </ul>
+          </div></div>
+        </div>
+        <div class="qa-item" id="q-sp-ioc-6">
+          <div class="qa-question" onclick="toggleQA('q-sp-ioc-6')">
+            <span class="qa-num" style="background:rgba(3,105,161,0.08);color:#0369a1;border:1px solid rgba(3,105,161,0.25)">IoC·06</span>
+            <span class="qa-q-text">@Configuration 的 Full 模式和 Lite 模式有什么区别？BeanFactoryPostProcessor 和 BeanPostProcessor 有什么区别？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <strong>Full 模式（@Configuration）：</strong>Spring 用 CGLIB 子类代理该配置类，@Bean 方法之间互相调用会经过容器，返回同一单例 Bean。<br><br>
+            <strong>Lite 模式（@Component 上的 @Bean / proxyBeanMethods=false）：</strong>无 CGLIB 代理，@Bean 方法是普通 Java 方法，互相调用会 new 出新实例，可能出现多个不同实例的 Bug。<br><br>
+            <strong>BeanFactoryPostProcessor vs BeanPostProcessor：</strong>
+            <ul>
+              <li><strong>BeanFactoryPostProcessor</strong>：在所有 Bean <strong>实例化之前</strong>，修改 <code>BeanDefinition</code>（元数据）。典型实现：<code>PropertySourcesPlaceholderConfigurer</code> 替换 <code>${...}</code> 占位符</li>
+              <li><strong>BeanPostProcessor</strong>：在 Bean <strong>实例化之后</strong>的初始化前后，对 Bean 实例做增强。@Autowired 注入（<code>AutowiredAnnotationBeanPostProcessor</code>）和 AOP 代理创建（<code>AnnotationAwareAspectJAutoProxyCreator</code>）均通过 BPP 实现</li>
+            </ul>
+            <span class="ans-tag key" style="background:rgba(3,105,161,0.08);color:#0369a1;border-color:rgba(3,105,161,0.25)">记忆口诀</span>BFPP 改元数据（Before），BPP 改实例（After init）。
+          </div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Spring AOP 面试题 -->
+  <section class="gc-section" id="interview-spring-aop">
+    <span class="section-badge" style="background:rgba(3,105,161,0.08);color:#0369a1;border:1px solid rgba(3,105,161,0.28)">● Interview · Spring AOP</span>
+    <h2 class="section-title">Spring AOP 面试题</h2>
+    <p class="section-intro">聚焦代理机制、切点表达式、通知类型与常见失效场景。</p>
+    <div class="subsection">
+      <div class="qa-list">
+        <div class="qa-item" id="q-sp-aop-1">
+          <div class="qa-question" onclick="toggleQA('q-sp-aop-1')">
+            <span class="qa-num" style="background:rgba(3,105,161,0.08);color:#0369a1;border:1px solid rgba(3,105,161,0.25)">AOP·01</span>
+            <span class="qa-q-text">JDK 动态代理和 CGLIB 代理的实现原理有何不同？Spring 如何选择？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <ul>
+              <li><strong>JDK 动态代理</strong>：运行时通过 <code>Proxy.newProxyInstance()</code> 生成实现<strong>相同接口</strong>的代理类，调用委托给 <code>InvocationHandler.invoke()</code>。要求目标类必须实现接口，只能代理接口方法。</li>
+              <li><strong>CGLIB 代理</strong>：通过 ASM 字节码<strong>生成目标类的子类</strong>，重写非 final 方法。无需接口，但无法代理 final 类/方法/private 方法。</li>
+              <li><strong>Spring 选择逻辑</strong>：目标类<strong>没有接口</strong> → CGLIB；有接口 → 默认也用 CGLIB（Spring Boot 2.x 起），除非显式配置 <code>proxyTargetClass=false</code>。</li>
+            </ul>
+          </div></div>
+        </div>
+        <div class="qa-item" id="q-sp-aop-2">
+          <div class="qa-question" onclick="toggleQA('q-sp-aop-2')">
+            <span class="qa-num" style="background:rgba(3,105,161,0.08);color:#0369a1;border:1px solid rgba(3,105,161,0.25)">AOP·02</span>
+            <span class="qa-q-text">AOP 失效的常见原因有哪些？如何排查"同类调用 @Transactional 不生效"？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <span class="ans-tag warn">最高频失效场景</span><br>
+            <strong>同类内 this 调用</strong>：<code>this.methodB()</code> 是原始对象，不是代理，AOP 代理只在被外部调用时生效。
+            <ul>
+              <li><strong>修复①：</strong>提取到另一个 Bean</li>
+              <li><strong>修复②：</strong><code>@Autowired ApplicationService self</code>，通过 <code>self.methodB()</code></li>
+              <li><strong>修复③：</strong><code>((ApplicationService) AopContext.currentProxy()).methodB()</code>（需 exposeProxy=true）</li>
+            </ul>
+            其他失效：方法非 public；Bean 不由 Spring 管理；@Aspect 类未被管理；切点表达式写错。
+          </div></div>
+        </div>
+        <div class="qa-item" id="q-sp-aop-3">
+          <div class="qa-question" onclick="toggleQA('q-sp-aop-3')">
+            <span class="qa-num" style="background:rgba(3,105,161,0.08);color:#0369a1;border:1px solid rgba(3,105,161,0.25)">AOP·03</span>
+            <span class="qa-q-text">@Around、@Before、@After、@AfterReturning、@AfterThrowing 的执行顺序？多个切面如何排序？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <strong>正常流程：</strong><code>@Around(前) → @Before → 目标方法 → @AfterReturning → @After → @Around(后)</code><br><br>
+            <strong>异常流程：</strong><code>@Around(前) → @Before → 目标方法抛异常 → @AfterThrowing → @After → @Around(异常传播)</code><br><br>
+            <strong>多切面排序：</strong>使用 <code>@Order(n)</code>，n 越小优先级越高（先进后出，类似栈）。不加 @Order 则按类名字母序（不稳定，应显式指定）。
+          </div></div>
+        </div>
+        <div class="qa-item" id="q-sp-aop-4">
+          <div class="qa-question" onclick="toggleQA('q-sp-aop-4')">
+            <span class="qa-num" style="background:rgba(3,105,161,0.08);color:#0369a1;border:1px solid rgba(3,105,161,0.25)">AOP·04</span>
+            <span class="qa-q-text">Spring AOP 和 AspectJ 有什么区别？各自适用什么场景？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <ul>
+              <li><strong>Spring AOP</strong>：基于动态代理，<strong>运行时织入</strong>，只支持<strong>方法级别</strong> JoinPoint，仅对 Spring Bean 有效。无需额外编译，覆盖绝大多数业务场景。</li>
+              <li><strong>AspectJ</strong>：完整 AOP 框架，支持编译时/类加载时/运行时织入，支持字段级别、构造器级别 JoinPoint，可增强任何 Java 对象。需要 ajc 编译器或 LTW agent。</li>
+              <li><strong>选择：</strong>Spring AOP 满足 90% 的事务/日志/权限场景；AspectJ 用于非 Spring Bean 增强、字段拦截或解决 this 调用问题。</li>
+            </ul>
+          </div></div>
+        </div>
+        <div class="qa-item" id="q-sp-aop-5">
+          <div class="qa-question" onclick="toggleQA('q-sp-aop-5')">
+            <span class="qa-num" style="background:rgba(3,105,161,0.08);color:#0369a1;border:1px solid rgba(3,105,161,0.25)">AOP·05</span>
+            <span class="qa-q-text">@Async 的实现原理是什么？有哪些常见失效场景？异常如何捕获？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <strong>实现原理：</strong><code>@EnableAsync</code> 注册 <code>AsyncAnnotationBeanPostProcessor</code>，对含 @Async 方法的 Bean 生成 AOP 代理。调用时代理拦截，将任务提交到线程池异步执行，方法立即返回。<br><br>
+            <strong>默认线程池：</strong>使用 <code>SimpleAsyncTaskExecutor</code>（每次调用新建线程，无复用），生产环境必须自定义 <code>ThreadPoolTaskExecutor</code> Bean（名称为 <code>taskExecutor</code>）覆盖。<br><br>
+            <strong>常见失效场景（与 @Transactional 同根因）：</strong>
+            <ul>
+              <li><strong>同类 this 调用：</strong>绕过代理，退化为同步执行。解决：注入自身 Bean 或拆分到新 Bean</li>
+              <li><strong>方法非 public：</strong>CGLIB 无法重写，代理失效</li>
+              <li><strong>@SpringBootApplication 类与 @Async Bean 循环依赖：</strong>代理未正确创建，启动报错</li>
+            </ul>
+            <strong>异常处理：</strong>异步方法抛出的异常<strong>不会传播到调用方</strong>，需通过以下方式处理：
+            <ul>
+              <li>方法返回 <code>Future</code> / <code>CompletableFuture</code>，调用方 get() 时捕获 ExecutionException</li>
+              <li>实现 <code>AsyncUncaughtExceptionHandler</code> 接口，统一处理无返回值方法的异常</li>
+            </ul>
+          </div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Spring 事务面试题 -->
+  <section class="gc-section" id="interview-spring-tx">
+    <span class="section-badge" style="background:rgba(3,105,161,0.08);color:#0369a1;border:1px solid rgba(3,105,161,0.28)">● Interview · Spring Transaction</span>
+    <h2 class="section-title">Spring 事务面试题</h2>
+    <p class="section-intro">聚焦传播行为、隔离级别、@Transactional 失效与循环依赖等高频考点。</p>
+    <div class="subsection">
+      <div class="qa-list">
+        <div class="qa-item" id="q-sp-tx-1">
+          <div class="qa-question" onclick="toggleQA('q-sp-tx-1')">
+            <span class="qa-num" style="background:rgba(3,105,161,0.08);color:#0369a1;border:1px solid rgba(3,105,161,0.25)">事务·01</span>
+            <span class="qa-q-text">REQUIRED 和 REQUIRES_NEW 的区别？NESTED 和 REQUIRES_NEW 的区别？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <ul>
+              <li><strong>REQUIRED</strong>：有外层事务则<strong>加入</strong>，共享同一 Connection。内/外层回滚互相影响（同一事务）。</li>
+              <li><strong>REQUIRES_NEW</strong>：<strong>挂起外层，开启独立新事务</strong>（新 Connection）。两者完全独立，日志记录的典型场景。</li>
+              <li><strong>NESTED</strong>：在外层事务内创建<strong>嵌套事务（Savepoint）</strong>，同一 Connection。内层回滚到 Savepoint 不影响外层；但外层回滚会连带子事务全部撤销。</li>
+            </ul>
+            <span class="ans-tag warn">关键区别</span> REQUIRES_NEW 两个独立事务互不影响；NESTED 是父子关系，父回滚则子也回滚。
+          </div></div>
+        </div>
+        <div class="qa-item" id="q-sp-tx-2">
+          <div class="qa-question" onclick="toggleQA('q-sp-tx-2')">
+            <span class="qa-num" style="background:rgba(3,105,161,0.08);color:#0369a1;border:1px solid rgba(3,105,161,0.25)">事务·02</span>
+            <span class="qa-q-text">@Transactional 有哪些常见失效场景？分别如何解决？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <ul>
+              <li><strong>① 同类 this 调用</strong>：绕过代理。解决：注入自身或拆分 Bean。</li>
+              <li><strong>② 方法非 public</strong>：CGLIB 无法重写。解决：改为 public。</li>
+              <li><strong>③ 受检异常不回滚</strong>：默认只回滚 RuntimeException。解决：<code>rollbackFor=Exception.class</code>。</li>
+              <li><strong>④ 异常被 catch 吞掉</strong>：代理收不到异常。解决：重新 throw 或 setRollbackOnly()。</li>
+              <li><strong>⑤ Bean 不由 Spring 管理</strong>：new 出来的对象无代理。解决：通过容器获取。</li>
+              <li><strong>⑥ 多线程跨线程</strong>：事务绑定在 ThreadLocal，子线程不在同一事务。解决：子线程开新事务或操作放回主线程。</li>
+            </ul>
+          </div></div>
+        </div>
+        <div class="qa-item" id="q-sp-tx-3">
+          <div class="qa-question" onclick="toggleQA('q-sp-tx-3')">
+            <span class="qa-num" style="background:rgba(3,105,161,0.08);color:#0369a1;border:1px solid rgba(3,105,161,0.25)">事务·03</span>
+            <span class="qa-q-text">Spring 事务的隔离级别有哪些？DEFAULT 对应的是什么？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <ul>
+              <li><strong>DEFAULT</strong>：使用数据库默认隔离级别（MySQL InnoDB 默认 REPEATABLE_READ）</li>
+              <li><strong>READ_UNCOMMITTED</strong>：可读未提交，有脏读/不可重复读/幻读</li>
+              <li><strong>READ_COMMITTED</strong>：只读已提交，解决脏读（Oracle 默认）</li>
+              <li><strong>REPEATABLE_READ</strong>：解决脏读和不可重复读（MySQL 默认，InnoDB 通过 MVCC+Gap Lock 也解决大部分幻读）</li>
+              <li><strong>SERIALIZABLE</strong>：完全串行化，解决所有并发问题，性能最差</li>
+            </ul>
+          </div></div>
+        </div>
+        <div class="qa-item" id="q-sp-tx-4">
+          <div class="qa-question" onclick="toggleQA('q-sp-tx-4')">
+            <span class="qa-num" style="background:rgba(3,105,161,0.08);color:#0369a1;border:1px solid rgba(3,105,161,0.25)">事务·04</span>
+            <span class="qa-q-text">Spring 三级缓存为什么能解决循环依赖？为什么构造器注入无法解决？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <span class="ans-tag key" style="background:rgba(3,105,161,0.08);color:#0369a1;border-color:rgba(3,105,161,0.25)">能解决的原因</span><br>
+            Setter/Field 注入时，Bean 可以先实例化（new 出来）再填充依赖。Spring 实例化后立即把 ObjectFactory 放入三级缓存。当 B 需要 A 时，从三级缓存拿到 A 的早期引用（可能是 AOP 代理）让 B 完成初始化，再回头让 A 注入 B。
+            <ul>
+              <li><strong>构造器注入无法解决</strong>：实例化 A 时就必须传入 B，但 B 还未实例化，A 无法先放入缓存，Spring 直接抛 BeanCurrentlyInCreationException。</li>
+              <li><strong>为什么需要三级而非二级</strong>：三级缓存存 ObjectFactory，调用时才生成 AOP 代理，保证整个生命周期中只有一个一致的代理对象。</li>
+            </ul>
+          </div></div>
+        </div>
+        <div class="qa-item" id="q-sp-tx-5">
+          <div class="qa-question" onclick="toggleQA('q-sp-tx-5')">
+            <span class="qa-num" style="background:rgba(3,105,161,0.08);color:#0369a1;border:1px solid rgba(3,105,161,0.25)">事务·05</span>
+            <span class="qa-q-text">@Transactional 的 readOnly=true 有什么作用？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <ul>
+              <li><strong>数据库层优化</strong>：MySQL Connector/J 会设置 <code>SET SESSION TRANSACTION READ ONLY</code>，数据库跳过 undo log 生成，减少锁竞争，提升查询性能。</li>
+              <li><strong>Spring 层语义</strong>：Hibernate Session 不做 dirty check，不 flush，减少不必要操作。</li>
+              <li><strong>适用场景</strong>：纯查询方法（find/get/list）加 readOnly=true，既优化性能又声明代码意图。</li>
+              <li><strong>注意</strong>：readOnly 不阻止写操作（代码层面仍可执行 insert），只是 hint，实际约束由数据库执行。</li>
+            </ul>
+          </div></div>
+        </div>
+        <div class="qa-item" id="q-sp-tx-6">
+          <div class="qa-question" onclick="toggleQA('q-sp-tx-6')">
+            <span class="qa-num" style="background:rgba(3,105,161,0.08);color:#0369a1;border:1px solid rgba(3,105,161,0.25)">事务·06</span>
+            <span class="qa-q-text">微服务中 @Transactional 无法解决跨服务事务，常见的分布式事务方案有哪些？各自适用什么场景？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <code>@Transactional</code> 基于本地 JDBC Connection，跨服务/跨库时无法保证原子性。常见方案：
+            <ul>
+              <li><strong>AT 模式（Seata）：</strong>自动代理 DataSource，一阶段直接提交本地事务（高性能），二阶段根据全局结果执行 undo log 补偿回滚。侵入性低，但有 undo_log 表开销，不支持 DDL 类 SQL。</li>
+              <li><strong>TCC（Try-Confirm-Cancel）：</strong>业务方实现三个接口——Try 预留资源，Confirm 提交，Cancel 释放。性能最好，但侵入大，需自行处理幂等、空回滚、悬挂问题。</li>
+              <li><strong>SAGA：</strong>长事务拆成多个本地事务，失败时执行补偿操作（逆操作链）。无全局锁、高并发友好，但隔离性差，中间状态可见，需业务层保证幂等。</li>
+              <li><strong>可靠消息最终一致：</strong>本地事务写消息表，异步投递 MQ，消费方幂等消费。不保证强一致，适合订单→库存扣减等最终一致场景。</li>
+            </ul>
+            <span class="ans-tag key" style="background:rgba(3,105,161,0.08);color:#0369a1;border-color:rgba(3,105,161,0.25)">选型原则</span>强一致可接受性能损耗 → AT/TCC；高并发长流程 → SAGA；最终一致 → 可靠消息。
+          </div></div>
+        </div>
+
+        <div class="qa-item practical" id="q-spring-18">
+          <div class="qa-question" onclick="toggleQA('q-spring-18')">
+            <span class="qa-num">⚡ 实战</span>
+            <span class="qa-q-text">@Transactional 不生效，你遇到过哪些坑？怎么排查？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <p><strong>一、常见失效原因</strong></p>
+            <ul>
+              <li><strong>① 方法非 public：</strong>Spring AOP 默认只拦截 public 方法。如果 @Transactional 标注在 protected、private 或包级可见的方法上，事务切面不会织入，方法执行时不在事务上下文中。可通过 <code>TransactionAttributeSource</code> 确认方法是否被识别为事务方法。</li>
+              <li><strong>② 同类内部调用未经过代理：</strong>同一个类中，方法 A 调用方法 B（B 加了 @Transactional），由于调用走的是 <code>this</code> 引用而非代理对象，事务切面被完全绕过。这是最常见的踩坑点。例如：<code>OrderService.createOrder()</code> 内部调用 <code>this.deductStock()</code>，即使 deductStock 有 @Transactional 也不会开启事务。</li>
+              <li><strong>③ 异常类型不匹配：</strong>@Transactional 默认只对 <code>RuntimeException</code> 和 <code>Error</code> 回滚，checked exception（如 <code>IOException</code>、<code>SQLException</code>）不会触发回滚。如果业务方法抛出 checked exception 但希望回滚，必须显式声明 <code>@Transactional(rollbackFor = Exception.class)</code>。</li>
+              <li><strong>④ 异常被 catch 吞掉：</strong>方法内部 try-catch 捕获了异常但没有重新抛出，Spring 事务拦截器感知不到异常，认为方法正常完成，直接提交事务。这是隐蔽性最高的问题——代码看起来正常，但数据已经不一致。</li>
+              <li><strong>⑤ 传播级别设为 NOT_SUPPORTED / NEVER：</strong>如果 @Transactional 的 propagation 设为 <code>NOT_SUPPORTED</code>（挂起当前事务，非事务执行）或 <code>NEVER</code>（如果有事务则抛异常），方法不会在事务中运行。排查时注意检查注解参数。</li>
+            </ul>
+            <p><strong>二、排查手段</strong></p>
+            <ul>
+              <li><strong>检查代理对象是否生效：</strong>在调用方打断点，查看被调用对象是否是代理对象（CGLIB 子类或 JDK Proxy）。可以使用 <code>AopUtils.isAopProxy(obj)</code> 判断——返回 false 说明没有代理，事务切面不会生效。也可以在方法内打印 <code>this.getClass().getName()</code>，如果是原始类名而非 <code>$$SpringCGLIB$$</code> 后缀，说明未经过代理。</li>
+              <li><strong>Debug TransactionInterceptor：</strong>在 <code>org.springframework.transaction.interceptor.TransactionInterceptor#invoke</code> 上打断点。如果调用时没有进入该方法，说明事务切面未织入，问题出在代理层面。如果进入了但事务未生效，检查 <code>TransactionAttribute</code> 的解析结果。</li>
+              <li><strong>日志对比 this 与 proxy：</strong>在 Bean 中注入自身（<code>@Autowired private OrderService self;</code>），分别用 <code>this.method()</code> 和 <code>self.method()</code> 调用，观察日志中两者的类名差异。如果 this 是原始类而 self 是代理类，即可确认自调用问题。</li>
+              <li><strong>开启事务日志：</strong>在 <code>application.yml</code> 中设置 <code>logging.level.org.springframework.jdbc.datasource.DataSourceTransactionManager=DEBUG</code>（或 JPA 对应的事务管理器），观察日志中是否有 "Creating new transaction" 和 "Committing transaction" 输出。如果没有，说明事务根本没有启动。</li>
+            </ul>
+            <p><strong>三、解决方案</strong></p>
+            <ul>
+              <li><strong>自调用问题：</strong>使用 <code>AopContext.currentProxy()</code> 获取当前代理对象来调用（需在启动类加 <code>@EnableAspectJAutoProxy(exposeProxy = true)</code>），例如：<code>((OrderService) AopContext.currentProxy()).deductStock()</code>。或者将方法拆分到不同的 Service 中，通过 Spring 注入调用，自然经过代理。</li>
+              <li><strong>异常类型问题：</strong>统一使用 <code>@Transactional(rollbackFor = Exception.class)</code>，确保所有异常都能触发回滚。团队规范中应将其作为默认写法，避免依赖默认的 RuntimeException 行为。</li>
+              <li><strong>避免 catch 吞异常：</strong>如果必须 catch，在 catch 块中重新抛出运行时异常：<code>catch (Exception e) { throw new RuntimeException(e); }</code>，或使用 <code>TransactionAspectSupport.currentTransactionStatus().setRollbackOnly()</code> 手动标记回滚。</li>
+            </ul>
+          </div></div>
+        </div>
+
+        <div class="qa-item practical" id="q-spring-19">
+          <div class="qa-question" onclick="toggleQA('q-spring-19')">
+            <span class="qa-num">⚡ 实战</span>
+            <span class="qa-q-text">线上应用启动报循环依赖，怎么解决？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <p><strong>一、背景：Spring Boot 2.6+ 默认禁止循环依赖</strong></p>
+            <p>从 Spring Boot 2.6 开始，<code>spring.main.allow-circular-references</code> 默认值改为 <code>false</code>。如果存在循环依赖，启动时直接抛出 <code>BeanCurrentlyInCreationException</code>，错误信息类似：<code>The dependencies of some of the beans in the application context form a cycle: serviceA → serviceB → serviceA</code>。这个变更的目的是鼓励开发者在编码阶段就消除不合理的依赖关系，而非依赖 Spring 的三级缓存机制"静默解决"。</p>
+            <p><strong>二、排查步骤</strong></p>
+            <ul>
+              <li><strong>看异常堆栈定位循环链：</strong>启动失败的异常信息会明确列出形成循环的 Bean 名称链条。例如：<code>orderService (field com.example.StockService) → stockService (field com.example.OrderService)</code>。根据这条链路可以快速定位到哪两个（或多个）Bean 互相依赖。</li>
+              <li><strong>检查注入方式：</strong>确认循环依赖中的注入方式是构造器注入还是 setter/field 注入。两者的解决难度完全不同——构造器注入的循环依赖<strong>无法被三级缓存解决</strong>（实例化 A 时就需要 B，而 B 还未创建），Spring 会直接报错；setter/field 注入的循环依赖可以通过三级缓存解决（先实例化 A 的半成品放入缓存，再创建 B 时注入 A 的早期引用）。</li>
+              <li><strong>检查是否涉及 AOP 代理：</strong>如果循环依赖中的 Bean 需要被 AOP 代理（如加了 @Transactional、@Async），三级缓存中存储的是 <code>ObjectFactory</code>，在需要时才生成代理对象。但如果代理对象与原始对象的引用不一致（如 SmartInstantiationAwareBeanPostProcessor 介入），仍可能抛出异常。</li>
+            </ul>
+            <p><strong>三、解决方案</strong></p>
+            <ul>
+              <li><strong>构造器注入的循环依赖——必须重构：</strong>三级缓存无法解决构造器循环依赖，因为实例化阶段就需要依赖对象。推荐做法：① <strong>引入中间 Bean</strong>：将两个 Bean 共同依赖的逻辑抽取到第三个 Bean C，A 和 B 都依赖 C 而非互相依赖；② <strong>事件解耦</strong>：A 发布事件，B 监听事件处理，消除直接依赖。例如 <code>OrderCreatedEvent</code> 由 OrderService 发布，StockService 用 <code>@EventListener</code> 监听并扣减库存。</li>
+              <li><strong>setter/field 注入的循环依赖——临时方案：</strong>在 <code>application.yml</code> 中设置 <code>spring.main.allow-circular-references: true</code>，让 Spring 回到旧版行为，通过三级缓存自动解决。这只是临时止血，不应作为长期方案，因为循环依赖本身就是设计不合理的信号。</li>
+              <li><strong>@Lazy 延迟注入（推荐折中方案）：</strong>在注入点加 <code>@Lazy</code>，Spring 不会立即创建依赖 Bean，而是注入一个代理，首次调用方法时才真正解析。例如：<code>@Autowired @Lazy private StockService stockService;</code>。这样既不需要改配置，也不需要大规模重构，适合存量项目快速修复。</li>
+              <li><strong>最佳实践——重新设计依赖关系：</strong>循环依赖通常意味着两个模块职责边界不清。推荐的长期方案：① <strong>接口隔离</strong>：将 A 中被 B 依赖的方法抽取到独立接口 <code>AQueryService</code>，B 只依赖查询接口而非完整的 A；② <strong>事件驱动</strong>：用 Spring 的 <code>ApplicationEventPublisher</code> + <code>@EventListener</code> 替代直接调用，实现松耦合；③ <strong>DDD 聚合根审视</strong>：如果两个实体总是互相引用，可能属于同一个聚合根，应合并为一个领域对象。</li>
+            </ul>
+            <p><strong>四、生产环境应急</strong></p>
+            <p>如果线上紧急需要恢复服务（如升级 Spring Boot 版本后启动失败），最快的方式是先在配置中加 <code>spring.main.allow-circular-references: true</code> 恢复启动，然后排期逐步消除循环依赖。注意：Spring Boot 3.x 中该配置仍然存在，但官方明确表示未来版本可能彻底移除循环依赖支持，建议尽早治理。</p>
+          </div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Spring Boot 面试题 -->
+  <section class="gc-section" id="interview-spring-boot">
+    <span class="section-badge" style="background:rgba(3,105,161,0.08);color:#0369a1;border:1px solid rgba(3,105,161,0.28)">● Interview · Spring Boot</span>
+    <h2 class="section-title">Spring Boot 面试题</h2>
+    <p class="section-intro">涵盖启动流程、自动配置、Starter 原理、配置体系与实战排查等高频考点。</p>
+    <div class="subsection">
+      <div class="qa-list">
+
+        <div class="qa-item" id="q-boot-01">
+          <div class="qa-question" onclick="toggleQA('q-boot-01')">
+            <span class="qa-num" style="background:rgba(3,105,161,0.08);color:#0369a1;border:1px solid rgba(3,105,161,0.25)">Boot·01</span>
+            <span class="qa-q-text">SpringApplication.run() 做了哪些事？Spring Boot 的完整启动流程是什么？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <ul>
+              <li><strong>① 构建 SpringApplication：</strong>推断应用类型（SERVLET/REACTIVE/NONE），从 spring.factories 加载 ApplicationContextInitializer、ApplicationListener，推断 main class。</li>
+              <li><strong>② 创建 RunListeners &amp; 发布 starting 事件：</strong>通知所有监听器应用开始启动。</li>
+              <li><strong>③ prepareEnvironment：</strong>构建 ConfigurableEnvironment，按优先级加载命令行参数、系统属性、环境变量、配置文件，处理 Profile 激活。</li>
+              <li><strong>④ createApplicationContext：</strong>根据应用类型创建对应的 ApplicationContext（如 <code>AnnotationConfigServletWebServerApplicationContext</code>）。</li>
+              <li><strong>⑤ prepareContext：</strong>应用 Initializer，将主配置类注册为 BeanDefinition。</li>
+              <li><strong>⑥ refreshContext（核心）：</strong>触发 <code>AbstractApplicationContext.refresh()</code>，完成 BeanDefinition 扫描、自动配置导入、Bean 实例化、AOP 代理创建、内嵌 Tomcat 启动（onRefresh 回调）。</li>
+              <li><strong>⑦ afterRefresh：</strong>调用 ApplicationRunner 和 CommandLineRunner，常用于初始化缓存、预加载数据。</li>
+              <li><strong>⑧ 发布 ApplicationReadyEvent，应用就绪。</strong></li>
+            </ul>
+            <span class="ans-tag key" style="background:rgba(3,105,161,0.08);color:#0369a1;border-color:rgba(3,105,161,0.25)">关键点</span> refreshContext 是整个启动流程的核心，内嵌 Tomcat 也在此阶段启动（onRefresh 回调）。
+          </div></div>
+        </div>
+
+        <div class="qa-item" id="q-boot-02">
+          <div class="qa-question" onclick="toggleQA('q-boot-02')">
+            <span class="qa-num" style="background:rgba(3,105,161,0.08);color:#0369a1;border:1px solid rgba(3,105,161,0.25)">Boot·02</span>
+            <span class="qa-q-text">Spring Boot 自动配置的原理是什么？2.x 和 3.x 有什么区别？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <strong>原理：</strong>
+            <ul>
+              <li><code>@SpringBootApplication</code> 包含 <code>@EnableAutoConfiguration</code>，后者通过 <code>@Import(AutoConfigurationImportSelector.class)</code> 在 BeanDefinition 解析阶段触发。</li>
+              <li><code>AutoConfigurationImportSelector.selectImports()</code> 读取所有自动配置类的全限定名，经条件注解过滤后将符合条件的配置类注入 Spring 容器。</li>
+              <li>条件注解遵循"<strong>用户定义优先</strong>"原则：<code>@ConditionalOnMissingBean</code> 确保用户自定义 Bean 不会被自动配置覆盖。</li>
+            </ul>
+            <strong>2.x vs 3.x 的区别：</strong>
+            <ul>
+              <li><strong>2.x：</strong>读取 <code>META-INF/spring.factories</code>（key=<code>EnableAutoConfiguration</code>），自动配置条目与其他 SPI 配置混在同一文件中。</li>
+              <li><strong>3.x：</strong>自动配置类迁移到 <code>META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports</code>，每行一个类名，加载更快；同时要求 Java 17+ 和 Jakarta EE（<code>javax.*</code> → <code>jakarta.*</code>）。</li>
+            </ul>
+            <span class="ans-tag warn">注意</span> 自动配置不代表全量生效，每个候选配置类都有 @Conditional 系列注解决定是否真正注册 Bean。
+          </div></div>
+        </div>
+
+        <div class="qa-item" id="q-boot-03">
+          <div class="qa-question" onclick="toggleQA('q-boot-03')">
+            <span class="qa-num" style="background:rgba(3,105,161,0.08);color:#0369a1;border:1px solid rgba(3,105,161,0.25)">Boot·03</span>
+            <span class="qa-q-text">如何自定义一个 Spring Boot Starter？核心步骤是什么？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <p>Starter 命名规范：官方 <code>spring-boot-starter-xxx</code>，自定义 <code>xxx-spring-boot-starter</code>（顺序相反避免冲突）。</p>
+            <strong>核心步骤：</strong>
+            <ol>
+              <li><strong>创建 autoconfigure 模块：</strong>编写配置类（<code>@AutoConfiguration + @ConditionalOnXxx</code>），编写属性绑定类（<code>@ConfigurationProperties(prefix="xxx")</code>）。</li>
+              <li><strong>注册自动配置：</strong>
+                <ul>
+                  <li>Boot 2.x：在 <code>resources/META-INF/spring.factories</code> 中添加 <code>org.springframework.boot.autoconfigure.EnableAutoConfiguration=com.example.XxxAutoConfiguration</code></li>
+                  <li>Boot 3.x：在 <code>resources/META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports</code> 中写入全类名</li>
+                </ul>
+              </li>
+              <li><strong>创建 starter 模块（可选）：</strong>仅作依赖聚合，pom.xml 中引入 autoconfigure 模块和必要依赖，不写任何代码。</li>
+              <li><strong>用户使用：</strong>引入 starter 依赖即可，无需手动 @Import 或 @EnableXxx。</li>
+            </ol>
+            <span class="ans-tag key" style="background:rgba(3,105,161,0.08);color:#0369a1;border-color:rgba(3,105,161,0.25)">最佳实践</span> 配置类加 <code>@ConditionalOnMissingBean</code>（让用户可覆盖默认 Bean）+ <code>@ConditionalOnClass</code>（避免 classpath 缺失时报错）。
+          </div></div>
+        </div>
+
+        <div class="qa-item" id="q-boot-04">
+          <div class="qa-question" onclick="toggleQA('q-boot-04')">
+            <span class="qa-num" style="background:rgba(3,105,161,0.08);color:#0369a1;border:1px solid rgba(3,105,161,0.25)">Boot·04</span>
+            <span class="qa-q-text">Spring Boot 内嵌 Tomcat 的工作原理？与外置 Tomcat 部署有何差异？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <strong>内嵌 Tomcat 启动流程：</strong>
+            <ul>
+              <li><code>ServletWebServerFactoryAutoConfiguration</code> 检测 classpath 存在 Tomcat 类，注册 <code>TomcatServletWebServerFactory</code>。</li>
+              <li><code>refreshContext()</code> 执行到 <code>onRefresh()</code> 回调时，<code>ServletWebServerApplicationContext.createWebServer()</code> 调用工厂创建 Tomcat 并绑定端口（默认 8080）。</li>
+              <li>DispatcherServlet 由 <code>DispatcherServletAutoConfiguration</code> 注册，作为前端控制器处理请求。</li>
+            </ul>
+            <strong>与外置 Tomcat 的核心区别：</strong>
+            <ul>
+              <li><strong>打包方式：</strong>内嵌 → Fat JAR（<code>java -jar app.jar</code>）；外置 → WAR 包部署到 webapps/</li>
+              <li><strong>启动入口：</strong>内嵌 → JVM 运行 main()，Spring 控制生命周期；外置 → Tomcat 调用 <code>SpringBootServletInitializer.onStartup()</code></li>
+              <li><strong>适用场景：</strong>内嵌适合微服务 / Docker / K8s 容器化；外置适合多应用共享容器的传统部署模式</li>
+            </ul>
+          </div></div>
+        </div>
+
+        <div class="qa-item" id="q-boot-05">
+          <div class="qa-question" onclick="toggleQA('q-boot-05')">
+            <span class="qa-num" style="background:rgba(3,105,161,0.08);color:#0369a1;border:1px solid rgba(3,105,161,0.25)">Boot·05</span>
+            <span class="qa-q-text">@ConfigurationProperties 和 @Value 的区别？什么情况下推荐各自使用？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <ul>
+              <li><strong>@ConfigurationProperties：</strong>批量绑定，支持松散绑定（<code>my-key</code> / <code>myKey</code> / <code>MY_KEY</code> 均可映射到 <code>myKey</code> 字段），支持复杂类型（List/Map/嵌套对象），支持 JSR-303 Bean Validation（<code>@Validated + @NotNull</code>），IDE 有自动补全。<strong>多个相关配置项首选</strong>。</li>
+              <li><strong>@Value：</strong>单属性注入，支持 SpEL（<code>#{T(Math).random()}</code>），适合少量配置或需要表达式计算的场景，但不支持松散绑定和验证。</li>
+            </ul>
+            <span class="ans-tag warn">常见陷阱</span>
+            <ul>
+              <li>@Value 不能注入 <strong>static 字段</strong>（Spring 不处理静态字段的依赖注入，值永远为 null）。</li>
+              <li>@Value 不支持松散绑定，配置文件写 <code>my.timeout-ms</code>，注入 <code>${my.timeoutMs}</code> 会取不到值。</li>
+              <li>推荐用 <code>@ConfigurationProperties + @Validated</code>，启动时就能检测出配置缺失或类型错误，而非运行时才报 NPE。</li>
+            </ul>
+          </div></div>
+        </div>
+
+        <div class="qa-item" id="q-boot-06">
+          <div class="qa-question" onclick="toggleQA('q-boot-06')">
+            <span class="qa-num" style="background:rgba(3,105,161,0.08);color:#0369a1;border:1px solid rgba(3,105,161,0.25)">Boot·06</span>
+            <span class="qa-q-text">Spring Boot Actuator 有哪些核心端点？生产环境如何做安全管控？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <strong>核心端点（/actuator/ 前缀）：</strong>
+            <ul>
+              <li><code>/health</code>：应用健康状态，K8s 存活/就绪探针标准接入点（liveness / readiness）</li>
+              <li><code>/metrics</code>：度量指标（JVM 内存、HTTP 请求计数、线程池状态），可对接 Prometheus</li>
+              <li><code>/env</code>：查看所有配置项及其来源（含敏感信息，需严格保护）</li>
+              <li><code>/loggers</code>：动态修改日志级别，无需重启——排查线上问题利器</li>
+              <li><code>/threaddump</code> / <code>/heapdump</code>：线程快照 / 堆转储，排查 CPU 飙高、OOM 等生产问题</li>
+              <li><code>/refresh</code>（需 spring-cloud-context）：动态刷新 @RefreshScope Bean 的配置</li>
+            </ul>
+            <strong>生产安全管控：</strong>
+            <ul>
+              <li>默认只暴露 <code>health</code> 和 <code>info</code>，按需开放：<code>management.endpoints.web.exposure.include=health,metrics,loggers</code></li>
+              <li>修改管理端口和路径：<code>management.server.port=8081</code> + 网关层 IP 白名单隔离</li>
+              <li>健康详情默认隐藏（避免暴露内部服务信息）：<code>management.endpoint.health.show-details=when-authorized</code></li>
+            </ul>
+          </div></div>
+        </div>
+
+        <div class="qa-item" id="q-boot-07">
+          <div class="qa-question" onclick="toggleQA('q-boot-07')">
+            <span class="qa-num" style="background:rgba(3,105,161,0.08);color:#0369a1;border:1px solid rgba(3,105,161,0.25)">Boot·07</span>
+            <span class="qa-q-text">Spring Boot 2.x 升级到 3.x 需要注意哪些核心变化？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <ul>
+              <li><strong>Java 版本要求：</strong>最低 Java 17（不再支持 Java 8/11）。</li>
+              <li><strong>Jakarta EE 迁移（最大改动）：</strong>所有 <code>javax.*</code> 改为 <code>jakarta.*</code>（如 <code>javax.servlet.http.HttpServletRequest</code> → <code>jakarta.servlet.http.HttpServletRequest</code>），直接影响 Servlet、JPA、Bean Validation 相关代码。</li>
+              <li><strong>自动配置 SPI 变更：</strong><code>spring.factories</code> 中的自动配置条目迁移至独立的 <code>AutoConfiguration.imports</code> 文件（见 Boot·02）。自定义 Starter 需同步更新。</li>
+              <li><strong>Spring Security API 变化：</strong>废弃 <code>WebSecurityConfigurerAdapter</code>，改用 <code>SecurityFilterChain Bean</code> 方式配置（函数式风格）。</li>
+              <li><strong>AOT / GraalVM 原生支持：</strong>引入 Spring Native，AOT 编译预处理反射信息，GraalVM 原生镜像编译后启动时间可降至毫秒级。</li>
+              <li><strong>迁移工具：</strong>官方提供 <code>spring-boot-migrator</code> 和 OpenRewrite 食谱，可自动替换包名、更新 API 调用。</li>
+            </ul>
+          </div></div>
+        </div>
+
+        <div class="qa-item practical" id="q-boot-p1">
+          <div class="qa-question" onclick="toggleQA('q-boot-p1')">
+            <span class="qa-num">⚡ 实战</span>
+            <span class="qa-q-text">Spring Boot 应用启动很慢（超过 30 秒），如何排查和优化？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <p><strong>一、定位慢在哪里</strong></p>
+            <ul>
+              <li><strong>ApplicationStartup 端点：</strong>Spring Boot 2.4+ 支持 <code>app.setApplicationStartup(new BufferingApplicationStartup(2048))</code>，启动后访问 <code>/actuator/startup</code> 可看到每个步骤的耗时，精确定位是哪个 Bean 或哪个阶段拖慢了启动。</li>
+              <li><strong>连接池初始化超时：</strong>HikariCP 启动时建立最小连接数，如果数据库地址配置错误或网络延迟高，会触发超时重试，是最常见的根因。检查 <code>minimumIdle</code> 和 <code>connectionTimeout</code> 配置，验证数据库连通性。</li>
+              <li><strong>组件扫描范围过大：</strong>Spring 扫描整个 classpath 时包含大量第三方 jar，耗时明显。用 VisualVM / JFR 的 CPU profiling 确认扫描开销。</li>
+            </ul>
+            <p><strong>二、常见优化手段</strong></p>
+            <ul>
+              <li><strong>懒加载（首选）：</strong><code>spring.main.lazy-initialization=true</code> 让所有 Bean 在首次使用时才初始化，可降低启动时间 30%~50%。代价：首次请求延迟略高；配置错误推迟到运行时暴露，需配合集成测试兜底。</li>
+              <li><strong>精确组件扫描：</strong><code>@ComponentScan(basePackages="com.example.service")</code> 替代扫描根包，避免扫描整个 classpath。</li>
+              <li><strong>排除不需要的自动配置：</strong><code>@SpringBootApplication(exclude={DataSourceAutoConfiguration.class})</code>，减少不必要的 Bean 初始化。</li>
+              <li><strong>GraalVM Native Image（Spring Boot 3.x）：</strong>AOT 编译预处理反射信息，打包为原生可执行文件后启动时间从秒级降至毫秒级，适合 Serverless / FaaS 场景。</li>
+            </ul>
+            <p><strong>三、经验参考值</strong></p>
+            <div style="font-family:var(--fm);font-size:11px;color:var(--text-2);background:var(--bg-2);border:1px solid var(--border);border-radius:6px;padding:10px 14px;line-height:1.8">
+              普通 Spring Boot 应用：5~15s；含数据库/缓存/MQ 初始化的微服务：15~30s；加 lazy-initialization 后通常降 30%~50%；GraalVM Native 编译后：&lt;500ms。
+            </div>
+          </div></div>
+        </div>
+
+        <div class="qa-item practical" id="q-boot-p2">
+          <div class="qa-question" onclick="toggleQA('q-boot-p2')">
+            <span class="qa-num">⚡ 实战</span>
+            <span class="qa-q-text">如何实现 Spring Boot 应用的优雅关闭？K8s 中有哪些注意事项？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <p><strong>一、优雅关闭要解决的问题</strong></p>
+            <p>直接 kill -9 或强制停容器，会导致正在处理的 HTTP 请求被中断（客户端收到 502）、数据库事务未提交/回滚、MQ 消息未 ACK 就被丢弃等问题。优雅关闭的目标是：<strong>不再接受新请求，等待当前请求处理完成后再退出</strong>。</p>
+            <p><strong>二、Spring Boot 内置优雅关闭（2.3+ 推荐）</strong></p>
+            <ul>
+              <li>配置开启：<code>server.shutdown=graceful</code></li>
+              <li>等待超时：<code>spring.lifecycle.timeout-per-shutdown-phase=30s</code>（超时后强制终止）</li>
+              <li>原理：收到关闭信号后，Tomcat 连接器停止接受新请求，等待处理中的请求完成（受超时限制），然后依序执行 @PreDestroy → DisposableBean.destroy() 等销毁逻辑。</li>
+            </ul>
+            <p><strong>三、K8s 中的关键注意事项</strong></p>
+            <ul>
+              <li><strong>SIGTERM 处理：</strong>K8s 删除 Pod 时先发 SIGTERM，默认等 30s（<code>terminationGracePeriodSeconds</code>）后再发 SIGKILL。Spring Boot 已默认注册 JVM shutdown hook 响应 SIGTERM，执行 Bean 的销毁流程。</li>
+              <li><strong>preStop sleep（避免流量损失）：</strong>K8s 删除 Pod 时，Service Endpoint 摘除与 SIGTERM 几乎同时发生，但 iptables 规则更新有 1~2s 延迟，期间仍有请求路由到即将关闭的 Pod。<strong>最佳实践</strong>：在 Deployment 中配置 <code>lifecycle.preStop.exec.command: ["sleep","5"]</code>，让应用延迟 5s 再收到 SIGTERM，先让 iptables 完成更新。</li>
+              <li><strong>超时时间对齐：</strong><code>terminationGracePeriodSeconds</code>（K8s 层）应 &gt; <code>timeout-per-shutdown-phase</code>（Spring Boot 层）+ preStop sleep 时间。推荐：Spring Boot 等待 25s + preStop sleep 5s，K8s terminationGracePeriod 设 35s。</li>
+              <li><strong>Readiness Probe 主动摘流：</strong>Spring Boot Actuator 2.3+ 的 <code>/actuator/health/readiness</code> 在收到关闭信号时自动变 DOWN，K8s 据此尽快将流量切到其他实例，配合上述流程实现零流量损失关闭。</li>
+            </ul>
+          </div></div>
+        </div>
+
+        <div class="qa-item practical" id="q-boot-p3">
+          <div class="qa-question" onclick="toggleQA('q-boot-p3')">
+            <span class="qa-num">⚡ 实战</span>
+            <span class="qa-q-text">生产环境某个配置项不生效（如超时时间没有变化），如何排查？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <p><strong>一、确认配置是否真正被加载</strong></p>
+            <ul>
+              <li><strong>查看 /actuator/env：</strong>调用 <code>GET /actuator/env/{key}</code>，可以看到该配置项在各配置源中的值及最终生效值。如果配置项根本没出现，说明文件没被加载（路径错误、Profile 未激活、打包时被排除等）。</li>
+              <li><strong>开启配置加载追踪日志：</strong><code>logging.level.org.springframework.boot.context.config=TRACE</code>，Spring Boot 会打印加载了哪些配置文件、哪些 Profile 被激活，以及每个配置文件的路径和覆盖关系。</li>
+            </ul>
+            <p><strong>二、排查优先级覆盖问题</strong></p>
+            <ul>
+              <li><strong>环境变量覆盖了文件配置（K8s 高发）：</strong>K8s ConfigMap 映射为 env var 时格式如 <code>SPRING_DATASOURCE_TIMEOUT=5000</code>，会以高优先级覆盖 application.yml。用 <code>/actuator/env</code> 查看 "property sources" 列表，排在靠前的优先级更高。</li>
+              <li><strong>Profile 文件覆盖：</strong>激活了 <code>prod</code> Profile 时，<code>application-prod.yml</code> 中相同 key 会覆盖 <code>application.yml</code>。检查各 profile 文件是否有重复定义。</li>
+            </ul>
+            <p><strong>三、确认配置是否正确绑定到代码</strong></p>
+            <ul>
+              <li><strong>@Value 松散绑定陷阱：</strong>@Value 不支持松散绑定，配置文件写 <code>my.timeout-ms</code>，注入 <code>${my.timeoutMs}</code> 会取不到值（注入 null 或报错）。改用 @ConfigurationProperties 即可解决。</li>
+              <li><strong>@Value 注入静态字段无效：</strong>Spring IoC 不处理 static 字段的依赖注入，值永远是 null/0，不会报错，是非常隐蔽的坑。</li>
+              <li><strong>配置属性类未被扫描：</strong>@ConfigurationProperties 类缺少 @Component 或主类上没有 @EnableConfigurationProperties，配置绑定不会发生。</li>
+            </ul>
+            <p><strong>四、动态配置场景（Nacos / Spring Cloud Config）</strong></p>
+            <ul>
+              <li>修改配置后需触发刷新：调用 <code>/actuator/refresh</code> 端点，或等待自动刷新（<code>spring.cloud.nacos.config.refresh-enabled=true</code>）。</li>
+              <li>注意：只有标注 <code>@RefreshScope</code> 的 Bean 会在刷新时重新绑定配置，普通单例 Bean 不受影响。</li>
+            </ul>
+          </div></div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+</main>
+</div>
+
+<aside class="toc-panel" id="toc-panel">
+  <div class="toc-title">≡ &nbsp;On this page</div>
+  <nav id="toc-nav"></nav>
+</aside>
+
+<script src="style/search-data.js"></script>
+<script src="style/shared.js"></script>
+</body>
+</html>

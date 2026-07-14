@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>分布式系统 — 高频面试题</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=DM+Mono:wght@400;500;600&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=DM+Mono:wght@400;500;600&display=swap"></noscript>
+<link rel="preload" as="style" href="https://fontsapi.zeoseven.com/161/main/result.css" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fontsapi.zeoseven.com/161/main/result.css"></noscript>
+<link rel="stylesheet" href="style/shared.css">
+<style>
+:root {
+  --dist: #7c3aed; --dist-2: #6d28d9;
+  --dist-d: rgba(124,58,237,0.08); --dist-b: rgba(124,58,237,0.28);
+  --bg-hi: #f5f3ff;
+  --accent:     #7c3aed;
+  --accent-nav: #7c3aed; --accent-nav-d: rgba(124,58,237,0.08);
+  --accent-em:  #6d28d9; --accent-em-d:  rgba(109,40,217,0.08);
+}
+</style>
+</head>
+<body>
+
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <span class="logo-badge" style="background:linear-gradient(135deg,#7c3aed,#6d28d9)">DST</span>
+    <span class="logo-text">分布式面试题</span>
+  </div>
+  <div class="page-tabs"></div>
+  <a href="distributed.html" class="nav-link" style="margin-bottom:4px;color:rgba(124,58,237,0.7);font-size:12px">← 返回分布式系统原理篇</a>
+  <div class="nav-section-label" style="color:rgba(124,58,237,0.65)">面试题</div>
+  <a href="#dist-qa" class="nav-link" data-section="dist-qa">分布式高频面试题</a>
+</nav>
+
+<div class="content-wrap">
+<button class="menu-btn" id="menuBtn" onclick="toggleSidebar()">☰</button>
+<main class="main">
+
+  <section class="hero" id="overview">
+    <div class="hero-eyebrow" style="color:#7c3aed">分布式系统 · 高频面试题</div>
+    <h1><span style="color:#7c3aed">分布式系统</span> 面试题</h1>
+    <p class="hero-desc">涵盖 CAP/BASE 理论、分布式事务（2PC/TCC/Saga）、分布式锁、注册中心、Raft 共识、Snowflake ID、限流熔断与一致性哈希。</p>
+    <div style="margin-top:14px">
+      <a href="distributed.html" style="display:inline-flex;align-items:center;gap:6px;background:rgba(124,58,237,0.08);border:1px solid rgba(124,58,237,0.25);border-radius:8px;padding:7px 16px;font-size:13px;color:#7c3aed;text-decoration:none;font-weight:500">← 分布式系统原理篇（知识点 + 图示）</a>
+    </div>
+  </section>
+
+  <section class="gc-section" id="dist-qa-section">
+    <span class="section-badge" style="background:rgba(124,58,237,0.08);color:#7c3aed;border:1px solid rgba(124,58,237,0.28)">● 分布式面试题</span>
+    <h2 class="section-title">分布式高频面试题</h2>
+    <p class="section-intro">覆盖 CAP 理论、分布式事务、分布式锁、注册中心、Raft 算法、ID 生成、限流熔断与一致性哈希等核心考点。</p>
+
+    <div class="subsection" id="dist-qa">
+      <h3 class="sub-title">
+        <span class="dot" style="background:#7c3aed;box-shadow:0 0 0 3px rgba(124,58,237,0.15)"></span>
+        分布式高频面试题
+      </h3>
+      <div class="qa-list">
+
+        <div class="qa-item" id="q-dist-1">
+          <div class="qa-question" onclick="toggleQA('q-dist-1')">
+            <span class="qa-num" style="background:rgba(124,58,237,0.1);color:#7c3aed;border:1px solid rgba(124,58,237,0.25)">Q1</span>
+            <span class="qa-q-text">CAP 理论是什么？分布式系统为什么不能同时满足三者？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <ul>
+              <li><strong>C（一致性）</strong>：所有节点同一时刻读到相同数据；<strong>A（可用性）</strong>：每个请求都能收到响应；<strong>P（分区容忍性）</strong>：网络分区时系统仍可运行。</li>
+              <li><em>P 在分布式系统中不可放弃</em>——网络故障是客观存在的，真正的选择只在 C 和 A 之间。</li>
+              <li><strong>网络分区时</strong>：选 C（CP）则拒绝写请求直到节点同步，牺牲可用性；选 A（AP）则立即返回可能过期的数据，牺牲一致性。</li>
+              <li>典型 CP：ZooKeeper、etcd（选主期间不可用）；典型 AP：Eureka（自我保护，不剔除实例）、Cassandra。</li>
+            </ul>
+          </div></div>
+        </div>
+        <div class="qa-item" id="q-dist-2">
+          <div class="qa-question" onclick="toggleQA('q-dist-2')">
+            <span class="qa-num" style="background:rgba(124,58,237,0.1);color:#7c3aed;border:1px solid rgba(124,58,237,0.25)">Q2</span>
+            <span class="qa-q-text">BASE 理论是什么？和 ACID 有什么区别？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <ul>
+              <li><strong>BA（基本可用）</strong>：系统故障时允许降级，核心功能仍可用（如双十一限流降级、展示兜底数据）。</li>
+              <li><strong>S（软状态）</strong>：允许中间状态存在，节点间数据同步有延迟，不要求实时一致。</li>
+              <li><strong>E（最终一致性）</strong>：无新更新时，经过一段时间所有副本最终达到一致。</li>
+              <li>与 ACID 对比：ACID 强调<em>强一致性</em>（事务内立即一致），适合金融/订单；BASE 强调<em>高可用优先</em>，适合社交/推荐等高并发场景。</li>
+              <li>BASE 不是"随便不一致"，需通过<strong>对账</strong>、<strong>重试补偿</strong>、<strong>版本号</strong>等机制保证最终收敛到一致。</li>
+            </ul>
+          </div></div>
+        </div>
+        <div class="qa-item" id="q-dist-3">
+          <div class="qa-question" onclick="toggleQA('q-dist-3')">
+            <span class="qa-num" style="background:rgba(124,58,237,0.1);color:#7c3aed;border:1px solid rgba(124,58,237,0.25)">Q3</span>
+            <span class="qa-q-text">分布式事务有哪些解决方案？各自适用什么场景？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <ul>
+              <li><strong>2PC</strong>：强一致，性能差（同步阻塞），业务侵入低，适合 DB 层 XA 协议；缺点是单点故障和数据不一致风险。</li>
+              <li><strong>TCC</strong>（Try-Confirm-Cancel）：最终一致，性能好，<em>业务侵入性强</em>（需实现 3 个接口）；适合资金、库存等核心业务；需处理空回滚/悬挂/幂等三大异常。</li>
+              <li><strong>Saga</strong>：将长事务拆成本地事务序列，每步立即提交，失败时逆向补偿；适合订单、物流等长流程业务。</li>
+              <li><strong>本地消息表</strong>：业务操作与消息写入同一本地事务，定时任务扫描发送 MQ；<em>对业务侵入最小</em>，适合跨服务异步通知。</li>
+              <li><strong>事务消息（RocketMQ）</strong>：生产者发送半消息，本地事务执行后提交/回滚，Broker 定期回查；适合生产者与消费者解耦场景。</li>
+            </ul>
+          </div></div>
+        </div>
+        <div class="qa-item" id="q-dist-4">
+          <div class="qa-question" onclick="toggleQA('q-dist-4')">
+            <span class="qa-num" style="background:rgba(124,58,237,0.1);color:#7c3aed;border:1px solid rgba(124,58,237,0.25)">Q4</span>
+            <span class="qa-q-text">2PC 的原理是什么？有哪些缺陷？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <ul>
+              <li><strong>同步阻塞</strong>：Prepare 阶段参与者持有锁等待协调者指令，高并发下锁竞争严重，吞吐量极低。</li>
+              <li><strong>单点故障</strong>：协调者宕机后，参与者将永久阻塞并持锁无法释放，系统僵死。</li>
+              <li><strong>数据不一致</strong>：Phase 2 协调者发出部分 Commit 后宕机，已提交和未提交的参与者数据出现分歧。</li>
+              <li><strong>过于保守</strong>：任一参与者返回 No，整个事务回滚；网络抖动可能导致误判，降低成功率。</li>
+              <li><em>3PC</em> 通过增加 CanCommit 阶段和超时机制部分缓解单点问题，但实现复杂，生产中极少使用。</li>
+            </ul>
+          </div></div>
+        </div>
+        <div class="qa-item" id="q-dist-5">
+          <div class="qa-question" onclick="toggleQA('q-dist-5')">
+            <span class="qa-num" style="background:rgba(124,58,237,0.1);color:#7c3aed;border:1px solid rgba(124,58,237,0.25)">Q5</span>
+            <span class="qa-q-text">TCC 的原理是什么？和 2PC 相比有什么优缺点？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <ul>
+              <li><strong>无全局锁</strong>：TCC 的 Try 阶段只预留资源不加全局 DB 锁，Confirm/Cancel 完成实际提交，<em>并发性能远优于 2PC</em>。</li>
+              <li><strong>业务侵入性</strong>：TCC 需要为每个服务实现 Try/Confirm/Cancel 三个接口，开发成本高；2PC 由 DB 层（XA 协议）自动处理，对业务透明。</li>
+              <li><strong>三大异常必须处理</strong>：
+                <ul>
+                  <li><strong>空回滚</strong>：Try 未收到（网络超时），Cancel 先到达，需判断 Try 是否执行过再决定是否回滚</li>
+                  <li><strong>悬挂</strong>：Cancel 先执行，Try 才到达，需拒绝后来的 Try（事务已结束）</li>
+                  <li><strong>幂等</strong>：Confirm/Cancel 网络重试，需保证重复执行结果相同</li>
+                </ul>
+              </li>
+              <li>实践中推荐用 <strong>Seata TCC 模式</strong>，框架层处理幂等和空回滚，减少手动实现负担。</li>
+            </ul>
+          </div></div>
+        </div>
+        <div class="qa-item" id="q-dist-6">
+          <div class="qa-question" onclick="toggleQA('q-dist-6')">
+            <span class="qa-num" style="background:rgba(124,58,237,0.1);color:#7c3aed;border:1px solid rgba(124,58,237,0.25)">Q6</span>
+            <span class="qa-q-text">如何用 Redis 实现分布式锁？有哪些常见问题？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <ul>
+              <li><strong>加锁</strong>：<code>SET lock_key ${uuid} NX PX 30000</code>——NX 保证只有一个客户端能设置成功，PX 设置过期时间防止死锁，value 存 UUID 标识持锁方。</li>
+              <li><strong>释放锁</strong>：必须用 Lua 脚本原子执行"判断 value 相等 + DEL"，<em>不能直接 DEL</em>——否则可能误删其他线程的锁（A 锁过期，B 获锁，A 此时 DEL 会删 B 的锁）。</li>
+              <li><strong>Redisson</strong>：封装了 SET NX + Lua 删除 + 看门狗续期，支持可重入锁、公平锁、读写锁，生产推荐使用。</li>
+              <li><strong>常见问题</strong>：锁过期业务未完成（看门狗解决）、主从切换锁丢失（RedLock 解决）、无法重入（Redisson 用 hash 结构记录重入次数）。</li>
+            </ul>
+          </div></div>
+        </div>
+        <div class="qa-item" id="q-dist-7">
+          <div class="qa-question" onclick="toggleQA('q-dist-7')">
+            <span class="qa-num" style="background:rgba(124,58,237,0.1);color:#7c3aed;border:1px solid rgba(124,58,237,0.25)">Q7</span>
+            <span class="qa-q-text">Redisson 的看门狗机制是什么？如何防止锁提前过期？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <ul>
+              <li><strong>看门狗（WatchDog）</strong>：调用 <code>lock()</code> 时如果不指定 leaseTime，Redisson 默认 leaseTime = 30s，同时启动后台 WatchDog 线程。</li>
+              <li><strong>续期机制</strong>：WatchDog 每隔 <em>leaseTime / 3（默认 10s）</em> 检查锁是否仍被持有，若是则重置过期时间为 30s，防止业务未完成时锁自动过期。</li>
+              <li><strong>停止续期</strong>：调用 <code>unlock()</code> 后，Redisson 删除锁并取消 WatchDog 定时任务，不再续期。</li>
+              <li><strong>注意</strong>：若指定了 leaseTime（如 <code>lock(10, TimeUnit.SECONDS)</code>），看门狗<em>不会启动</em>，锁在指定时间后自动过期，需自行估算业务执行时间。</li>
+              <li>JVM 进程崩溃时 WatchDog 线程也消失，锁会在 30s 后自动过期，不会死锁。</li>
+            </ul>
+          </div></div>
+        </div>
+        <div class="qa-item" id="q-dist-8">
+          <div class="qa-question" onclick="toggleQA('q-dist-8')">
+            <span class="qa-num" style="background:rgba(124,58,237,0.1);color:#7c3aed;border:1px solid rgba(124,58,237,0.25)">Q8</span>
+            <span class="qa-q-text">ZooKeeper 如何实现分布式锁？和 Redis 分布式锁有什么区别？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <ul>
+              <li><strong>实现步骤</strong>：① 在 <code>/locks/</code> 下创建<strong>临时顺序节点</strong>；② 获取所有子节点并排序；③ 若自己是序号最小的节点则获锁；④ 否则 Watch 前一个节点（非 Watch 所有节点）。</li>
+              <li><strong>自动释放</strong>：持锁方宕机后会话断开，ZK 自动删除临时节点，触发后继节点的 Watch，<em>不会死锁</em>。</li>
+              <li><strong>羊群效应优化</strong>：Watch 前驱节点而非所有节点，避免节点释放时唤醒所有等待者（N-1 次无效唤醒）。</li>
+              <li>Redis vs ZK 对比：Redis 性能高（AP），ZK 可靠性强（CP）；Redis 主从切换可能锁丢失，ZK 临时节点无此问题；ZK 吞吐低，不适合高并发锁竞争。</li>
+            </ul>
+          </div></div>
+        </div>
+        <div class="qa-item" id="q-dist-9">
+          <div class="qa-question" onclick="toggleQA('q-dist-9')">
+            <span class="qa-num" style="background:rgba(124,58,237,0.1);color:#7c3aed;border:1px solid rgba(124,58,237,0.25)">Q9</span>
+            <span class="qa-q-text">Nacos、Eureka、ZooKeeper 作为注册中心有什么区别？如何选型？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <ul>
+              <li><strong>Eureka（AP）</strong>：Spring Cloud 早期标配，自我保护机制（15min 内心跳丢失 &gt;15% 不剔除）保障可用性，但<em>已停止维护</em>，新项目不推荐。</li>
+              <li><strong>Nacos（AP/CP 可切换）</strong>：阿里开源，服务注册默认 AP（高可用），配置中心用 CP（强一致）；支持推送 + 健康检查，生态完善，<em>国内首选</em>。</li>
+              <li><strong>ZooKeeper（CP）</strong>：Leader 选举期间服务不可用，服务发现场景下可用性差，适合做分布式锁/配置协调而非注册中心。</li>
+              <li><strong>Consul（CP）</strong>：支持多数据中心，内置 DNS 服务发现，适合云原生和 K8s 场景。</li>
+              <li>选型建议：<em>国内 Spring Cloud 项目首选 Nacos</em>；K8s 场景可用 Consul 或直接使用 etcd；强一致配置管理用 etcd/ZK。</li>
+            </ul>
+          </div></div>
+        </div>
+        <div class="qa-item" id="q-dist-10">
+          <div class="qa-question" onclick="toggleQA('q-dist-10')">
+            <span class="qa-num" style="background:rgba(124,58,237,0.1);color:#7c3aed;border:1px solid rgba(124,58,237,0.25)">Q10</span>
+            <span class="qa-q-text">Snowflake 算法的原理是什么？有哪些缺陷？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <ul>
+              <li><strong>结构（64 bit）</strong>：1位符号位（固定0）+ 41位时间戳（ms，可用约69年）+ 10位机器ID（5位datacenter + 5位workerId，最多1024台）+ 12位序列号（同毫秒内最多4096个ID）。</li>
+              <li><strong>特点</strong>：本地生成无网络依赖，每毫秒可生成 4096 × 1024 ≈ 420万个 ID；趋势递增（时间戳在高位），对 B+树友好。</li>
+              <li><strong>时钟回拨问题</strong>：NTP 校正导致系统时间倒退，若直接使用当前时间戳会生成重复 ID。</li>
+              <li><strong>解决方案</strong>：① 回拨量小（&lt;5ms）时 spin 等待追上；② 回拨量大时抛异常由上层重试；③ 美团 Leaf 借用扩展位标记回拨，继续生成不重复 ID。</li>
+              <li>实践中需保证<strong>机器ID不重复</strong>，可从 ZK/DB 动态分配；K8s 环境中 Pod 重启可能导致机器ID复用，需额外处理。</li>
+            </ul>
+          </div></div>
+        </div>
+        <div class="qa-item" id="q-dist-11">
+          <div class="qa-question" onclick="toggleQA('q-dist-11')">
+            <span class="qa-num" style="background:rgba(124,58,237,0.1);color:#7c3aed;border:1px solid rgba(124,58,237,0.25)">Q11</span>
+            <span class="qa-q-text">如何实现接口限流？令牌桶和漏桶算法有什么区别？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <ul>
+              <li><strong>令牌桶</strong>：以固定速率向桶中放令牌（容量=burst），请求消费令牌；桶满时令牌积累，可应对<em>突发流量</em>（允许瞬间通过 burst 个请求）。适合：API 限流、允许短暂突发的场景（Guava RateLimiter）。</li>
+              <li><strong>漏桶</strong>：请求进入漏桶排队，桶以固定速率漏出（处理）；桶满则丢弃新请求，<em>强制平滑输出</em>，无论输入多大，输出速率恒定。适合：保护下游固定处理速率的服务。</li>
+              <li>核心区别：令牌桶<em>允许突发</em>（积累令牌），漏桶<em>绝对平滑</em>（固定输出）；接口保护通常用令牌桶（兼顾弹性和保护），消息队列消费速率控制用漏桶。</li>
+              <li>固定窗口问题：窗口边界处可能放过双倍流量（前一窗口末尾 + 后一窗口开头）；<strong>滑动窗口</strong>通过细分子窗口解决此问题，Sentinel 默认使用。</li>
+            </ul>
+          </div></div>
+        </div>
+        <div class="qa-item" id="q-dist-12">
+          <div class="qa-question" onclick="toggleQA('q-dist-12')">
+            <span class="qa-num" style="background:rgba(124,58,237,0.1);color:#7c3aed;border:1px solid rgba(124,58,237,0.25)">Q12</span>
+            <span class="qa-q-text">什么是服务熔断？熔断器的三种状态是什么？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <ul>
+              <li><strong>CLOSED（关闭）</strong>：正常工作状态，请求正常通过，同时统计最近时间窗口内的成功/失败率；当失败率超过阈值（如50%）或慢调用比例过高时，切换到 OPEN。</li>
+              <li><strong>OPEN（打开）</strong>：熔断打开，所有请求<em>直接快速失败</em>（执行 fallback 逻辑），不再调用下游，防止级联雪崩；持续一段时间（如5秒）后自动进入 HALF-OPEN。</li>
+              <li><strong>HALF-OPEN（半开）</strong>：探测恢复阶段，放行少量请求（如10%）到下游；若成功率达标则恢复 CLOSED，若仍有大量失败则回到 OPEN。</li>
+              <li>熔断的意义：下游服务故障时快速失败，避免请求堆积耗尽线程池资源，防止<em>级联雪崩</em>（一个服务故障拖垮整个调用链）。</li>
+              <li><strong>Sentinel</strong> vs <strong>Resilience4j</strong>：Sentinel 适合国内微服务，规则配置丰富；Resilience4j 轻量，适合 Spring Boot 项目，两者均支持三状态熔断器。</li>
+            </ul>
+          </div></div>
+        </div>
+        <div class="qa-item" id="q-dist-13">
+          <div class="qa-question" onclick="toggleQA('q-dist-13')">
+            <span class="qa-num" style="background:rgba(124,58,237,0.1);color:#7c3aed;border:1px solid rgba(124,58,237,0.25)">Q13</span>
+            <span class="qa-q-text">一致性哈希算法是什么？如何解决数据倾斜问题？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <ul>
+              <li><strong>哈希环</strong>：将 [0, 2³²-1] 的哈希空间首尾相连构成环，节点和 key 都映射到环上；key 沿<em>顺时针方向</em>找到第一个节点即为目标节点。</li>
+              <li><strong>优势</strong>：新增/删除节点只影响该节点到前驱节点之间的 key（约 1/N），其余 key 映射不变，<em>极大减少缓存失效范围</em>（传统取模则约 (N-1)/N 失效）。</li>
+              <li><strong>数据倾斜问题</strong>：节点少时分布不均，某节点可能承载大量数据；解决方案：<strong>虚拟节点</strong>——每个物理节点映射 150+ 虚拟节点均匀散布在环上，负载均衡。</li>
+              <li>应用场景：Redis Cluster（16384槽的变种实现）、Memcached ketama 算法、Nginx 一致性哈希负载均衡、Dubbo 集群路由。</li>
+            </ul>
+          </div></div>
+        </div>
+        <div class="qa-item" id="q-dist-14">
+          <div class="qa-question" onclick="toggleQA('q-dist-14')">
+            <span class="qa-num" style="background:rgba(124,58,237,0.1);color:#7c3aed;border:1px solid rgba(124,58,237,0.25)">Q14</span>
+            <span class="qa-q-text">分布式系统中如何保证接口幂等性？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <ul>
+              <li><strong>唯一请求 ID</strong>：客户端生成全局唯一 requestId，服务端查 Redis/DB 判断是否已处理；已处理则直接返回上次结果。适合：支付、下单。</li>
+              <li><strong>Token 机制</strong>：请求前先获取一次性 Token（存 Redis），提交时携带 Token，服务端原子判断+删除 Token（Lua）；Token 不存在则拒绝，防止表单重复提交。</li>
+              <li><strong>数据库唯一索引</strong>：在业务唯一字段（如 order_no）上建唯一索引，重复插入抛 DuplicateKeyException 并捕获返回成功。适合写入类幂等。</li>
+              <li><strong>状态机</strong>：通过状态流转（如 PENDING→PAID）保证幂等，已流转则不再重复处理；<code>UPDATE ... WHERE status='PENDING'</code> 乐观锁控制。</li>
+              <li><strong>乐观锁版本号</strong>：更新时携带 version，<code>UPDATE ... WHERE id=? AND version=?</code>，并发更新时只有一个成功。</li>
+            </ul>
+          </div></div>
+        </div>
+        <div class="qa-item" id="q-dist-15">
+          <div class="qa-question" onclick="toggleQA('q-dist-15')">
+            <span class="qa-num" style="background:rgba(124,58,237,0.1);color:#7c3aed;border:1px solid rgba(124,58,237,0.25)">Q15</span>
+            <span class="qa-q-text">什么是分布式链路追踪？TraceId 如何实现全链路透传？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <ul>
+              <li><strong>核心概念</strong>：<strong>TraceId</strong> 标识整条请求链路（全局唯一），<strong>SpanId</strong> 标识链路中的单个操作（父子关系组成调用树），一个 Trace 包含多个 Span。</li>
+              <li><strong>MDC 透传</strong>：利用 <code>MDC.put("traceId", traceId)</code> 将 TraceId 存入线程本地变量，日志框架自动打印；跨线程需手动传递（线程池场景用 <code>TransmittableThreadLocal</code>）。</li>
+              <li><strong>跨服务透传</strong>：HTTP 调用时将 TraceId 放入请求头（如 <code>X-Trace-Id</code>），下游服务通过拦截器/Filter 提取并放入 MDC；MQ 场景放入消息属性。</li>
+              <li><strong>Skywalking</strong>：字节码增强（Java Agent），<em>无侵入</em>，自动采集 TraceId/SpanId 并上报；Zipkin 需要业务代码集成（Spring Cloud Sleuth）。</li>
+              <li>链路追踪解决<em>分布式系统下日志分散</em>的问题，结合 ELK/Jaeger 可以按 TraceId 聚合完整调用链，快速定位性能瓶颈和错误根因。</li>
+            </ul>
+          </div></div>
+        </div>
+        <div class="qa-item" id="q-dist-16">
+          <div class="qa-question" onclick="toggleQA('q-dist-16')">
+            <span class="qa-num" style="background:rgba(124,58,237,0.1);color:#7c3aed;border:1px solid rgba(124,58,237,0.25)">Q16</span>
+            <span class="qa-q-text">Raft 算法的 Leader 选举和日志复制流程是什么？和 Paxos 有什么区别？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <p><strong>Leader 选举（三步）：</strong></p>
+            <ol style="margin:0.4rem 0 0.4rem 1.2rem;line-height:1.9">
+              <li>Follower 超过 Election Timeout（随机 150-300ms）未收到心跳，转为 Candidate，term++，先投自己一票</li>
+              <li>并发广播 RequestVote RPC，携带自身最后日志的 (index, term) 用于比较日志新旧</li>
+              <li>获多数票（>N/2）成为 Leader，立即广播心跳；否则随机等待后重试</li>
+            </ol>
+            <p><strong>投票安全规则：</strong>只投给日志"至少一样新"的 Candidate——先比 term，再比 index。确保当选 Leader 一定包含所有已提交日志。</p>
+            <p><strong>日志复制（四步）：</strong></p>
+            <ol style="margin:0.4rem 0 0.4rem 1.2rem;line-height:1.9">
+              <li>写请求到达 Leader，追加到本地日志（未提交）</li>
+              <li>并发发 AppendEntries RPC 给所有 Follower，携带日志条目和前驱日志的 (index, term) 做一致性检查</li>
+              <li>多数 Follower 写入成功后，Leader 提交（apply 到状态机），回复客户端</li>
+              <li>下次心跳通知 Follower 更新 commitIndex，Follower 提交</li>
+            </ol>
+            <p><strong>Raft vs Paxos：</strong></p>
+            <ul>
+              <li><strong>Paxos</strong>：解决单值共识，理论严谨，但 Multi-Paxos 没有规范工程实现，各家（Chubby、Spanner）做了大量私有扩展，实现复杂、难以理解和验证正确性</li>
+              <li><strong>Raft</strong>：直接面向日志复制，Leader 唯一使写路径清晰；工程实现有参考规范（etcd、TiKV、Nacos CP、CockroachDB、Consul 均采用）；代价是 Leader 单点成为写瓶颈，可通过 Multi-Raft（多个 Raft 组分片）缓解</li>
+              <li><strong>面试答法：</strong>Raft 本质是 Multi-Paxos 的工程化简化版——限制了 Leader 的唯一性和日志只能从 Leader 流向 Follower，牺牲了一点灵活性，换取可理解性和实现确定性</li>
+            </ul>
+          </div></div>
+        </div>
+        <div class="qa-item practical" id="q-dist-p1">
+          <div class="qa-question" onclick="toggleQA('q-dist-p1')">
+            <span class="qa-num">⚡ 实战</span>
+            <span class="qa-q-text">Redisson 分布式锁续期失败导致业务异常，怎么排查？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <p><strong>一、Redisson Watchdog 机制回顾</strong></p>
+            <p>Redisson 的 <code>RLock</code> 默认使用 watchdog 自动续期机制：加锁时如果未指定 <code>leaseTime</code>，锁超时时间为 <strong>30 秒</strong>（由 <code>lockWatchdogTimeout</code> 配置），后台 watchdog 线程每隔 <strong>lockWatchdogTimeout / 3 = 10 秒</strong> 执行一次续期操作（通过 Lua 脚本将 Redis 中锁的 TTL 重置为 30s）。只要持有锁的线程还活着，锁就不会过期释放。</p>
+            <p>关键源码路径：<code>RedissonLock#scheduleRenewal()</code> → 注册 <code>Timeout</code> 任务 → <code>renewExpiration()</code> 执行 Lua 续期脚本。如果客户端与 Redis 之间连接断开，watchdog 无法续期，锁将在 30s 后自动过期，其他客户端可以获取锁——这是导致业务异常的核心场景。</p>
+            <p><strong>二、续期失败常见原因</strong></p>
+            <ul>
+              <li><strong>Redis 节点宕机 / 网络分区</strong>：Redis 主节点不可达，watchdog 的续期请求无法送达。主从切换期间（Sentinel 故障转移通常 5-15s），锁的 key 可能尚未同步到从节点，新主节点上锁不存在，续期直接失败。</li>
+              <li><strong>JVM GC 停顿（STW）</strong>：Full GC 或长时间 Young GC（如大堆内存 + 大量老年代对象）导致应用线程全部暂停，watchdog 续期任务无法按时执行。可通过 <code>-Xlog:gc*:file=gc.log</code>（JDK11+）或 <code>-XX:+PrintGCDetails</code>（JDK8）查看 GC 停顿时长。如果 STW 超过 10s，续期窗口被错过。</li>
+              <li><strong>应用重启 / OOM Kill</strong>：进程异常退出后 watchdog 线程随之终止，锁在 30s 后自动过期。重启后新实例无法感知旧锁的存在，可能导致并发问题。</li>
+              <li><strong>Redis 慢查询阻塞</strong>：如果 Redis 单线程被慢命令（如 <code>KEYS *</code>、大 key 操作）阻塞，续期的 <code>PEXPIRE</code> 命令排队等待，可能超时。</li>
+            </ul>
+            <p><strong>三、排查步骤与命令</strong></p>
+            <ul>
+              <li><strong>检查 Redis 连接状态</strong>：
+                <code>redis-cli info clients</code> 查看 connected_clients 是否骤降；
+                <code>redis-cli slowlog get 20</code> 查看近期慢查询，确认是否有阻塞续期的慢命令；
+                <code>redis-cli info replication</code> 确认主从同步状态和 offset 差距。</li>
+              <li><strong>检查 GC 日志</strong>：分析 GC 日志中是否有超过数秒的 STW 停顿。使用 <code>jstat -gcutil &lt;pid&gt; 1000</code> 实时监控，或用 GCEasy（gceasy.io）上传日志可视化分析。重点关注 Full GC 频率和耗时。</li>
+              <li><strong>确认锁参数配置</strong>：检查代码中 <code>tryLock(waitTime, leaseTime, unit)</code> 的设置。如果设置了 <code>leaseTime</code>（如 10s），则 watchdog <strong>不会启动</strong>，锁到期自动释放——这是最常见的配置错误。正确做法：不传 <code>leaseTime</code> 或传入 -1 让 watchdog 生效。</li>
+              <li><strong>查看 Redisson 日志</strong>：Redisson 使用 <code>org.redisson</code> 包下的 logger，开启 DEBUG 级别可看到续期任务的执行情况：
+                <code>logback.xml: &lt;logger name="org.redisson" level="DEBUG"/&gt;</code></li>
+            </ul>
+            <p><strong>四、解决方案</strong></p>
+            <ul>
+              <li><strong>tryLock 超时兜底</strong>：始终使用 <code>tryLock(waitTime, TimeUnit)</code> 而非 <code>lock()</code>，设置合理的等待时间避免无限阻塞。捕获返回 false 的情况走降级逻辑。</li>
+              <li><strong>RedLock 多节点部署</strong>：Redisson 提供 <code>RedissonRedLock</code>，在 N 个独立 Redis 节点上加锁，超过 N/2+1 个节点加锁成功才算成功。但 Martin Kleppmann 与 Antirez 对此有过经典争论——RedLock 在时钟跳跃场景下仍不安全，不适合强一致性场景。</li>
+              <li><strong>关键业务降级方案</strong>：对资金类、库存扣减等核心操作，使用 <strong>数据库乐观锁</strong>（<code>UPDATE stock SET count=count-1 WHERE id=? AND count&gt;0</code>）或 <strong>ZooKeeper 临时有序节点锁</strong>（Curator <code>InterProcessMutex</code>）作为降级，ZK 基于会话心跳检测，不存在续期问题。</li>
+              <li><strong>监控告警</strong>：对 Redisson 锁获取耗时（通过 AOP 切面统计）和锁等待队列长度设置 Prometheus 指标，锁获取超过阈值时告警。</li>
+            </ul>
+          </div></div>
+        </div>
+        <div class="qa-item practical" id="q-dist-p2">
+          <div class="qa-question" onclick="toggleQA('q-dist-p2')">
+            <span class="qa-num">⚡ 实战</span>
+            <span class="qa-q-text">Seata AT 模式全局事务回滚失败怎么处理？</span>
+            <span class="qa-toggle">+</span>
+          </div>
+          <div class="qa-answer"><div class="qa-answer-inner">
+            <p><strong>一、AT 模式回滚原理</strong></p>
+            <p>Seata AT（Automatic Transaction）模式的核心思路是<strong>无侵入自动补偿</strong>。事务提交阶段（Phase 1），各分支 RM（Resource Manager）在本地事务提交前，Seata 拦截 SQL 并自动记录 <strong>undo_log</strong>（包含 beforeImage 和 afterImage），与业务数据在同一个本地事务中提交。全局事务需要回滚时（Phase 2），TC（Transaction Coordinator）通知各 RM 根据 undo_log 生成<strong>反向补偿 SQL</strong>：INSERT 变 DELETE，UPDATE 用 beforeImage 还原，DELETE 重新 INSERT。</p>
+            <p>关键表：<code>undo_log</code>（每个业务库都需要建）记录回滚日志；<code>global_table</code>、<code>branch_table</code>、<code>lock_table</code> 在 Seata Server 端记录全局事务和分支状态。</p>
+            <p><strong>二、回滚失败常见原因</strong></p>
+            <ul>
+              <li><strong>undo_log 表被清理</strong>：运维误删或定时清理任务（如保留 7 天的 cron job）在事务尚未完成时删除了对应的 undo_log 记录，导致 RM 无法构造回滚 SQL。报错：<code>io.seata.rm.datasource.undo.AbstractUndoExecutor: undo_log not found</code>。</li>
+              <li><strong>脏写（Dirty Write）</strong>：AT 模式下全局锁（global_lock）保护被修改的行，但如果其他<strong>非 Seata 管理的事务</strong>（如直接操作数据库的脚本、未接入 Seata 的旧服务）修改了同一行数据，回滚时 afterImage 与当前数据不匹配，校验失败报错：<code>DirtyDataException: data has been modified by other transaction</code>。</li>
+              <li><strong>数据库连接断开</strong>：分支 RM 所在服务宕机或数据库连接池耗尽，Phase 2 回滚请求无法送达或执行超时。Seata Server 默认重试 5 次，每次间隔递增。</li>
+              <li><strong>DDL 变更</strong>：在分布式事务期间对表执行了 ALTER TABLE（加字段、改类型），导致 beforeImage 的列结构与当前表结构不匹配，undo SQL 执行报错。</li>
+            </ul>
+            <p><strong>三、排查步骤</strong></p>
+            <ul>
+              <li><strong>查 Seata Server 日志</strong>：在 <code>seata-server/logs/seata-server.log</code> 中搜索 XID（全局事务 ID），定位哪个分支回滚失败。关注 <code>BranchRollbackResponse</code> 的 resultCode 和异常堆栈。也可以通过 Seata 1.5+ 的 Web Console（默认端口 7091）查看全局事务状态和各分支状态。</li>
+              <li><strong>检查 undo_log 表</strong>：<code>SELECT * FROM undo_log WHERE xid = 'your-xid' ORDER BY log_created</code>，确认回滚日志是否存在且完整。如果记录已被删除，需要手动构造补偿 SQL。</li>
+              <li><strong>检查 global_lock 表</strong>：<code>SELECT * FROM lock_table WHERE xid = 'your-xid'</code>，确认全局锁是否有残留（事务超时后锁未释放）。残留锁会阻塞其他事务获取同一行的全局锁，导致新事务超时。</li>
+              <li><strong>检查分支数据库</strong>：对比 undo_log 中的 afterImage 与当前数据库中的实际数据，确认是否被脏写：<code>SELECT * FROM your_table WHERE id = ? </code>，与 afterImage 逐字段比对。</li>
+            </ul>
+            <p><strong>四、处理方式</strong></p>
+            <ul>
+              <li><strong>手动补偿 SQL</strong>：如果 undo_log 还在但自动回滚失败，可以手动取出 beforeImage 数据执行还原：<code>UPDATE your_table SET col1=before_val1, col2=before_val2 WHERE id=?</code>，然后手动删除 undo_log 记录并通过 Seata API 标记分支为已完成。</li>
+              <li><strong>调整重试与超时配置</strong>：在 <code>application.yml</code> 中设置 Seata 重试策略：<code>service.enable-degrade=true</code> 开启降级；<code>client.rm.async-commit-buffer-limit</code> 调整异步提交缓冲区；<code>transport.thread-factory.boss-thread-size</code> 增加通信线程。全局事务超时时间通过 <code>@GlobalTransactional(timeoutMills=60000)</code> 设置。</li>
+              <li><strong>监控告警</strong>：集成 Prometheus，监控 <code>seata_transaction</code> 指标（status=rollback 的数量），设置全局事务超时未完成时告警。Grafana 面板展示全局事务成功率、平均耗时、回滚率。</li>
+            </ul>
+            <p><strong>五、架构建议</strong></p>
+            <ul>
+              <li><strong>核心支付链路用 TCC 替代 AT</strong>：AT 模式依赖数据库层面的 undo_log 和全局锁，对脏写敏感且不适合跨异构数据源。TCC（Try-Confirm-Cancel）在业务层面实现三阶段操作——Try 冻结资源（如冻结金额到中间账户）、Confirm 确认扣减、Cancel 解冻——控制粒度更细，不依赖数据库机制，更适合金融场景。Seata 同时支持 TCC 模式，通过 <code>@TwoPhaseBusinessAction</code> 注解实现。</li>
+              <li><strong>防御性设计</strong>：接入 Seata 的库严格禁止非 Seata 管理的事务修改受保护的数据行；undo_log 清理任务必须检查事务状态（只清理 COMMITTED/ROLLBACKED 的记录）；生产环境对 DDL 变更加审批流程，禁止在活跃事务期间执行。</li>
+            </ul>
+          </div></div>
+        </div>
+        </div>
+    </div>
+
+  </section>
+</main>
+</div>
+
+<aside class="toc-panel" id="toc-panel">
+  <div class="toc-title">≡ &nbsp;On this page</div>
+  <nav id="toc-nav"></nav>
+</aside>
+
+<script src="style/search-data.js"></script>
+<script src="style/shared.js"></script>
+</body>
+</html>

@@ -37,7 +37,8 @@
   <a href="#jvm-classload"  class="nav-link">类加载机制</a>
   <a href="#jvm-delegation" class="nav-link">双亲委派模型</a>
   <a href="#jvm-jit"        class="nav-link">JIT 编译与调优</a>
-  <a href="#jvm-qa"         class="nav-link">JVM 面试题</a>
+  <div class="nav-section-label" style="color:rgba(146,64,14,0.6)">面试题</div>
+  <a href="jvm-qa.html" class="nav-link" style="color:rgba(13,148,136,0.8)">JVM 面试题（独立页）→</a>
 </nav>
 
 <div class="content-wrap">
@@ -68,25 +69,46 @@
       </h3>
       <p class="sub-body">JVM 运行时数据区定义了程序执行期间的内存划分，分为<strong>线程私有</strong>和<strong>线程共享</strong>两大类。</p>
 
-      <div class="arch-box" style="margin-top:0.8rem">
-        <pre class="arch-pre" style="font-size:0.76rem;line-height:1.7">
-  ┌─────────────────────────────────────────────────────────────────┐
-  │                    JVM 运行时数据区                               │
-  ├──────────────────────────┬──────────────────────────────────────┤
-  │      线程私有             │          线程共享                     │
-  ├──────────┬───────────────┼───────────────┬──────────────────────┤
-  │ 程序计数器│  虚拟机栈      │     堆        │   方法区              │
-  │  (PC)    │  (VM Stack)   │   (Heap)      │  (Metaspace, JDK8+) │
-  ├──────────┼───────────────┼───────────────┼──────────────────────┤
-  │ 当前执行  │ 栈帧:         │  对象实例      │  类元信息             │
-  │ 字节码行号│ 局部变量表     │  数组          │  常量池              │
-  │          │ 操作数栈      │               │  JIT 编译代码         │
-  │          │ 动态链接      │  Young / Old  │                      │
-  │          │ 返回地址      │               │  (PermGen, JDK7-)    │
-  ├──────────┴───────────────┼───────────────┴──────────────────────┤
-  │      本地方法栈           │        直接内存 (NIO DirectBuffer)    │
-  │   (Native Method Stack)  │        不受 JVM 堆大小限制            │
-  └──────────────────────────┴─────────────────────────────────────┘</pre>
+      <div style="background:rgba(13,148,136,0.04);border:1px solid rgba(13,148,136,0.15);border-radius:10px;padding:16px;margin-top:0.8rem">
+        <div style="text-align:center;font-weight:600;color:var(--text-2);margin-bottom:12px;font-size:0.85rem">JVM 运行时数据区</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+          <div style="border:1px solid rgba(99,102,241,0.3);border-radius:8px;overflow:hidden">
+            <div style="background:rgba(99,102,241,0.1);color:#6366f1;font-weight:600;font-size:0.75rem;padding:6px 10px;text-align:center">线程私有</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:8px">
+              <div style="background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.2);border-radius:6px;padding:8px">
+                <div style="font-weight:600;color:#6366f1;font-size:0.78rem">程序计数器 (PC)</div>
+                <div style="font-size:0.72rem;color:var(--text-3);margin-top:4px">当前执行字节码行号<br>唯一不发生 OOM 的区域</div>
+              </div>
+              <div style="background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.2);border-radius:6px;padding:8px">
+                <div style="font-weight:600;color:#6366f1;font-size:0.78rem">虚拟机栈 (VM Stack)</div>
+                <div style="font-size:0.72rem;color:var(--text-3);margin-top:4px">栈帧: 局部变量表<br>操作数栈 / 动态链接<br>返回地址</div>
+              </div>
+            </div>
+          </div>
+          <div style="border:1px solid rgba(13,148,136,0.3);border-radius:8px;overflow:hidden">
+            <div style="background:rgba(13,148,136,0.1);color:#0d9488;font-weight:600;font-size:0.75rem;padding:6px 10px;text-align:center">线程共享</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:8px">
+              <div style="background:rgba(13,148,136,0.06);border:1px solid rgba(13,148,136,0.2);border-radius:6px;padding:8px">
+                <div style="font-weight:600;color:#0d9488;font-size:0.78rem">堆 (Heap)</div>
+                <div style="font-size:0.72rem;color:var(--text-3);margin-top:4px">对象实例 / 数组<br>Young / Old Generation<br>GC 主要区域</div>
+              </div>
+              <div style="background:rgba(13,148,136,0.06);border:1px solid rgba(13,148,136,0.2);border-radius:6px;padding:8px">
+                <div style="font-weight:600;color:#0d9488;font-size:0.78rem">方法区 (Metaspace)</div>
+                <div style="font-size:0.72rem;color:var(--text-3);margin-top:4px">类元信息 / 常量池<br>JIT 编译代码<br>JDK 8+ 本地内存</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div style="background:rgba(100,116,139,0.06);border:1px solid rgba(100,116,139,0.2);border-radius:6px;padding:8px 12px">
+            <div style="font-weight:600;color:var(--text-2);font-size:0.78rem">本地方法栈 (Native Method Stack)</div>
+            <div style="font-size:0.72rem;color:var(--text-3);margin-top:4px">线程私有 · 为 Native 方法服务 · HotSpot 与虚拟机栈合并</div>
+          </div>
+          <div style="background:rgba(100,116,139,0.06);border:1px solid rgba(100,116,139,0.2);border-radius:6px;padding:8px 12px">
+            <div style="font-weight:600;color:var(--text-2);font-size:0.78rem">直接内存 (NIO DirectBuffer)</div>
+            <div style="font-size:0.72rem;color:var(--text-3);margin-top:4px">不受 JVM 堆大小限制 · Netty / Kafka 堆外缓冲</div>
+          </div>
+        </div>
       </div>
 
       <!-- 各区域详解 -->
@@ -118,16 +140,26 @@
       </div>
 
       <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">栈帧结构</p>
-      <div class="arch-box" style="margin-top:0.5rem">
-        <pre class="arch-pre" style="font-size:0.76rem;line-height:1.7">
-  ┌───────────────────────────────┐
-  │          栈帧 (Stack Frame)    │
-  ├───────────────────────────────┤
-  │  局部变量表 (Local Variables)  │  ← 编译期确定大小（Slot 数）
-  │  操作数栈 (Operand Stack)     │  ← 字节码指令 push/pop
-  │  动态链接 (Dynamic Linking)    │  ← 指向运行时常量池的方法引用
-  │  返回地址 (Return Address)    │  ← 方法结束后回到调用点
-  └───────────────────────────────┘</pre>
+      <div style="background:rgba(13,148,136,0.04);border:1px solid rgba(13,148,136,0.15);border-radius:10px;padding:16px;margin-top:0.5rem">
+        <div style="text-align:center;font-weight:600;color:#0d9488;font-size:0.85rem;margin-bottom:10px">栈帧 (Stack Frame)</div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div style="display:flex;align-items:center;gap:12px;background:rgba(13,148,136,0.07);border:1px solid rgba(13,148,136,0.2);border-radius:6px;padding:8px 12px">
+            <div style="min-width:190px;font-weight:600;color:#0d9488;font-size:0.8rem">局部变量表 <span style="font-weight:400;color:var(--text-3);font-size:0.74rem">(Local Variables)</span></div>
+            <div style="font-size:0.76rem;color:var(--text-3)">编译期确定大小（Slot 数）；long/double 占 2 Slot</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;background:rgba(13,148,136,0.07);border:1px solid rgba(13,148,136,0.2);border-radius:6px;padding:8px 12px">
+            <div style="min-width:190px;font-weight:600;color:#0d9488;font-size:0.8rem">操作数栈 <span style="font-weight:400;color:var(--text-3);font-size:0.74rem">(Operand Stack)</span></div>
+            <div style="font-size:0.76rem;color:var(--text-3)">字节码指令 push / pop 执行区域</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;background:rgba(13,148,136,0.07);border:1px solid rgba(13,148,136,0.2);border-radius:6px;padding:8px 12px">
+            <div style="min-width:190px;font-weight:600;color:#0d9488;font-size:0.8rem">动态链接 <span style="font-weight:400;color:var(--text-3);font-size:0.74rem">(Dynamic Linking)</span></div>
+            <div style="font-size:0.76rem;color:var(--text-3)">指向运行时常量池中该栈帧所属方法的引用</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;background:rgba(13,148,136,0.07);border:1px solid rgba(13,148,136,0.2);border-radius:6px;padding:8px 12px">
+            <div style="min-width:190px;font-weight:600;color:#0d9488;font-size:0.8rem">返回地址 <span style="font-weight:400;color:var(--text-3);font-size:0.74rem">(Return Address)</span></div>
+            <div style="font-size:0.76rem;color:var(--text-3)">方法正常 / 异常结束后回到调用方的位置</div>
+          </div>
+        </div>
       </div>
 
       <p class="sub-body" style="margin-top:0.8rem"><strong>局部变量表</strong>以 Slot 为单位（32 bit），long 和 double 占 2 个 Slot。方法参数和局部变量都存放在此表。Slot 复用：一个局部变量超出作用域后，其 Slot 可被后续变量复用，减少内存占用。</p>
@@ -152,28 +184,47 @@
       </h3>
       <p class="sub-body">HotSpot 虚拟机中，对象在堆内存中的布局分为三个区域：<strong>对象头</strong>、<strong>实例数据</strong>、<strong>对齐填充</strong>。</p>
 
-      <div class="arch-box" style="margin-top:0.8rem">
-        <pre class="arch-pre" style="font-size:0.76rem;line-height:1.7">
-  ┌──────────────────────────────────────────────────────────┐
-  │                     对象内存布局                           │
-  ├──────────────┬────────────────┬──────────────────────────┤
-  │   对象头      │    实例数据      │    对齐填充              │
-  │  (Header)    │  (Instance)    │    (Padding)            │
-  ├──────────────┼────────────────┼──────────────────────────┤
-  │ Mark Word    │  父类继承字段   │  补齐到 8 字节的整数倍    │
-  │ (8 bytes/64) │  子类实例字段   │  空对象也需要 16 bytes   │
-  │              │               │                          │
-  │ Klass Pointer│  (按类型排列    │                          │
-  │ (4/8 bytes)  │   减少空隙)    │                          │
-  │              │               │                          │
-  │ [数组长度]    │               │                          │
-  │ (4 bytes)    │               │                          │
-  └──────────────┴────────────────┴──────────────────────────┘</pre>
-  
+      <div style="background:rgba(13,148,136,0.04);border:1px solid rgba(13,148,136,0.15);border-radius:10px;padding:16px;margin-top:0.8rem">
+        <div style="text-align:center;font-weight:600;color:var(--text-2);margin-bottom:12px;font-size:0.85rem">对象内存布局</div>
+        <div style="display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:stretch">
+          <div style="border:1px solid rgba(13,148,136,0.3);border-radius:8px;overflow:hidden;min-width:140px">
+            <div style="background:rgba(13,148,136,0.15);color:#0d9488;font-weight:600;font-size:0.78rem;padding:6px 10px;text-align:center">对象头 (Header)</div>
+            <div style="padding:8px;display:flex;flex-direction:column;gap:6px">
+              <div style="background:rgba(13,148,136,0.08);border:1px solid rgba(13,148,136,0.2);border-radius:5px;padding:6px 8px">
+                <div style="font-weight:600;color:#0d9488;font-size:0.76rem">Mark Word</div>
+                <div style="font-size:0.71rem;color:var(--text-3);margin-top:2px">8 bytes (64 位 JVM)<br>锁状态 / hashCode<br>GC 分代年龄</div>
+              </div>
+              <div style="background:rgba(13,148,136,0.08);border:1px solid rgba(13,148,136,0.2);border-radius:5px;padding:6px 8px">
+                <div style="font-weight:600;color:#0d9488;font-size:0.76rem">Klass Pointer</div>
+                <div style="font-size:0.71rem;color:var(--text-3);margin-top:2px">4 B (压缩) / 8 B<br>指向方法区类元信息</div>
+              </div>
+              <div style="background:rgba(13,148,136,0.04);border:1px dashed rgba(13,148,136,0.2);border-radius:5px;padding:6px 8px">
+                <div style="font-weight:600;color:var(--text-3);font-size:0.74rem">[数组长度]</div>
+                <div style="font-size:0.71rem;color:var(--text-3);margin-top:2px">4 bytes · 仅数组对象</div>
+              </div>
+            </div>
+          </div>
+          <div style="border:1px solid rgba(234,179,8,0.3);border-radius:8px;overflow:hidden">
+            <div style="background:rgba(234,179,8,0.1);color:#a16207;font-weight:600;font-size:0.78rem;padding:6px 10px;text-align:center">实例数据 (Instance Data)</div>
+            <div style="padding:10px;font-size:0.75rem;color:var(--text-3);line-height:1.7">
+              <div>父类继承字段</div>
+              <div>子类实例字段</div>
+              <div style="margin-top:4px;font-size:0.71rem;opacity:0.85">按类型排列以减少对齐空隙</div>
+            </div>
+          </div>
+          <div style="border:1px solid rgba(100,116,139,0.25);border-radius:8px;overflow:hidden;min-width:120px">
+            <div style="background:rgba(100,116,139,0.08);color:var(--text-2);font-weight:600;font-size:0.78rem;padding:6px 10px;text-align:center">对齐填充 (Padding)</div>
+            <div style="padding:10px;font-size:0.74rem;color:var(--text-3);line-height:1.7">
+              <div>补齐至 8 字节整数倍</div>
+              <div>空对象占 16 bytes</div>
+              <div style="font-size:0.71rem;opacity:0.85">(12B 头 + 4B padding)</div>
+            </div>
+          </div>
+        </div>
+      </div>
       <div class="callout callout-info" style="margin-top:1rem;border-left-color:#0d9488;background:rgba(0,0,0,0.03)">
         <strong>面试要点：</strong>对象内存布局：对象头（Mark Word 8B + 类型指针 4B 压缩 / 8B 非压缩）+ 实例数据 + 对齐填充（8 字节对齐）。<strong>对象大小估算</strong>：一个只有 int 字段的对象 = 12B 对象头 + 4B 数据 = 16B。<code>-XX:+UseCompressedOops</code>（默认开启，堆 < 32GB 时）将对象引用压缩为 4 字节，可节省 30–50% 堆空间。
       </div>
-    </div>
 
       <p class="sub-body" style="margin-top:1rem;font-weight:600;color:var(--text-2)">Mark Word（64 位 JVM，8 字节）</p>
       <div class="kv-grid" style="margin-top:0.5rem">
@@ -198,31 +249,79 @@
       </h3>
       <p class="sub-body">Class 文件是一组以 8 位字节为基础的二进制流，采用<strong>伪结构体</strong>方式组织，只有两种数据类型：无符号数和表。用 <code>javap -c -v MyClass</code> 可以查看完整的 Class 文件内容。</p>
 
-      <div class="arch-box" style="margin-top:0.8rem">
-        <pre class="arch-pre" style="font-size:0.76rem;line-height:1.7">
-  ClassFile {
-    u4   magic;                    // 魔数: 0xCAFEBABE
-    u2   minor_version;            // 次版本号
-    u2   major_version;            // 主版本号 (52=JDK8, 55=JDK11, 65=JDK21)
-    u2   constant_pool_count;      // 常量池计数（从 1 开始）
-    cp_info constant_pool[];       // 常量池表（字符串、类名、方法引用等）
-    u2   access_flags;             // 访问标志（ACC_PUBLIC, ACC_FINAL...）
-    u2   this_class;               // 当前类在常量池中的索引
-    u2   super_class;              // 父类索引（Object 为 0）
-    u2   interfaces_count;         // 接口数量
-    u2   interfaces[];             // 接口索引数组
-    u2   fields_count;             // 字段数量
-    field_info fields[];           // 字段表（名称、描述符、访问标志、属性）
-    u2   methods_count;            // 方法数量
-    method_info methods[];         // 方法表（含 Code 属性 → 字节码指令）
-    u2   attributes_count;         // 类属性数量
-    attribute_info attributes[];   // 类属性（SourceFile, InnerClasses...）
-  }</pre>
-  
+      <div style="background:rgba(13,148,136,0.04);border:1px solid rgba(13,148,136,0.15);border-radius:10px;padding:16px;margin-top:0.8rem">
+        <div style="text-align:center;font-weight:600;color:var(--text-2);margin-bottom:10px;font-size:0.85rem">ClassFile 结构体字段</div>
+        <div style="border:1px solid rgba(13,148,136,0.2);border-radius:8px;overflow:hidden;font-size:0.73rem">
+          <div style="display:grid;grid-template-columns:5.5rem 13rem 1fr;background:rgba(13,148,136,0.12);padding:5px 10px">
+            <div style="font-family:var(--fm);color:#0d9488;font-weight:600">类型</div>
+            <div style="font-family:var(--fm);color:#0d9488;font-weight:600">字段</div>
+            <div style="color:#0d9488;font-weight:600">说明</div>
+          </div>
+          <div style="display:grid;grid-template-columns:5.5rem 13rem 1fr;padding:5px 10px;border-top:1px solid rgba(13,148,136,0.1)">
+            <div style="font-family:var(--fm);color:var(--text-3)">u4</div>
+            <div style="font-family:var(--fm);color:#0d9488">magic</div>
+            <div style="color:var(--text-3)">魔数: <code style="font-size:0.7rem">0xCAFEBABE</code></div>
+          </div>
+          <div style="display:grid;grid-template-columns:5.5rem 13rem 1fr;padding:5px 10px;background:rgba(13,148,136,0.03);border-top:1px solid rgba(13,148,136,0.1)">
+            <div style="font-family:var(--fm);color:var(--text-3)">u2</div>
+            <div style="font-family:var(--fm);color:#0d9488">minor_version</div>
+            <div style="color:var(--text-3)">次版本号</div>
+          </div>
+          <div style="display:grid;grid-template-columns:5.5rem 13rem 1fr;padding:5px 10px;border-top:1px solid rgba(13,148,136,0.1)">
+            <div style="font-family:var(--fm);color:var(--text-3)">u2</div>
+            <div style="font-family:var(--fm);color:#0d9488">major_version</div>
+            <div style="color:var(--text-3)">主版本号（52=JDK8，55=JDK11，65=JDK21）</div>
+          </div>
+          <div style="display:grid;grid-template-columns:5.5rem 13rem 1fr;padding:5px 10px;background:rgba(13,148,136,0.03);border-top:1px solid rgba(13,148,136,0.1)">
+            <div style="font-family:var(--fm);color:var(--text-3)">u2</div>
+            <div style="font-family:var(--fm);color:#0d9488">constant_pool_count</div>
+            <div style="color:var(--text-3)">常量池计数（从 1 开始）</div>
+          </div>
+          <div style="display:grid;grid-template-columns:5.5rem 13rem 1fr;padding:5px 10px;border-top:1px solid rgba(13,148,136,0.1)">
+            <div style="font-family:var(--fm);color:var(--text-3)">cp_info[]</div>
+            <div style="font-family:var(--fm);color:#0d9488">constant_pool</div>
+            <div style="color:var(--text-3)">常量池表（字符串、类名、方法引用等）</div>
+          </div>
+          <div style="display:grid;grid-template-columns:5.5rem 13rem 1fr;padding:5px 10px;background:rgba(13,148,136,0.03);border-top:1px solid rgba(13,148,136,0.1)">
+            <div style="font-family:var(--fm);color:var(--text-3)">u2</div>
+            <div style="font-family:var(--fm);color:#0d9488">access_flags</div>
+            <div style="color:var(--text-3)">访问标志（ACC_PUBLIC, ACC_FINAL…）</div>
+          </div>
+          <div style="display:grid;grid-template-columns:5.5rem 13rem 1fr;padding:5px 10px;border-top:1px solid rgba(13,148,136,0.1)">
+            <div style="font-family:var(--fm);color:var(--text-3)">u2</div>
+            <div style="font-family:var(--fm);color:#0d9488">this_class</div>
+            <div style="color:var(--text-3)">当前类在常量池中的索引</div>
+          </div>
+          <div style="display:grid;grid-template-columns:5.5rem 13rem 1fr;padding:5px 10px;background:rgba(13,148,136,0.03);border-top:1px solid rgba(13,148,136,0.1)">
+            <div style="font-family:var(--fm);color:var(--text-3)">u2</div>
+            <div style="font-family:var(--fm);color:#0d9488">super_class</div>
+            <div style="color:var(--text-3)">父类索引（Object 为 0）</div>
+          </div>
+          <div style="display:grid;grid-template-columns:5.5rem 13rem 1fr;padding:5px 10px;border-top:1px solid rgba(13,148,136,0.1)">
+            <div style="font-family:var(--fm);color:var(--text-3)">u2 / u2[]</div>
+            <div style="font-family:var(--fm);color:#0d9488">interfaces_count / interfaces</div>
+            <div style="color:var(--text-3)">接口数量 + 接口索引数组</div>
+          </div>
+          <div style="display:grid;grid-template-columns:5.5rem 13rem 1fr;padding:5px 10px;background:rgba(13,148,136,0.03);border-top:1px solid rgba(13,148,136,0.1)">
+            <div style="font-family:var(--fm);color:var(--text-3)">field_info[]</div>
+            <div style="font-family:var(--fm);color:#0d9488">fields</div>
+            <div style="color:var(--text-3)">字段表（名称、描述符、访问标志、属性）</div>
+          </div>
+          <div style="display:grid;grid-template-columns:5.5rem 13rem 1fr;padding:5px 10px;border-top:1px solid rgba(13,148,136,0.1)">
+            <div style="font-family:var(--fm);color:var(--text-3)">method_info[]</div>
+            <div style="font-family:var(--fm);color:#0d9488">methods</div>
+            <div style="color:var(--text-3)">方法表（含 Code 属性 → 字节码指令）</div>
+          </div>
+          <div style="display:grid;grid-template-columns:5.5rem 13rem 1fr;padding:5px 10px;background:rgba(13,148,136,0.03);border-top:1px solid rgba(13,148,136,0.1)">
+            <div style="font-family:var(--fm);color:var(--text-3)">attribute_info[]</div>
+            <div style="font-family:var(--fm);color:#0d9488">attributes</div>
+            <div style="color:var(--text-3)">类属性（SourceFile, InnerClasses…）</div>
+          </div>
+        </div>
+      </div>
       <div class="callout callout-info" style="margin-top:1rem;border-left-color:#0d9488;background:rgba(0,0,0,0.03)">
         <strong>面试要点：</strong>Class 文件是平台无关的字节码格式。面试常问：常量池（Constant Pool）的作用——存放字面量和符号引用，类加载时部分解析为直接引用。<code>javap -verbose</code> 可反编译 Class 文件查看字节码，是排查编译器行为（如 try-with-resources、lambda 脱糖）的利器。
       </div>
-    </div>
 
       <p class="sub-body" style="margin-top:1rem;font-weight:600;color:var(--text-2)">关键字段解读</p>
       <div class="kv-grid" style="margin-top:0.5rem">
@@ -255,24 +354,54 @@
       </h3>
       <p class="sub-body">类加载是将 Class 文件的二进制数据读入 JVM，并在方法区创建对应的 Class 对象的过程。完整生命周期包含<strong>加载、验证、准备、解析、初始化、使用、卸载</strong> 7 个阶段，其中验证、准备、解析统称为<strong>连接（Linking）</strong>。</p>
 
-      <div class="arch-box" style="margin-top:0.8rem">
-        <pre class="arch-pre" style="font-size:0.76rem;line-height:1.7">
-  ┌──────────┐   ┌─────────────────────────────────┐   ┌────────┐   ┌──────┐
-  │          │   │          连接 (Linking)            │   │        │   │      │
-  │  加载    │──▶│  验证 ──▶ 准备 ──▶ 解析           │──▶│ 初始化 │──▶│ 使用 │
-  │ (Loading)│   │ (Verify) (Prepare) (Resolve)     │   │(Init)  │   │      │
-  │          │   │                                  │   │        │   │      │
-  └──────────┘   └─────────────────────────────────┘   └────────┘   └──────┘
-                                                                    │
-                                                              ┌─────▼────┐
-                                                              │   卸载   │
-                                                              │(Unload)  │
-                                                              └──────────┘</pre>
-  
+      <div style="background:rgba(13,148,136,0.04);border:1px solid rgba(13,148,136,0.15);border-radius:10px;padding:16px;margin-top:0.8rem">
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:center">
+          <div style="background:rgba(13,148,136,0.1);border:1px solid rgba(13,148,136,0.3);border-radius:8px;padding:8px 14px;text-align:center">
+            <div style="font-weight:600;color:#0d9488;font-size:0.82rem">加载</div>
+            <div style="font-size:0.7rem;color:var(--text-3)">Loading</div>
+          </div>
+          <div style="color:var(--text-3);font-size:1.1rem;line-height:1">→</div>
+          <div style="border:1px solid rgba(234,179,8,0.35);border-radius:8px;overflow:hidden">
+            <div style="background:rgba(234,179,8,0.1);color:#92400e;font-weight:600;font-size:0.73rem;padding:3px 12px;text-align:center">连接 (Linking)</div>
+            <div style="display:flex;align-items:center;gap:4px;padding:7px 10px">
+              <div style="background:rgba(234,179,8,0.08);border:1px solid rgba(234,179,8,0.25);border-radius:6px;padding:5px 10px;text-align:center">
+                <div style="font-weight:600;color:#a16207;font-size:0.78rem">验证</div>
+                <div style="font-size:0.69rem;color:var(--text-3)">Verify</div>
+              </div>
+              <div style="color:var(--text-3);font-size:0.85rem">→</div>
+              <div style="background:rgba(234,179,8,0.08);border:1px solid rgba(234,179,8,0.25);border-radius:6px;padding:5px 10px;text-align:center">
+                <div style="font-weight:600;color:#a16207;font-size:0.78rem">准备</div>
+                <div style="font-size:0.69rem;color:var(--text-3)">Prepare</div>
+              </div>
+              <div style="color:var(--text-3);font-size:0.85rem">→</div>
+              <div style="background:rgba(234,179,8,0.08);border:1px solid rgba(234,179,8,0.25);border-radius:6px;padding:5px 10px;text-align:center">
+                <div style="font-weight:600;color:#a16207;font-size:0.78rem">解析</div>
+                <div style="font-size:0.69rem;color:var(--text-3)">Resolve</div>
+              </div>
+            </div>
+          </div>
+          <div style="color:var(--text-3);font-size:1.1rem;line-height:1">→</div>
+          <div style="background:rgba(13,148,136,0.1);border:1px solid rgba(13,148,136,0.3);border-radius:8px;padding:8px 14px;text-align:center">
+            <div style="font-weight:600;color:#0d9488;font-size:0.82rem">初始化</div>
+            <div style="font-size:0.7rem;color:var(--text-3)">Init</div>
+          </div>
+          <div style="color:var(--text-3);font-size:1.1rem;line-height:1">→</div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+            <div style="background:rgba(13,148,136,0.1);border:1px solid rgba(13,148,136,0.3);border-radius:8px;padding:8px 14px;text-align:center">
+              <div style="font-weight:600;color:#0d9488;font-size:0.82rem">使用</div>
+              <div style="font-size:0.7rem;color:var(--text-3)">Use</div>
+            </div>
+            <div style="color:var(--text-3);font-size:0.85rem;line-height:1">↓</div>
+            <div style="background:rgba(220,38,38,0.08);border:1px solid rgba(220,38,38,0.25);border-radius:8px;padding:7px 14px;text-align:center">
+              <div style="font-weight:600;color:#dc2626;font-size:0.82rem">卸载</div>
+              <div style="font-size:0.7rem;color:var(--text-3)">Unload</div>
+            </div>
+          </div>
+        </div>
+      </div>
       <div class="callout callout-info" style="margin-top:1rem;border-left-color:#0d9488;background:rgba(0,0,0,0.03)">
         <strong>面试要点：</strong>类加载五阶段：加载→验证→准备→解析→初始化。<strong>准备阶段</strong>为静态变量分配内存并赋默认值（int=0，引用=null）；<strong>初始化阶段</strong>执行 <clinit>（类初始化方法）赋真实值。触发初始化的 6 种场景（主动引用）：new、读写静态字段/方法、反射、初始化子类、启动类、MethodHandle。
       </div>
-    </div>
 
       <div class="kv-grid" style="margin-top:1rem">
         <div class="kv-row">
@@ -312,36 +441,44 @@
       </h3>
       <p class="sub-body">双亲委派模型要求：类加载请求先委托父加载器处理，父加载器无法完成时才由自身加载。这不是强制约束，而是一种<strong>约定</strong>，通过组合复用而非继承实现。</p>
 
-      <div class="arch-box" style="margin-top:0.8rem">
-        <pre class="arch-pre" style="font-size:0.76rem;line-height:1.7">
-  ┌──────────────────────────────────────────────────────┐
-  │           Bootstrap ClassLoader (C++)                 │
-  │     加载: JAVA_HOME/lib (rt.jar, java.lang.*)       │
-  │     加载路径: sun.boot.class.path                    │
-  └──────────────────────┬───────────────────────────────┘
-                         │ parent
-  ┌──────────────────────▼───────────────────────────────┐
-  │          Extension ClassLoader (Java)                 │
-  │     加载: JAVA_HOME/lib/ext 或 java.ext.dirs         │
-  │     实现: sun.misc.Launcher$ExtClassLoader            │
-  └──────────────────────┬───────────────────────────────┘
-                         │ parent
-  ┌──────────────────────▼───────────────────────────────┐
-  │          Application ClassLoader (Java)               │
-  │     加载: 用户类路径 (classpath / -cp / -classpath)   │
-  │     实现: sun.misc.Launcher$AppClassLoader            │
-  └──────────────────────┬───────────────────────────────┘
-                         │ parent
-  ┌──────────────────────▼───────────────────────────────┐
-  │          自定义 ClassLoader (Java)                     │
-  │     重写 findClass() + defineClass()                  │
-  │     场景: 热部署、插件隔离、加密 Class                 │
-  └──────────────────────────────────────────────────────┘</pre>
-  
+      <div style="background:rgba(13,148,136,0.04);border:1px solid rgba(13,148,136,0.15);border-radius:10px;padding:16px;margin-top:0.8rem">
+        <div style="display:flex;flex-direction:column;align-items:stretch;gap:0">
+          <div style="background:rgba(59,130,246,0.07);border:1px solid rgba(59,130,246,0.25);border-radius:8px;padding:10px 14px">
+            <div style="font-weight:600;color:#2563eb;font-size:0.8rem">Bootstrap ClassLoader <span style="font-weight:400;color:var(--text-3);font-size:0.72rem">(C++ 实现)</span></div>
+            <div style="font-size:0.73rem;color:var(--text-3);margin-top:4px">
+              加载 <code style="font-size:0.7rem">JAVA_HOME/lib</code>（rt.jar、java.lang.* 等核心类库）<br>
+              加载路径: <code style="font-size:0.7rem">sun.boot.class.path</code>
+            </div>
+          </div>
+          <div style="text-align:center;color:var(--text-3);font-size:0.78rem;padding:3px 0;letter-spacing:0.5px">↓ parent</div>
+          <div style="background:rgba(13,148,136,0.07);border:1px solid rgba(13,148,136,0.25);border-radius:8px;padding:10px 14px">
+            <div style="font-weight:600;color:#0d9488;font-size:0.8rem">Extension ClassLoader <span style="font-weight:400;color:var(--text-3);font-size:0.72rem">(Java 实现)</span></div>
+            <div style="font-size:0.73rem;color:var(--text-3);margin-top:4px">
+              加载 <code style="font-size:0.7rem">JAVA_HOME/lib/ext</code> 或 <code style="font-size:0.7rem">java.ext.dirs</code><br>
+              实现: <code style="font-size:0.7rem">sun.misc.Launcher$ExtClassLoader</code>
+            </div>
+          </div>
+          <div style="text-align:center;color:var(--text-3);font-size:0.78rem;padding:3px 0;letter-spacing:0.5px">↓ parent</div>
+          <div style="background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.25);border-radius:8px;padding:10px 14px">
+            <div style="font-weight:600;color:#15803d;font-size:0.8rem">Application ClassLoader <span style="font-weight:400;color:var(--text-3);font-size:0.72rem">(Java 实现)</span></div>
+            <div style="font-size:0.73rem;color:var(--text-3);margin-top:4px">
+              加载用户类路径（classpath / <code style="font-size:0.7rem">-cp</code> / <code style="font-size:0.7rem">-classpath</code>）<br>
+              实现: <code style="font-size:0.7rem">sun.misc.Launcher$AppClassLoader</code>
+            </div>
+          </div>
+          <div style="text-align:center;color:var(--text-3);font-size:0.78rem;padding:3px 0;letter-spacing:0.5px">↓ parent</div>
+          <div style="background:rgba(168,85,247,0.06);border:1px solid rgba(168,85,247,0.25);border-radius:8px;padding:10px 14px">
+            <div style="font-weight:600;color:#7c3aed;font-size:0.8rem">自定义 ClassLoader <span style="font-weight:400;color:var(--text-3);font-size:0.72rem">(Java 实现)</span></div>
+            <div style="font-size:0.73rem;color:var(--text-3);margin-top:4px">
+              重写 <code style="font-size:0.7rem">findClass()</code> + <code style="font-size:0.7rem">defineClass()</code><br>
+              场景: 热部署、插件隔离、加密 Class 文件加载
+            </div>
+          </div>
+        </div>
+      </div>
       <div class="callout callout-info" style="margin-top:1rem;border-left-color:#0d9488;background:rgba(0,0,0,0.03)">
         <strong>面试要点：</strong>双亲委派模型的好处：避免同一类被不同类加载器加载（保证 <code>java.lang.Object</code> 唯一）。<strong>打破场景</strong>：① SPI（JDBC Driver 需 BootstrapClassLoader 加载接口、AppClassLoader 加载实现）→ 线程上下文类加载器；② Tomcat（同一 JVM 隔离不同 WebApp）→ 各 WebAppClassLoader 独立；③ OSGi 模块热部署。JDK 9 模块化后改为模块化路径优先。
       </div>
-    </div>
 
       <p class="sub-body" style="margin-top:1rem;font-weight:600;color:var(--text-2)">为什么需要双亲委派？</p>
       <div class="kv-grid" style="margin-top:0.5rem">
@@ -387,11 +524,7 @@
         <div class="kv-row">
           <span class="kv-key" style="color:#0d9488">C1 (Client)</span>
           <span class="kv-val">编译速度快，优化程度低。适合简单方法。插入 profiling 数据收集点（分支计数、类型 profile），为 C2 提供优化依据。</span>
-    
-      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#0d9488;background:rgba(0,0,0,0.03)">
-        <strong>面试要点：</strong>JIT 分层编译（Tiered Compilation，JDK 8+ 默认开启）：C0（解释）→ C1（简单优化）→ C2（激进优化）。常见优化：内联（Inlining）、逃逸分析（对象不逃逸则栈上分配 / 锁消除）、循环展开、分支预测。<strong>JIT 预热</strong>：启动初期大量 C0 解释执行，性能差；生产中可提前加载热方法。<code>-XX:+PrintCompilation</code> 可观察编译情况。
-      </div>
-    </div>
+        </div>
         <div class="kv-row">
           <span class="kv-key" style="color:#0d9488">C2 (Server)</span>
           <span class="kv-val">编译速度慢，激进优化（内联、逃逸分析、标量替换、锁消除、循环展开）。适合热点方法。使用 C1 收集的 profiling 数据做精确优化。</span>
@@ -400,6 +533,12 @@
           <span class="kv-key" style="color:#0d9488">分层编译</span>
           <span class="kv-val">JDK 8 默认开启（<code>-XX:+TieredCompilation</code>）。5 个层级：Level 0 解释执行 → Level 1~3 C1 编译（逐步增加 profiling）→ Level 4 C2 编译。方法按调用频率在各层级间晋升。</span>
         </div>
+      </div>
+      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#0d9488;background:rgba(0,0,0,0.03)">
+        <strong>面试要点：</strong>JIT 分层编译（Tiered Compilation，JDK 8+ 默认开启）：C0（解释）→ C1（简单优化）→ C2（激进优化）。常见优化：内联（Inlining）、逃逸分析（对象不逃逸则栈上分配 / 锁消除）、循环展开、分支预测。<strong>JIT 预热</strong>：启动初期大量 C0 解释执行，性能差；生产中可提前加载热方法。<code>-XX:+PrintCompilation</code> 可观察编译情况。
+      </div>
+      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#0d9488;background:rgba(0,0,0,0.03)">
+        <strong>面试要点：</strong>JIT 分层编译（Tiered Compilation，JDK 8+ 默认开启）：C0（解释）→ C1（简单优化）→ C2（激进优化）。常见优化：内联（Inlining）、逃逸分析（对象不逃逸则栈上分配 / 锁消除）、循环展开、分支预测。<strong>JIT 预热</strong>：启动初期大量 C0 解释执行，性能差；生产中可提前加载热方法。<code>-XX:+PrintCompilation</code> 可观察编译情况。
       </div>
 
       <p class="sub-body" style="margin-top:1rem;font-weight:600;color:var(--text-2)">热点代码检测</p>
@@ -444,487 +583,19 @@
       </div>
     </div>
 
-    <!-- ── 7. 面试题 ── -->
-    <div class="subsection" id="jvm-qa">
-      <h3 class="sub-title">
-        <span class="dot" style="background:#0d9488;box-shadow:0 0 0 3px rgba(13,148,136,0.15)"></span>
-        JVM 面试题
-      </h3>
-      <p class="sub-body">覆盖运行时数据区、对象布局、Class 文件、类加载、双亲委派、JIT 编译等核心考点，以及线上 OOM 和 GC 问题排查的实战方法。</p>
+  </section>
 
-      <div class="qa-list" style="margin-top:1rem">
-
-        <div class="qa-item" id="q-jvm-1">
-          <div class="qa-question" onclick="toggleQA('q-jvm-1')">
-            <span class="qa-num" style="background:rgba(13,148,136,0.1);color:#0d9488;border:1px solid rgba(13,148,136,0.25)">Q1</span>
-            <span class="qa-q-text">JVM 运行时数据区有哪些部分？各自的作用和线程归属？</span>
-            <span class="qa-toggle">+</span>
-          </div>
-          <div class="qa-answer"><div class="qa-answer-inner">
-            <p><strong>线程私有：</strong></p>
-            <ul style="margin:0.4rem 0 0.4rem 1.2rem;line-height:1.8">
-              <li><strong>程序计数器（PC）：</strong>记录当前线程执行的字节码行号，线程切换后据此恢复执行位置。唯一不会 OOM 的区域。</li>
-              <li><strong>虚拟机栈：</strong>每个方法调用创建栈帧（局部变量表、操作数栈、动态链接、返回地址）。递归过深抛 StackOverflowError，扩展失败抛 OOM。</li>
-              <li><strong>本地方法栈：</strong>为 Native 方法服务，HotSpot 中与虚拟机栈合并。</li>
-            </ul>
-            <p><strong>线程共享：</strong></p>
-            <ul style="margin:0.4rem 0 0.4rem 1.2rem;line-height:1.8">
-              <li><strong>堆：</strong>存放所有对象实例和数组，GC 主战场。-Xms/-Xmx 控制大小。</li>
-              <li><strong>方法区（JDK 8+ 为 Metaspace）：</strong>存储类元信息、常量池、静态变量、JIT 编译代码。JDK 7 用 PermGen（受 -XX:MaxPermSize 限制），JDK 8+ 改为 Metaspace（使用本地内存）。</li>
-            </ul>
-            <p><strong>堆外：</strong>直接内存（NIO DirectByteBuffer），不受 -Xmx 限制但受物理内存限制。</p>
-          </div></div>
-        </div>
-
-        <div class="qa-item" id="q-jvm-2">
-          <div class="qa-question" onclick="toggleQA('q-jvm-2')">
-            <span class="qa-num" style="background:rgba(13,148,136,0.1);color:#0d9488;border:1px solid rgba(13,148,136,0.25)">Q2</span>
-            <span class="qa-q-text">堆和栈的区别是什么？为什么局部变量比对象快？</span>
-            <span class="qa-toggle">+</span>
-          </div>
-          <div class="qa-answer"><div class="qa-answer-inner">
-            <p><strong>区别：</strong></p>
-            <ul style="margin:0.4rem 0 0.4rem 1.2rem;line-height:1.8">
-              <li><strong>栈：</strong>线程私有，自动回收（方法退出即释放），存取速度快（仅次于寄存器），空间小（默认 1MB）。存放基本类型值和对象引用。</li>
-              <li><strong>堆：</strong>线程共享，由 GC 回收，存取速度较慢，空间大。存放对象实例。</li>
-            </ul>
-            <p><strong>为什么局部变量快：</strong>局部变量（基本类型）直接存在栈帧的局部变量表中，CPU 可直接操作，无需经过 GC 管理。而 new 出来的对象在堆上分配，涉及 GC 的内存分配和回收开销。</p>
-            <p><strong>逃逸分析的进一步优化：</strong>JIT 的逃逸分析可以判定对象不逃逸，将其优化为<strong>栈上分配</strong>或<strong>标量替换</strong>，使对象也能享受栈的速度。</p>
-          </div></div>
-        </div>
-
-        <div class="qa-item" id="q-jvm-3">
-          <div class="qa-question" onclick="toggleQA('q-jvm-3')">
-            <span class="qa-num" style="background:rgba(13,148,136,0.1);color:#0d9488;border:1px solid rgba(13,148,136,0.25)">Q3</span>
-            <span class="qa-q-text">Java 对象的内存布局是怎样的？对象头包含什么信息？</span>
-            <span class="qa-toggle">+</span>
-          </div>
-          <div class="qa-answer"><div class="qa-answer-inner">
-            <p><strong>三部分：</strong>对象头 + 实例数据 + 对齐填充。</p>
-            <p><strong>对象头（64 位 JVM，开启压缩指针，共 12 字节）：</strong></p>
-            <ul style="margin:0.4rem 0 0.4rem 1.2rem;line-height:1.8">
-              <li><strong>Mark Word（8 字节）：</strong>存储 hashCode、GC 分代年龄、锁状态标志（无锁/偏向锁/轻量级锁/重量级锁/GC 标记）。不同锁状态下存储内容不同。</li>
-              <li><strong>Klass Pointer（4 字节）：</strong>指向方法区中类元信息（Klass 结构），开启压缩指针时从 8 字节压缩为 4 字节。</li>
-            </ul>
-            <p><strong>数组对象头：</strong>额外增加 4 字节的数组长度字段，所以数组对象头共 16 字节。</p>
-            <p><strong>对齐填充：</strong>JVM 要求对象起始地址必须是 8 字节的整数倍，不够时用 padding 补齐。空 Object 最小占 16 字节。</p>
-          </div></div>
-        </div>
-
-        <div class="qa-item" id="q-jvm-4">
-          <div class="qa-question" onclick="toggleQA('q-jvm-4')">
-            <span class="qa-num" style="background:rgba(13,148,136,0.1);color:#0d9488;border:1px solid rgba(13,148,136,0.25)">Q4</span>
-            <span class="qa-q-text">什么是压缩指针（Compressed Oops）？为什么能节省内存？</span>
-            <span class="qa-toggle">+</span>
-          </div>
-          <div class="qa-answer"><div class="qa-answer-inner">
-            <p><strong>背景：</strong>64 位 JVM 中所有指针为 8 字节，相比 32 位 JVM 内存开销近乎翻倍，且降低缓存命中率。</p>
-            <p><strong>原理：</strong>JVM 堆中对象的地址都是 8 字节对齐的（低 3 位为 0），因此可以用 4 字节的值乘以 8 来表示 32 GB 地址空间内的任何对象地址。将 8 字节指针压缩为 4 字节。</p>
-            <p><strong>影响：</strong>对象头从 16 字节降至 12 字节；Klass Pointer 从 8 字节降至 4 字节；对象引用字段从 8 字节降至 4 字节。整体堆内存节省约 40%。</p>
-            <p><strong>限制：</strong>堆超过 ~32 GB 时压缩指针失效（4 字节寻址不够），指针恢复 8 字节。因此生产中 -Xmx 通常不超过 28~30 GB。</p>
-            <p><strong>开关：</strong><code>-XX:+UseCompressedOops</code>（JDK 6u23+ 默认开启）。</p>
-          </div></div>
-        </div>
-
-        <div class="qa-item" id="q-jvm-5">
-          <div class="qa-question" onclick="toggleQA('q-jvm-5')">
-            <span class="qa-num" style="background:rgba(13,148,136,0.1);color:#0d9488;border:1px solid rgba(13,148,136,0.25)">Q5</span>
-            <span class="qa-q-text">类加载的完整过程是什么？每个阶段做什么？</span>
-            <span class="qa-toggle">+</span>
-          </div>
-          <div class="qa-answer"><div class="qa-answer-inner">
-            <p><strong>7 个阶段：</strong>加载 → 验证 → 准备 → 解析 → 初始化 → 使用 → 卸载。中间三步合称"连接"。</p>
-            <div class="kv-grid" style="margin:0.5rem 0">
-              <div class="kv-row"><span class="kv-key">加载</span><span class="kv-val">通过全限定名找到二进制字节流，解析为方法区的运行时结构，生成 Class 对象。</span></div>
-              <div class="kv-row"><span class="kv-key">验证</span><span class="kv-val">文件格式验证（魔数、版本）、元数据验证（继承链）、字节码验证（控制流/数据流）、符号引用验证。</span></div>
-              <div class="kv-row"><span class="kv-key">准备</span><span class="kv-val">为静态变量分配内存并赋零值。注意 final static 在准备阶段直接赋编译期常量值。</span></div>
-              <div class="kv-row"><span class="kv-key">解析</span><span class="kv-val">将符号引用替换为直接引用（内存地址）。可以 eagerly 或 lazily 执行。</span></div>
-              <div class="kv-row"><span class="kv-key">初始化</span><span class="kv-val">执行 &lt;clinit&gt; 方法（static 语句块 + 静态变量赋值）。这是真正执行 Java 代码的第一步。</span></div>
-            </div>
-            <p><strong>面试关键：</strong>准备阶段赋零值 vs 初始化阶段赋显式值，final static 的特殊处理。</p>
-          </div></div>
-        </div>
-
-        <div class="qa-item" id="q-jvm-6">
-          <div class="qa-question" onclick="toggleQA('q-jvm-6')">
-            <span class="qa-num" style="background:rgba(13,148,136,0.1);color:#0d9488;border:1px solid rgba(13,148,136,0.25)">Q6</span>
-            <span class="qa-q-text">什么情况下会触发类的初始化？什么情况不会？</span>
-            <span class="qa-toggle">+</span>
-          </div>
-          <div class="qa-answer"><div class="qa-answer-inner">
-            <p><strong>触发初始化（主动引用，6 种）：</strong></p>
-            <ol style="margin:0.4rem 0 0.4rem 1.2rem;line-height:1.9">
-              <li>new 对象、读写静态字段（非 final）、调用静态方法</li>
-              <li>反射调用（Class.forName、Method.invoke）</li>
-              <li>初始化子类时，先初始化父类</li>
-              <li>虚拟机启动时的 main 方法所在类</li>
-              <li>MethodHandle 解析结果的类</li>
-              <li>接口中 default 方法的实现类初始化时，接口本身先初始化</li>
-            </ol>
-            <p><strong>不触发初始化（被动引用）：</strong></p>
-            <ul style="margin:0.4rem 0 0.4rem 1.2rem;line-height:1.8">
-              <li>通过子类引用父类的静态字段 → 只有父类初始化，子类不初始化</li>
-              <li>通过数组定义引用类（<code>SuperClass[] arr = new SuperClass[10]</code>）→ 不触发</li>
-              <li>引用编译期常量（<code>static final int VAL = 123</code>）→ 值已存入调用方常量池，不触发定义类的初始化</li>
-            </ul>
-          </div></div>
-        </div>
-
-        <div class="qa-item" id="q-jvm-7">
-          <div class="qa-question" onclick="toggleQA('q-jvm-7')">
-            <span class="qa-num" style="background:rgba(13,148,136,0.1);color:#0d9488;border:1px solid rgba(13,148,136,0.25)">Q7</span>
-            <span class="qa-q-text">双亲委派模型是什么？为什么要打破它？有哪些打破的场景？</span>
-            <span class="qa-toggle">+</span>
-          </div>
-          <div class="qa-answer"><div class="qa-answer-inner">
-            <p><strong>双亲委派：</strong>类加载请求先向上委托给父加载器，父加载器无法处理时才由自身加载。层次：Bootstrap → Extension → Application → 自定义。</p>
-            <p><strong>为什么需要：</strong>保证核心类安全性（防止伪造 java.lang.String）和类的全局唯一性。</p>
-            <p><strong>打破场景：</strong></p>
-            <ul style="margin:0.4rem 0 0.4rem 1.2rem;line-height:1.8">
-              <li><strong>SPI：</strong>JDBC 驱动、SLF4J 实现等在 classpath 下，由 Bootstrap 加载的接口类需要反向委托子加载器加载实现。通过线程上下文类加载器（Thread.setContextClassLoader）解决。</li>
-              <li><strong>Tomcat：</strong>每个 WebApp 有独立的 WebAppClassLoader，优先加载 WEB-INF 下的类（打破委派），实现应用隔离。</li>
-              <li><strong>OSGi：</strong>网状委派模型，Bundle 间按规则共享类。</li>
-              <li><strong>热部署：</strong>Spring DevTools 丢弃旧 ClassLoader 并创建新的来重新加载类。</li>
-            </ul>
-            <p><strong>自定义 ClassLoader 建议：</strong>重写 findClass()（保持委派）而非 loadClass()（打破委派），除非明确需要打破。</p>
-          </div></div>
-        </div>
-
-        <div class="qa-item" id="q-jvm-8">
-          <div class="qa-question" onclick="toggleQA('q-jvm-8')">
-            <span class="qa-num" style="background:rgba(13,148,136,0.1);color:#0d9488;border:1px solid rgba(13,148,136,0.25)">Q8</span>
-            <span class="qa-q-text">PermGen 和 Metaspace 有什么区别？为什么 JDK 8 要改？</span>
-            <span class="qa-toggle">+</span>
-          </div>
-          <div class="qa-answer"><div class="qa-answer-inner">
-            <p><strong>PermGen（JDK 7 及以前）：</strong>方法区的实现，在 JVM 堆内，大小由 -XX:MaxPermSize 限制（默认 82MB）。问题：大小固定、难以预测、容易报 PermGen space OOM、GC 回收效率低。</p>
-            <p><strong>Metaspace（JDK 8+）：</strong></p>
-            <ul style="margin:0.4rem 0 0.4rem 1.2rem;line-height:1.8">
-              <li>从 JVM 堆中移出，使用<strong>本地内存（Native Memory）</strong></li>
-              <li>默认不限大小（受物理内存限制），可通过 -XX:MaxMetaspaceSize 设置上限</li>
-              <li>自动扩容/缩容，减少 OOM 风险</li>
-              <li>字符串常量池从方法区移到堆中（JDK 7 就已移动）</li>
-              <li>类元数据存储在 Klass 结构中，由 Metaspace 分配器管理</li>
-            </ul>
-            <p><strong>改动原因：</strong>PermGen 大小难以预估（太小 OOM，太大浪费），且与 GC 的并发/并行回收不兼容。Metaspace 使用本地内存后，GC 可以独立管理堆内存，类元数据的回收也更高效。</p>
-          </div></div>
-        </div>
-
-        <div class="qa-item" id="q-jvm-9">
-          <div class="qa-question" onclick="toggleQA('q-jvm-9')">
-            <span class="qa-num" style="background:rgba(13,148,136,0.1);color:#0d9488;border:1px solid rgba(13,148,136,0.25)">Q9</span>
-            <span class="qa-q-text">JIT 编译的分层编译是怎么回事？C1 和 C2 有什么区别？</span>
-            <span class="qa-toggle">+</span>
-          </div>
-          <div class="qa-answer"><div class="qa-answer-inner">
-            <p><strong>分层编译（Tiered Compilation，JDK 8 默认开启）：</strong>将编译分为 5 个层级，方法按调用频率逐步晋升：</p>
-            <div class="kv-grid" style="margin:0.5rem 0">
-              <div class="kv-row"><span class="kv-key">Level 0</span><span class="kv-val">解释执行，无 profiling</span></div>
-              <div class="kv-row"><span class="kv-key">Level 1</span><span class="kv-val">C1 编译，无 profiling（简单方法不会再晋升）</span></div>
-              <div class="kv-row"><span class="kv-key">Level 2</span><span class="kv-val">C1 编译，轻量 profiling（C2 队列满时的过渡）</span></div>
-              <div class="kv-row"><span class="kv-key">Level 3</span><span class="kv-val">C1 编译，完整 profiling（收集分支计数、类型 profile）</span></div>
-              <div class="kv-row"><span class="kv-key">Level 4</span><span class="kv-val">C2 编译，利用 profiling 数据做激进优化</span></div>
-            </div>
-            <p><strong>C1（Client Compiler）：</strong>编译快，优化少，适合简单方法。主要做基本优化（常量折叠、方法内联）并插入 profiling 代码。</p>
-            <p><strong>C2（Server Compiler）：</strong>编译慢，优化激进。做方法内联、逃逸分析、标量替换、锁消除、循环展开、死代码消除等高级优化。使用 C1 收集的 profiling 数据做精确决策。</p>
-            <p><strong>JDK 21+ GraalVM Native Image：</strong>提前编译（AOT）为本地二进制，启动快、内存省，但编译时间长，适合云原生/Serverless 场景。</p>
-          </div></div>
-        </div>
-
-        <div class="qa-item" id="q-jvm-10">
-          <div class="qa-question" onclick="toggleQA('q-jvm-10')">
-            <span class="qa-num" style="background:rgba(13,148,136,0.1);color:#0d9488;border:1px solid rgba(13,148,136,0.25)">Q10</span>
-            <span class="qa-q-text">什么是逃逸分析？能带来哪些优化？</span>
-            <span class="qa-toggle">+</span>
-          </div>
-          <div class="qa-answer"><div class="qa-answer-inner">
-            <p><strong>逃逸分析：</strong>JIT 编译器分析对象的引用范围（是否逃逸出方法或线程）。如果对象只在方法内使用（不逃逸），可以做以下优化：</p>
-            <ul style="margin:0.4rem 0 0.4rem 1.2rem;line-height:1.8">
-              <li><strong>栈上分配：</strong>对象直接在栈帧上分配，方法结束自动回收，无需 GC 参与。（注意：HotSpot 目前不直接支持栈上分配，而是通过标量替换间接实现。）</li>
-              <li><strong>标量替换：</strong>将对象拆解为基本类型（标量），直接存储在寄存器或栈上。例如 Point 对象拆为 x、y 两个 int，完全消除对象创建。</li>
-              <li><strong>锁消除：</strong>如果对象不会逃逸且不存在竞争，JIT 可移除该对象上的 synchronized 锁。典型例子：StringBuffer.append() 在局部变量上使用时，锁被消除。</li>
-            </ul>
-            <p><strong>开关：</strong><code>-XX:+DoEscapeAnalysis</code>（JDK 6u23+ 默认开启）。</p>
-            <p><strong>面试注意：</strong>不要说"HotSpot 支持栈上分配"，准确说法是"通过标量替换达到类似栈上分配的效果"。</p>
-          </div></div>
-        </div>
-
-        <div class="qa-item" id="q-jvm-11">
-          <div class="qa-question" onclick="toggleQA('q-jvm-11')">
-            <span class="qa-num" style="background:rgba(13,148,136,0.1);color:#0d9488;border:1px solid rgba(13,148,136,0.25)">Q11</span>
-            <span class="qa-q-text">JVM 中对象的创建过程是什么？</span>
-            <span class="qa-toggle">+</span>
-          </div>
-          <div class="qa-answer"><div class="qa-answer-inner">
-            <p><strong>完整流程：</strong></p>
-            <ol style="margin:0.4rem 0 0.4rem 1.2rem;line-height:1.9">
-              <li><strong>类加载检查：</strong>JVM 遇到 new 指令时，检查该类是否已加载、解析、初始化，如果没有则先执行类加载。</li>
-              <li><strong>分配内存：</strong>根据对象大小在堆中分配空间。分配方式取决于堆内存是否规整：
-                <ul style="margin:0.2rem 0 0.2rem 1rem">
-                  <li><strong>指针碰撞（Bump the Pointer）：</strong>堆内存规整（Serial/ParNew 带 Compact），移动指针即可。需要 CAS + 失败重试或 TLAB 保证线程安全。</li>
-                  <li><strong>空闲列表（Free List）：</strong>堆内存不规整（CMS），在列表中找足够大的空间。</li>
-                </ul>
-              </li>
-              <li><strong>内存空间初始化为零值：</strong>保证对象的字段不赋初值也能使用（Java 规范要求的默认值）。</li>
-              <li><strong>设置对象头：</strong>GC 分代年龄、hashCode（延迟计算）、锁信息、Klass Pointer 等。</li>
-              <li><strong>执行 &lt;init&gt; 方法：</strong>即构造函数，按程序代码进行初始化（赋显式值、执行构造代码块）。</li>
-            </ol>
-            <p><strong>TLAB（Thread Local Allocation Buffer）：</strong>每个线程预分配一块 Eden 空间，对象分配时直接在 TLAB 中 bump pointer，无需竞争，大幅提升分配速度。</p>
-          </div></div>
-        </div>
-
-        <div class="qa-item" id="q-jvm-12">
-          <div class="qa-question" onclick="toggleQA('q-jvm-12')">
-            <span class="qa-num" style="background:rgba(13,148,136,0.1);color:#0d9488;border:1px solid rgba(13,148,136,0.25)">Q12</span>
-            <span class="qa-q-text">什么是 StackOverflowError 和 OOM？分别在什么情况下发生？</span>
-            <span class="qa-toggle">+</span>
-          </div>
-          <div class="qa-answer"><div class="qa-answer-inner">
-            <p><strong>StackOverflowError：</strong></p>
-            <ul style="margin:0.4rem 0 0.4rem 1.2rem;line-height:1.8">
-              <li>虚拟机栈中栈帧数量超过限制</li>
-              <li>典型场景：无终止条件的递归、方法调用链过深</li>
-              <li>调大 -Xss 可以容纳更多栈帧，但本质应修复代码</li>
-            </ul>
-            <p><strong>OutOfMemoryError（OOM）：</strong></p>
-            <div class="kv-grid" style="margin:0.5rem 0">
-              <div class="kv-row"><span class="kv-key">Java heap space</span><span class="kv-val">堆内存不足（对象过多/过大），或内存泄漏</span></div>
-              <div class="kv-row"><span class="kv-key">GC overhead limit exceeded</span><span class="kv-val">GC 耗时超 98% 但回收不到 2% 内存</span></div>
-              <div class="kv-row"><span class="kv-key">Metaspace</span><span class="kv-val">加载的类过多（大量动态代理/反射）</span></div>
-              <div class="kv-row"><span class="kv-key">Direct buffer memory</span><span class="kv-val">NIO 直接内存超限</span></div>
-              <div class="kv-row"><span class="kv-key">Unable to create new native thread</span><span class="kv-val">操作系统无法创建更多线程（受 ulimit/内存限制）</span></div>
-            </div>
-            <p><strong>排查思路：</strong>-XX:+HeapDumpOnOutOfMemoryError 生成 dump，用 MAT / VisualVM 分析大对象和 GC Roots 引用链，定位泄漏源。</p>
-          </div></div>
-        </div>
-
-        <div class="qa-item" id="q-jvm-13">
-          <div class="qa-question" onclick="toggleQA('q-jvm-13')">
-            <span class="qa-num" style="background:rgba(13,148,136,0.1);color:#0d9488;border:1px solid rgba(13,148,136,0.25)">Q13</span>
-            <span class="qa-q-text">Class.forName() 和 ClassLoader.loadClass() 有什么区别？</span>
-            <span class="qa-toggle">+</span>
-          </div>
-          <div class="qa-answer"><div class="qa-answer-inner">
-            <p><strong>Class.forName(className)：</strong></p>
-            <ul style="margin:0.4rem 0 0.4rem 1.2rem;line-height:1.8">
-              <li>加载类<strong>并执行初始化</strong>（执行 static 代码块）</li>
-              <li>默认使用调用者的类加载器</li>
-              <li>典型场景：JDBC 驱动注册（<code>Class.forName("com.mysql.jdbc.Driver")</code> 触发驱动的 static 块注册到 DriverManager）</li>
-            </ul>
-            <p><strong>ClassLoader.loadClass(className)：</strong></p>
-            <ul style="margin:0.4rem 0 0.4rem 1.2rem;line-height:1.8">
-              <li>只执行<strong>加载</strong>阶段，不触发初始化</li>
-              <li>使用指定的类加载器实例</li>
-              <li>典型场景：Spring 延迟加载（Lazy Loading）、框架内部的类扫描（只需要知道类存在，不需要立即初始化）</li>
-            </ul>
-            <p><strong>核心区别：</strong>是否触发类的初始化（static 块是否执行）。<code>Class.forName(name, false, classLoader)</code> 可以指定不初始化，效果类似 loadClass。</p>
-          </div></div>
-        </div>
-
-        <div class="qa-item" id="q-jvm-14">
-          <div class="qa-question" onclick="toggleQA('q-jvm-14')">
-            <span class="qa-num" style="background:rgba(13,148,136,0.1);color:#0d9488;border:1px solid rgba(13,148,136,0.25)">Q14</span>
-            <span class="qa-q-text">什么是强引用、软引用、弱引用、虚引用？各自的使用场景？</span>
-            <span class="qa-toggle">+</span>
-          </div>
-          <div class="qa-answer"><div class="qa-answer-inner">
-            <div class="kv-grid" style="margin:0.3rem 0">
-              <div class="kv-row">
-                <span class="kv-key" style="color:#0d9488">强引用</span>
-                <span class="kv-val">普通赋值（Object obj = new Object()）。只要强引用存在，GC 绝不回收，即使 OOM 也不回收。最常见的引用类型。</span>
-              </div>
-              <div class="kv-row">
-                <span class="kv-key" style="color:#0d9488">软引用 SoftReference</span>
-                <span class="kv-val">内存充足时不回收，即将 OOM 时才回收。适合做内存敏感的缓存（图片缓存、页面缓存）。配合 ReferenceQueue 可感知回收。</span>
-              </div>
-              <div class="kv-row">
-                <span class="kv-key" style="color:#0d9488">弱引用 WeakReference</span>
-                <span class="kv-val">下次 GC 必定回收（无论内存是否充足）。适合生命周期短、可重建的关联关系。典型应用：ThreadLocalMap 的 key、WeakHashMap。</span>
-              </div>
-              <div class="kv-row">
-                <span class="kv-key" style="color:#0d9488">虚引用 PhantomReference</span>
-                <span class="kv-val">随时可能回收，get() 永远返回 null。唯一作用：配合 ReferenceQueue 跟踪对象被回收的时机，用于释放堆外资源（如 DirectByteBuffer 的 Cleaner）。</span>
-              </div>
-            </div>
-            <p><strong>面试延伸：</strong>ThreadLocal 内存泄漏的本质——key 是弱引用被 GC 回收后变 null，但 value 是强引用不会被回收，必须手动 remove()。</p>
-          </div></div>
-        </div>
-
-        <div class="qa-item" id="q-jvm-15">
-          <div class="qa-question" onclick="toggleQA('q-jvm-15')">
-            <span class="qa-num" style="background:rgba(13,148,136,0.1);color:#0d9488;border:1px solid rgba(13,148,136,0.25)">Q15</span>
-            <span class="qa-q-text">线上服务应该配置哪些 JVM 参数？为什么 -Xms 和 -Xmx 要设成一样？</span>
-            <span class="qa-toggle">+</span>
-          </div>
-          <div class="qa-answer"><div class="qa-answer-inner">
-            <p><strong>生产环境推荐参数：</strong></p>
-            <div class="kv-grid" style="margin:0.3rem 0">
-              <div class="kv-row"><span class="kv-key">-Xms = -Xmx</span><span class="kv-val">避免堆动态扩缩。扩容时需要暂停 JVM 申请内存，缩容时释放内存，都可能引起不必要的停顿。</span></div>
-              <div class="kv-row"><span class="kv-key">-XX:MetaspaceSize = -XX:MaxMetaspaceSize</span><span class="kv-val">同理，避免 Metaspace 动态扩容触发 Full GC。</span></div>
-              <div class="kv-row"><span class="kv-key">-XX:+HeapDumpOnOutOfMemoryError</span><span class="kv-val">OOM 时自动 dump，事后用 MAT 分析。配合 -XX:HeapDumpPath 指定路径。</span></div>
-              <div class="kv-row"><span class="kv-key">-Xlog:gc*:file=gc.log:time,uptime,level,tags</span><span class="kv-val">GC 日志，事后分析 GC 频率、停顿时间、回收效率。生产必开。</span></div>
-              <div class="kv-row"><span class="kv-key">-XX:+UseG1GC (或 +UseZGC)</span><span class="kv-val">选择合适的 GC。G1 适合通用场景，ZGC 适合大堆低延迟。</span></div>
-              <div class="kv-row"><span class="kv-key">-XX:MaxGCPauseMillis=200</span><span class="kv-val">G1 目标停顿时间，让 GC 自适应调整。</span></div>
-            </div>
-            <p><strong>为什么 -Xms = -Xmx：</strong>如果初始堆小于最大堆，当应用内存增长触发扩容时，JVM 需要向操作系统申请额外内存并可能触发 Full GC 来整理堆空间，导致不可预期的停顿。设成一样后堆大小固定，消除这种不确定性。</p>
-            <p><strong>经验法则：</strong>8GB 堆起步，G1 GC，GC 日志 + HeapDump 全开。调优前先分析 GC 日志，不要凭感觉调参。</p>
-          </div></div>
-        </div>
-
-        <div class="qa-item practical" id="q-jvm-p1">
-          <div class="qa-question" onclick="toggleQA('q-jvm-p1')">
-            <span class="qa-num">⚡ 实战</span>
-            <span class="qa-q-text">线上堆 OOM 了，jstat / jmap / MAT 排查全流程是什么？</span>
-            <span class="qa-toggle">+</span>
-          </div>
-          <div class="qa-answer"><div class="qa-answer-inner">
-            <p><strong>第一步：确认 OOM 类型。</strong>从异常信息中判断是哪个区域溢出：</p>
-            <ul>
-              <li><code>java.lang.OutOfMemoryError: Java heap space</code> → 堆对象过多或内存泄漏</li>
-              <li><code>GC overhead limit exceeded</code> → GC 耗时超 98% 但回收不到 2% 内存，通常是泄漏</li>
-              <li><code>Metaspace</code> → 类加载过多，见 P2</li>
-              <li><code>Direct buffer memory</code> → NIO 直接内存超限，检查 ByteBuffer 泄漏</li>
-            </ul>
-            <p><strong>第二步：jstat 观察 GC 趋势（服务还活着时）。</strong></p>
-            <div class="arch-box"><pre class="arch-pre"># 每隔 1 秒采样 1 次 GC 使用率，观察 Old Gen (O) 是否持续上涨
-jstat -gcutil &lt;pid&gt; 1000
-
-# 输出样例：
-#  S0     S1     E      O      M     CCS    YGC     YGCT    FGC    FGCT     GCT
-#   0.00  98.71  63.45  87.23  94.10  90.20    342    8.246     3    0.962    9.208
-#
-# O（Old）已 87% → 即将满 → 频繁 Full GC → 内存泄漏信号</pre></div>
-            <p><strong>第三步：获取堆快照（Heap Dump）。</strong>推荐提前配置，OOM 发生时自动 dump，避免服务已崩溃后才想到：</p>
-            <div class="arch-box"><pre class="arch-pre"># 推荐：启动时预配置（OOM 时自动生成）
--XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/data/dump/
-
-# 服务还活着时手动 dump（会暂停 JVM，生产谨慎使用）
-jmap -dump:format=b,live,file=/tmp/heap.hprof &lt;pid&gt;
-
-# 只想看对象分布（不 dump 全量，影响小）
-jmap -histo:live &lt;pid&gt; | head -30</pre></div>
-            <p><strong>第四步：用 MAT（Memory Analyzer Tool）分析 dump。</strong></p>
-            <ol>
-              <li>打开 heap.hprof → 运行 <strong>Leak Suspects</strong> 报告（自动识别最大嫌疑对象）</li>
-              <li>查看 <strong>Dominator Tree</strong>：按 Retained Heap 排序，找占用最多内存的对象树</li>
-              <li>右键目标对象 → <strong>Paths to GC Roots</strong>（排除弱/软引用）→ 找到谁持有它不被回收</li>
-              <li>结合引用链找到业务代码中的泄漏点：常见原因是 <strong>ThreadLocal 未 remove</strong>、<strong>静态集合无限增长</strong>、<strong>未关闭的 InputStream / Connection</strong>、<strong>缓存没有容量上限</strong></li>
-            </ol>
-            <p><strong>Arthas 快捷分析：</strong><code>heapdump /tmp/heap.hprof</code> 可在线 dump；<code>dashboard</code> 实时查看内存区域占用。</p>
-          </div></div>
-        </div>
-
-        <div class="qa-item practical" id="q-jvm-p2">
-          <div class="qa-question" onclick="toggleQA('q-jvm-p2')">
-            <span class="qa-num">⚡ 实战</span>
-            <span class="qa-q-text">Metaspace OOM 怎么定位？是什么原因导致的？</span>
-            <span class="qa-toggle">+</span>
-          </div>
-          <div class="qa-answer"><div class="qa-answer-inner">
-            <p><strong>根因：类加载数量持续增长，ClassLoader 无法被 GC 回收。</strong>典型场景：</p>
-            <ul>
-              <li><strong>动态代理泄漏：</strong>CGLib / Javassist 每次调用时生成新的代理类但 ClassLoader 没有被释放（常见于未正确关闭的框架或测试代码循环创建代理）</li>
-              <li><strong>热部署失效：</strong>Tomcat/Spring DevTools 替换新 ClassLoader 后，旧 ClassLoader 因静态字段或线程引用无法被 GC 回收，新旧类并存导致 Metaspace 持续增长</li>
-              <li><strong>JSP / Groovy 脚本重复编译：</strong>每次修改都生成新 Class 对象，旧的未被卸载</li>
-            </ul>
-            <p><strong>排查步骤：</strong></p>
-            <div class="arch-box"><pre class="arch-pre"># 查看当前已加载的类数量和 ClassLoader 分布
-jmap -clstats &lt;pid&gt;
-# 关键字段：instances（该 ClassLoader 实例数），loaded（加载类数）
-
-# Arthas 更直观
-classloader -t           # 展示 ClassLoader 树和每个 CL 加载的类数量
-classloader -l           # 列出所有 ClassLoader 实例及其 hash
-classloader -c &lt;hash&gt;    # 查看指定 ClassLoader 加载的所有类
-
-# 监控 Metaspace 使用量变化
-jstat -gcmetacapacity &lt;pid&gt; 1000
-# MCMN=最小容量 MCMX=最大容量 MC=已使用容量 CCSC=压缩类空间</pre></div>
-            <p><strong>判断标志：</strong>某个 ClassLoader 的 loaded 数量持续上涨（正常运行的服务应该趋于稳定）。</p>
-            <p><strong>修复思路：</strong></p>
-            <ul>
-              <li>确保 ClassLoader 不被静态字段或 ThreadLocal 持有（用 MAT 查 GC Roots）</li>
-              <li>对于框架级动态代理，复用同一个代理实例而不是每次 new</li>
-              <li>设置 <code>-XX:MaxMetaspaceSize=256m</code> 限制上限（会触发 OOM 而非无限消耗），便于提前发现问题</li>
-            </ul>
-          </div></div>
-        </div>
-
-        <div class="qa-item practical" id="q-jvm-p3">
-          <div class="qa-question" onclick="toggleQA('q-jvm-p3')">
-            <span class="qa-num">⚡ 实战</span>
-            <span class="qa-q-text">容器（K8s / Docker）环境下 JVM 内存参数应该怎么设置？</span>
-            <span class="qa-toggle">+</span>
-          </div>
-          <div class="qa-answer"><div class="qa-answer-inner">
-            <p><strong>核心问题：JVM 默认读取宿主机总内存而非容器 cgroup 限制。</strong></p>
-            <p>假设宿主机 96GB，容器 limit 4GB，JVM 默认按 96GB 的 25% 设 -Xmx = 24GB，
-            实际可用只有 4GB → 频繁触发容器 OOM Kill（进程被 Linux 强制 SIGKILL）。</p>
-            <p><strong>JDK 8u191+ / JDK 11+ 已内置 cgroup 感知：</strong></p>
-            <div class="arch-box"><pre class="arch-pre"># -XX:+UseContainerSupport（JDK 8u191+ 默认开启）
-# JVM 自动读取 cgroup v1/v2 的内存限制，不再使用宿主机总内存
-
-# 推荐配置：不写死 -Xmx，用百分比
--XX:+UseContainerSupport
--XX:MaxRAMPercentage=75.0      # 堆最多使用容器内存的 75%
--XX:InitialRAMPercentage=50.0  # 初始堆
-
-# 例：容器 limit=4GB → -Xmx ≈ 3GB（75%）
-# 剩余 25%（~1GB）留给：Metaspace、直接内存、JVM 自身开销、OS 缓冲</pre></div>
-            <p><strong>不要设置 MaxRAMPercentage 过高（>80%）的原因：</strong>JVM 进程除了堆还需要 Metaspace、CodeCache、JVM 内部结构、GC 线程栈等 Native Memory，
-            如果 Native Memory + Heap 超过容器 limit，容器会被 OOM Kill 而不是触发 JVM GC。</p>
-            <p><strong>Kubernetes 的额外建议：</strong></p>
-            <ul>
-              <li><strong>requests = limits（内存）：</strong>若 requests &lt; limits，Pod 可能被调度到内存不足的节点，JVM 在 cgroup limit 内正常运行但随时会被 evicted</li>
-              <li><strong>验证生效：</strong>在容器内执行 <code>java -XX:+PrintFlagsFinal -version | grep HeapSize</code>，确认 MaxHeapSize = 75% × cgroup limit 而非宿主机内存</li>
-              <li><strong>JDK 8u191 以前：</strong>必须手动设 <code>-Xmx</code>，且值要低于容器 limit 的 75%，否则仍会 OOM Kill</li>
-            </ul>
-          </div></div>
-        </div>
-
-        <div class="qa-item practical" id="q-jvm-p4">
-          <div class="qa-question" onclick="toggleQA('q-jvm-p4')">
-            <span class="qa-num">⚡ 实战</span>
-            <span class="qa-q-text">服务 GC 停顿突然变长，怎么系统排查？</span>
-            <span class="qa-toggle">+</span>
-          </div>
-          <div class="qa-answer"><div class="qa-answer-inner">
-            <p><strong>第一步：jstat 确认 GC 现状。</strong></p>
-            <div class="arch-box"><pre class="arch-pre"># 每秒采样 GC 统计，连续看 10 次
-jstat -gcutil &lt;pid&gt; 1000 10
-
-# 重点关注：
-# YGCT/YGC  → 平均 Young GC 时间（应 &lt; 50ms）
-# FGCT/FGC  → Full GC 次数和总耗时（应接近 0）
-# O          → Old Gen 占用率（持续 >80% 说明堆压力大或泄漏）</pre></div>
-            <p><strong>第二步：分析 GC 日志（需提前开启 <code>-Xlog:gc*:file=gc.log:time,uptime,level,tags</code>）。</strong></p>
-            <ul>
-              <li><strong>Young GC 停顿 >100ms：</strong>Young Gen 配置过大（每次 GC 要扫描/复制更多对象）→ 减小 <code>-Xmn</code> 或降低 <code>-XX:G1NewSizePercent</code></li>
-              <li><strong>Mixed GC 出现 <code>to-space exhausted</code>：</strong>G1 Evacuation Failure → Free Region 不足 → 调大堆或增加 <code>-XX:G1ReservePercent</code>（默认 10%）</li>
-              <li><strong>Full GC 频繁：</strong>并发标记跟不上分配速率（GC Ergonomics）→ 降低 <code>-XX:InitiatingHeapOccupancyPercent</code>（默认 45%，改 35%）提前触发并发标记</li>
-              <li><strong>Humongous 对象告警：</strong>单个对象 &gt; 0.5 × G1 Region 大小（如 Region=4MB，对象 &gt;2MB）→ 增大 <code>-XX:G1HeapRegionSize</code> 或减少大对象分配</li>
-            </ul>
-            <p><strong>第三步：定位具体代码。</strong></p>
-            <div class="arch-box"><pre class="arch-pre"># 查看当前堆中最大对象分布（触发一次 Full GC 后统计，谨慎使用）
-jmap -histo:live &lt;pid&gt; | head -30
-
-# Arthas trace 定位哪段代码产生大量短命对象（Young GC 压力来源）
-trace com.example.OrderService processOrder '#cost > 100'
-
-# 查看 JVM 内存各区域实时大小
-vmtool --action getInstances --className java.lang.Class --limit 10</pre></div>
-            <p><strong>常见根因汇总：</strong></p>
-            <ul>
-              <li>大量临时对象（日志拼接、序列化）→ 优化为 StringBuilder 或减少中间对象</li>
-              <li>内存泄漏导致 Old Gen 持续增长 → 用 MAT 定位（见实战 P1）</li>
-              <li>Metaspace 扩容触发 Full GC → 设 <code>-XX:MetaspaceSize = -XX:MaxMetaspaceSize</code> 避免动态扩容</li>
-              <li>GC 线程数不足 → 增加 <code>-XX:ParallelGCThreads</code>（STW 阶段）和 <code>-XX:ConcGCThreads</code>（并发阶段）</li>
-            </ul>
-          </div></div>
-        </div>
-
-      </div><!-- end qa-list -->
-    </div><!-- end jvm-qa -->
+  <section class="gc-section" id="jvm-qa-ref">
+    <span class="section-badge" style="background:rgba(13,148,136,0.08);color:#0d9488;border:1px solid rgba(13,148,136,0.28)">● JVM 面试题</span>
+    <h2 class="section-title">JVM 高频面试题</h2>
+    <div class="callout callout-info" style="border-left-color:#0d9488;background:rgba(13,148,136,0.05)">
+      <span class="callout-icon">→</span>
+      <div class="callout-body">
+        面试题已迁移至独立页面，涵盖运行时数据区、类加载、双亲委派、JIT 调优与内存问题实战排查。<br>
+        <a href="jvm-qa.html" style="display:inline-block;margin-top:10px;background:#0d9488;color:#fff;border-radius:7px;padding:7px 20px;font-size:13px;font-weight:600;text-decoration:none">进入 JVM 面试题 →</a>
+      </div>
+    </div>
+    <!-- end callout -->
 
   </section>
 </main>

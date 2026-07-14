@@ -39,7 +39,8 @@
   <a href="#dist-id"           class="nav-link">分布式 ID</a>
   <a href="#dist-ratelimit"    class="nav-link">限流与熔断</a>
   <a href="#dist-consistent"   class="nav-link">一致性哈希</a>
-  <a href="#dist-qa"           class="nav-link">分布式面试题</a>
+  <div class="nav-section-label" style="color:rgba(146,64,14,0.6)">面试题</div>
+  <a href="distributed-qa.html" class="nav-link" style="color:rgba(124,58,237,0.8)">分布式面试题（独立页）→</a>
 </nav>
 
 <div class="content-wrap">
@@ -76,11 +77,7 @@
         <div class="kv-row">
           <span class="kv-key" style="color:#7c3aed">C — 一致性</span>
           <span class="kv-val">Consistency：所有节点在同一时刻看到相同的数据。写操作完成后，所有后续读都能读到最新值（强一致性）。</span>
-    
-      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#7c3aed;background:rgba(0,0,0,0.03)">
-        <strong>面试要点：</strong>CAP 定理的核心是：分布式系统在网络分区（P）发生时，只能在一致性（C）和可用性（A）中选一个。<strong>实践中 P 不可避免</strong>，所以真正的选择是 CP 还是 AP。CP 代表：ZooKeeper、etcd（优先一致性，分区时拒绝服务）。AP 代表：Eureka、Cassandra（优先可用性，允许短暂不一致）。BASE 理论是 AP 系统的理论基础：基本可用 + 软状态 + 最终一致。
-      </div>
-    </div>
+        </div>
         <div class="kv-row">
           <span class="kv-key" style="color:#7c3aed">A — 可用性</span>
           <span class="kv-val">Availability：每个请求都能收到响应（不一定是最新数据），系统不会拒绝服务。</span>
@@ -90,20 +87,40 @@
           <span class="kv-val">Partition tolerance：网络分区（节点间通信中断）发生时，系统仍能继续运行。分布式系统中 P 几乎不可放弃。</span>
         </div>
       </div>
+      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#7c3aed;background:rgba(0,0,0,0.03)">
+        <strong>面试要点：</strong>CAP 定理的核心是：分布式系统在网络分区（P）发生时，只能在一致性（C）和可用性（A）中选一个。<strong>实践中 P 不可避免</strong>，所以真正的选择是 CP 还是 AP。CP 代表：ZooKeeper、etcd（优先一致性，分区时拒绝服务）。AP 代表：Eureka、Cassandra（优先可用性，允许短暂不一致）。BASE 理论是 AP 系统的理论基础：基本可用 + 软状态 + 最终一致。
+      </div>
 
       <!-- 为什么只能三选二 -->
       <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">为什么只能三选二？</p>
-      <div class="arch-box" style="margin-top:0.5rem">
-        <pre class="arch-pre" style="font-size:0.78rem;line-height:1.8">
-  网络分区发生时（P 必须保留），节点 A 和节点 B 无法通信：
-
-  若要保证 C（一致性）：写 A 后必须同步到 B 才能返回成功
-    → B 不可达时必须拒绝写请求或阻塞等待 → 牺牲 A（可用性）
-
-  若要保证 A（可用性）：写 A 直接返回成功，不等待 B 同步
-    → B 的数据暂时落后 → 牺牲 C（一致性）
-
-  结论：分区发生时，C 和 A 只能选一个。</pre>
+      <div style="padding:16px;background:rgba(124,58,237,0.04);border:1px solid rgba(124,58,237,0.15);border-radius:10px;margin-top:0.5rem">
+        <div style="text-align:center;margin-bottom:12px;font-size:12px;font-family:var(--fm);color:var(--text-2);font-weight:600">网络分区发生（P 必须保留）— 节点 A 与节点 B 无法通信</div>
+        <div style="display:flex;gap:12px;align-items:stretch">
+          <div style="flex:1;background:rgba(124,58,237,0.08);border:1px solid rgba(124,58,237,0.22);border-radius:8px;padding:12px">
+            <div style="font-size:11px;font-family:var(--fm);font-weight:600;color:#7c3aed;margin-bottom:8px">保证 C（一致性）路径</div>
+            <div style="font-size:11px;font-family:var(--fm);color:var(--text-2);line-height:1.8">
+              写 A 后必须同步到 B 才能返回成功<br>
+              ↓<br>
+              B 不可达 → 拒绝写请求 / 阻塞等待<br>
+              ↓<br>
+              <span style="color:#dc2626;font-weight:600">牺牲 A（可用性）</span>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;font-size:20px;color:var(--text-3);padding:0 4px">⟺</div>
+          <div style="flex:1;background:rgba(220,38,38,0.05);border:1px solid rgba(220,38,38,0.18);border-radius:8px;padding:12px">
+            <div style="font-size:11px;font-family:var(--fm);font-weight:600;color:#dc2626;margin-bottom:8px">保证 A（可用性）路径</div>
+            <div style="font-size:11px;font-family:var(--fm);color:var(--text-2);line-height:1.8">
+              写 A 直接返回成功，不等 B 同步<br>
+              ↓<br>
+              B 的数据暂时落后<br>
+              ↓<br>
+              <span style="color:#7c3aed;font-weight:600">牺牲 C（一致性）</span>
+            </div>
+          </div>
+        </div>
+        <div style="text-align:center;margin-top:12px;font-size:11px;font-family:var(--fm);color:var(--text-2);background:rgba(0,0,0,0.04);border-radius:6px;padding:6px 12px">
+          结论：分区发生时，C 和 A 只能二选一
+        </div>
       </div>
 
       <!-- CP vs AP 典型系统 -->
@@ -183,16 +200,36 @@
 
       <!-- 2PC -->
       <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">2PC（两阶段提交）</p>
-      <div class="arch-box" style="margin-top:0.5rem">
-        <pre class="arch-pre" style="font-size:0.78rem;line-height:1.8">
-  协调者（Coordinator）          参与者（Participant A / B）
-
-  ── Phase 1: Prepare ──────────────────────────────────
-  发送 Prepare 请求  ──────────►  执行本地事务，写 undo/redo log
-                                  返回 Yes / No
-  ── Phase 2: Commit / Rollback ────────────────────────
-  全部 Yes → 发送 Commit ──────►  提交本地事务，释放锁
-  任一 No  → 发送 Rollback ────►  回滚本地事务，释放锁</pre>
+      <div style="padding:16px;background:rgba(124,58,237,0.04);border:1px solid rgba(124,58,237,0.15);border-radius:10px;margin-top:0.5rem">
+        <div style="display:flex;gap:0;font-size:11px;font-family:var(--fm)">
+          <!-- 左列标题 -->
+          <div style="width:140px;flex-shrink:0"></div>
+          <div style="flex:1;text-align:center;font-weight:600;color:#7c3aed;padding:6px 8px;background:rgba(124,58,237,0.1);border-radius:6px 0 0 0">协调者 Coordinator</div>
+          <div style="width:40px;flex-shrink:0"></div>
+          <div style="flex:1;text-align:center;font-weight:600;color:var(--teal,#0d9488);padding:6px 8px;background:rgba(13,148,136,0.1);border-radius:0 6px 0 0">参与者 Participant A / B</div>
+        </div>
+        <!-- Phase 1 -->
+        <div style="margin-top:8px;padding:6px 10px;background:rgba(124,58,237,0.06);border-radius:6px;font-size:11px;font-family:var(--fm);font-weight:600;color:var(--text-2)">Phase 1 — Prepare</div>
+        <div style="display:flex;align-items:center;gap:0;margin-top:6px;font-size:11px;font-family:var(--fm)">
+          <div style="width:140px;flex-shrink:0;color:var(--text-3);font-size:10px">发送 Prepare 请求</div>
+          <div style="flex:1;background:rgba(124,58,237,0.08);border:1px solid rgba(124,58,237,0.2);border-radius:6px;padding:8px 10px;color:var(--text-2);text-align:center">发送 Prepare 请求</div>
+          <div style="width:40px;flex-shrink:0;text-align:center;color:#7c3aed;font-size:14px">→</div>
+          <div style="flex:1;background:rgba(13,148,136,0.07);border:1px solid rgba(13,148,136,0.2);border-radius:6px;padding:8px 10px;color:var(--text-2)">执行本地事务，写 undo/redo log<br><span style="color:var(--teal,#0d9488);font-weight:600">返回 Yes / No</span></div>
+        </div>
+        <!-- Phase 2 -->
+        <div style="margin-top:8px;padding:6px 10px;background:rgba(124,58,237,0.06);border-radius:6px;font-size:11px;font-family:var(--fm);font-weight:600;color:var(--text-2)">Phase 2 — Commit / Rollback</div>
+        <div style="display:flex;align-items:center;gap:0;margin-top:6px;font-size:11px;font-family:var(--fm)">
+          <div style="width:140px;flex-shrink:0;color:var(--text-3);font-size:10px">全部 Yes</div>
+          <div style="flex:1;background:rgba(21,128,61,0.08);border:1px solid rgba(21,128,61,0.2);border-radius:6px;padding:8px 10px;color:var(--text-2)"><span style="color:#15803d;font-weight:600">发送 Commit</span></div>
+          <div style="width:40px;flex-shrink:0;text-align:center;color:#15803d;font-size:14px">→</div>
+          <div style="flex:1;background:rgba(21,128,61,0.06);border:1px solid rgba(21,128,61,0.15);border-radius:6px;padding:8px 10px;color:var(--text-2)">提交本地事务，释放锁</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:0;margin-top:6px;font-size:11px;font-family:var(--fm)">
+          <div style="width:140px;flex-shrink:0;color:var(--text-3);font-size:10px">任一 No</div>
+          <div style="flex:1;background:rgba(220,38,38,0.07);border:1px solid rgba(220,38,38,0.18);border-radius:6px;padding:8px 10px;color:var(--text-2)"><span style="color:#dc2626;font-weight:600">发送 Rollback</span></div>
+          <div style="width:40px;flex-shrink:0;text-align:center;color:#dc2626;font-size:14px">→</div>
+          <div style="flex:1;background:rgba(220,38,38,0.05);border:1px solid rgba(220,38,38,0.12);border-radius:6px;padding:8px 10px;color:var(--text-2)">回滚本地事务，释放锁</div>
+        </div>
       </div>
       <p class="sub-body" style="margin-top:0.75rem;font-weight:600;color:var(--text-2)">2PC 缺陷</p>
       <div class="kv-grid" style="margin-top:0.5rem">
@@ -203,16 +240,36 @@
 
       <!-- TCC -->
       <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">TCC（Try-Confirm-Cancel）</p>
-      <div class="arch-box" style="margin-top:0.5rem">
-        <pre class="arch-pre" style="font-size:0.78rem;line-height:1.8">
-  Try      ── 预留资源（冻结库存 / 冻结余额），检查并预占，不提交
-  Confirm  ── 正式提交，将预留资源转为实际扣减
-  Cancel   ── 释放预留资源，回滚 Try 阶段的操作
-
-  示例：转账 A→B 100元
-    Try:     A 冻结 100，B 预增 100（两者均可回滚）
-    Confirm: A 扣减 100，B 实际到账 100
-    Cancel:  A 解冻 100，B 取消预增</pre>
+      <div style="padding:16px;background:rgba(124,58,237,0.04);border:1px solid rgba(124,58,237,0.15);border-radius:10px;margin-top:0.5rem">
+        <!-- TCC 三阶段 -->
+        <div style="display:flex;flex-direction:column;gap:8px;font-size:11px;font-family:var(--fm)">
+          <!-- Try -->
+          <div style="display:flex;align-items:stretch;gap:8px">
+            <div style="width:70px;flex-shrink:0;background:#7c3aed;color:#fff;border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px">Try</div>
+            <div style="flex:1;background:rgba(124,58,237,0.08);border:1px solid rgba(124,58,237,0.2);border-radius:6px;padding:8px 12px;color:var(--text-2);line-height:1.7">
+              <span style="font-weight:600;color:#7c3aed">预留资源（冻结）</span>，不提交，检查并预占<br>
+              <span style="color:var(--text-3)">转账例：A 冻结 100 元，B 预增 100 元（两者均可回滚）</span>
+            </div>
+          </div>
+          <div style="text-align:center;color:var(--text-3);font-size:16px;line-height:1">↓</div>
+          <!-- Confirm -->
+          <div style="display:flex;align-items:stretch;gap:8px">
+            <div style="width:70px;flex-shrink:0;background:#15803d;color:#fff;border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px">Confirm</div>
+            <div style="flex:1;background:rgba(21,128,61,0.07);border:1px solid rgba(21,128,61,0.2);border-radius:6px;padding:8px 12px;color:var(--text-2);line-height:1.7">
+              <span style="font-weight:600;color:#15803d">正式提交</span>，将预留资源转为实际扣减<br>
+              <span style="color:var(--text-3)">转账例：A 扣减 100 元，B 实际到账 100 元</span>
+            </div>
+          </div>
+          <div style="text-align:center;color:var(--text-3);font-size:16px;line-height:1">↓（失败时）</div>
+          <!-- Cancel -->
+          <div style="display:flex;align-items:stretch;gap:8px">
+            <div style="width:70px;flex-shrink:0;background:#dc2626;color:#fff;border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px">Cancel</div>
+            <div style="flex:1;background:rgba(220,38,38,0.05);border:1px solid rgba(220,38,38,0.18);border-radius:6px;padding:8px 12px;color:var(--text-2);line-height:1.7">
+              <span style="font-weight:600;color:#dc2626">释放预留资源</span>，回滚 Try 阶段的操作<br>
+              <span style="color:var(--text-3)">转账例：A 解冻 100 元，B 取消预增</span>
+            </div>
+          </div>
+        </div>
       </div>
       <div class="kv-grid" style="margin-top:0.75rem">
         <div class="kv-row"><span class="kv-key">优点</span><span class="kv-val">无全局锁，性能好；业务逻辑在应用层，不依赖数据库 XA</span></div>
@@ -221,35 +278,81 @@
 
       <!-- Saga -->
       <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">Saga（长事务补偿）</p>
-      <div class="arch-box" style="margin-top:0.5rem">
-        <pre class="arch-pre" style="font-size:0.78rem;line-height:1.8">
-  将长事务拆分为一系列本地事务，每个本地事务对应一个补偿事务：
-
-  T1 → T2 → T3 → T4   （正向流程，每步立即提交）
-       ↓ 失败
-  T3 → C2 → C1         （反向补偿，从失败点向前回滚）
-
-  两种编排方式：
-  ① 编排（Choreography）：事件驱动，服务间通过 MQ 触发，去中心化
-  ② 协调（Orchestration）：Saga 协调器统一调度（Seata Saga 模式）</pre>
+      <div style="padding:16px;background:rgba(124,58,237,0.04);border:1px solid rgba(124,58,237,0.15);border-radius:10px;margin-top:0.5rem;font-size:11px;font-family:var(--fm)">
+        <div style="color:var(--text-2);margin-bottom:10px">将长事务拆分为一系列本地事务，每个本地事务对应一个补偿事务：</div>
+        <!-- 正向流程 -->
+        <div style="margin-bottom:6px;font-weight:600;color:var(--text-2)">正向流程（每步立即提交）</div>
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+          <div style="background:#7c3aed;color:#fff;border-radius:6px;padding:6px 14px;font-weight:600">T1</div>
+          <div style="color:#7c3aed;font-size:14px">→</div>
+          <div style="background:#7c3aed;color:#fff;border-radius:6px;padding:6px 14px;font-weight:600">T2</div>
+          <div style="color:#7c3aed;font-size:14px">→</div>
+          <div style="background:#7c3aed;color:#fff;border-radius:6px;padding:6px 14px;font-weight:600">T3</div>
+          <div style="color:#7c3aed;font-size:14px">→</div>
+          <div style="background:#7c3aed;color:#fff;border-radius:6px;padding:6px 14px;font-weight:600">T4</div>
+          <div style="background:rgba(21,128,61,0.12);border:1px solid rgba(21,128,61,0.25);color:#15803d;border-radius:6px;padding:6px 10px;margin-left:6px">完成 ✓</div>
+        </div>
+        <!-- 失败+补偿 -->
+        <div style="margin-top:10px;margin-bottom:6px;font-weight:600;color:#dc2626">T3 执行失败 → 反向补偿（从失败点向前回滚）</div>
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+          <div style="background:rgba(220,38,38,0.12);border:1px solid rgba(220,38,38,0.25);color:#dc2626;border-radius:6px;padding:6px 10px;font-weight:600">C3</div>
+          <div style="color:#dc2626;font-size:14px">→</div>
+          <div style="background:rgba(220,38,38,0.12);border:1px solid rgba(220,38,38,0.25);color:#dc2626;border-radius:6px;padding:6px 10px;font-weight:600">C2</div>
+          <div style="color:#dc2626;font-size:14px">→</div>
+          <div style="background:rgba(220,38,38,0.12);border:1px solid rgba(220,38,38,0.25);color:#dc2626;border-radius:6px;padding:6px 10px;font-weight:600">C1</div>
+          <div style="background:rgba(220,38,38,0.07);border:1px solid rgba(220,38,38,0.15);color:#dc2626;border-radius:6px;padding:6px 10px;margin-left:6px">全部回滚</div>
+        </div>
+        <!-- 两种编排方式 -->
+        <div style="margin-top:12px;display:flex;gap:8px">
+          <div style="flex:1;background:rgba(124,58,237,0.07);border:1px solid rgba(124,58,237,0.18);border-radius:6px;padding:8px 10px;line-height:1.6;color:var(--text-2)">
+            <span style="font-weight:600;color:#7c3aed">① 编排（Choreography）</span><br>
+            事件驱动，服务间通过 MQ 触发，去中心化
+          </div>
+          <div style="flex:1;background:rgba(13,148,136,0.06);border:1px solid rgba(13,148,136,0.18);border-radius:6px;padding:8px 10px;line-height:1.6;color:var(--text-2)">
+            <span style="font-weight:600;color:var(--teal,#0d9488)">② 协调（Orchestration）</span><br>
+            Saga 协调器统一调度（Seata Saga 模式）
+          </div>
+        </div>
       </div>
 
       <!-- 本地消息表 -->
       <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">本地消息表（最终一致性经典方案）</p>
-      <div class="arch-box" style="margin-top:0.5rem">
-        <pre class="arch-pre" style="font-size:0.78rem;line-height:1.8">
-  ┌──────────────────────────────────────────────────────┐
-  │  本地事务（原子）                                       │
-  │  1. 执行业务操作（如扣减库存）                           │
-  │  2. 写消息到本地消息表（status=PENDING）                 │
-  └──────────────────────────┬───────────────────────────┘
-                             │ 事务提交成功
-                             ▼
-  定时任务扫描 PENDING 消息 → 发送到 MQ → 消费者处理
-                             │ 消费成功
-                             ▼
-                    更新消息状态 = DONE
-  消费失败 → MQ 重试 → 消费者保证幂等</pre>
+      <div style="padding:16px;background:rgba(124,58,237,0.04);border:1px solid rgba(124,58,237,0.15);border-radius:10px;margin-top:0.5rem;font-size:11px;font-family:var(--fm)">
+        <!-- 步骤1 -->
+        <div style="display:flex;align-items:stretch;gap:8px">
+          <div style="width:24px;flex-shrink:0;background:#7c3aed;color:#fff;border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:700">①</div>
+          <div style="flex:1;background:rgba(124,58,237,0.08);border:1px solid rgba(124,58,237,0.2);border-radius:6px;padding:8px 12px;color:var(--text-2);line-height:1.7">
+            <span style="font-weight:600;color:#7c3aed">本地事务（原子执行）</span><br>
+            执行业务操作（如扣减库存） + 写消息到本地消息表（status = <code style="color:var(--zgc-2,#7c3aed)">PENDING</code>）
+          </div>
+        </div>
+        <div style="text-align:center;color:var(--text-3);font-size:16px;padding:2px 0">↓ 事务提交成功</div>
+        <!-- 步骤2 -->
+        <div style="display:flex;align-items:stretch;gap:8px">
+          <div style="width:24px;flex-shrink:0;background:#d97706;color:#fff;border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:700">②</div>
+          <div style="flex:1;background:rgba(217,119,6,0.07);border:1px solid rgba(217,119,6,0.2);border-radius:6px;padding:8px 12px;color:var(--text-2);line-height:1.7">
+            <span style="font-weight:600;color:#d97706">定时任务扫描 PENDING 消息</span><br>
+            轮询消息表，找到所有 status = PENDING 的记录
+          </div>
+        </div>
+        <div style="text-align:center;color:var(--text-3);font-size:16px;padding:2px 0">↓</div>
+        <!-- 步骤3 -->
+        <div style="display:flex;align-items:stretch;gap:8px">
+          <div style="width:24px;flex-shrink:0;background:#0d9488;color:#fff;border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:700">③</div>
+          <div style="flex:1;background:rgba(13,148,136,0.07);border:1px solid rgba(13,148,136,0.2);border-radius:6px;padding:8px 12px;color:var(--text-2);line-height:1.7">
+            <span style="font-weight:600;color:var(--teal,#0d9488)">发送到 MQ → 消费者处理</span><br>
+            消费失败 → MQ 重试 → 消费者保证幂等
+          </div>
+        </div>
+        <div style="text-align:center;color:var(--text-3);font-size:16px;padding:2px 0">↓ 消费成功</div>
+        <!-- 步骤4 -->
+        <div style="display:flex;align-items:stretch;gap:8px">
+          <div style="width:24px;flex-shrink:0;background:#15803d;color:#fff;border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:700">④</div>
+          <div style="flex:1;background:rgba(21,128,61,0.07);border:1px solid rgba(21,128,61,0.2);border-radius:6px;padding:8px 12px;color:var(--text-2);line-height:1.7">
+            <span style="font-weight:600;color:#15803d">更新消息状态 = DONE</span><br>
+            最终一致性达成，消息生命周期结束
+          </div>
+        </div>
       </div>
 
       <div class="callout callout-info" style="margin-top:1rem;border-left-color:#7c3aed;background:rgba(124,58,237,0.05)">
@@ -311,21 +414,42 @@
 
       <!-- ZooKeeper 方案 -->
       <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">ZooKeeper 方案</p>
-      <div class="arch-box" style="margin-top:0.5rem">
-        <pre class="arch-pre" style="font-size:0.78rem;line-height:1.8">
-  1. 所有竞争者在 /locks/ 下创建临时顺序节点
-     /locks/lock-0000000001  (客户端A)
-     /locks/lock-0000000002  (客户端B)
-     /locks/lock-0000000003  (客户端C)
-
-  2. 每个客户端判断自己是否序号最小
-     → 是：获得锁，执行业务
-     → 否：Watch 前一个节点（非最小）
-
-  3. 前驱节点删除（持锁方释放 or 会话断开自动删临时节点）
-     → ZK 通知后继节点 → 后继节点检查再获锁
-
-  优化：Watch 前驱而非全量节点，避免"羊群效应"</pre>
+      <div style="padding:16px;background:rgba(124,58,237,0.04);border:1px solid rgba(124,58,237,0.15);border-radius:10px;margin-top:0.5rem;font-size:11px;font-family:var(--fm)">
+        <!-- 节点列表 -->
+        <div style="margin-bottom:10px;color:var(--text-2)">所有竞争者在 <code style="color:var(--zgc-2,#7c3aed)">/locks/</code> 下创建临时顺序节点：</div>
+        <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
+          <div style="background:#7c3aed;color:#fff;border-radius:6px;padding:5px 10px;font-weight:600">/locks/lock-0000000001 <span style="opacity:0.75;font-weight:400">客户端A</span></div>
+          <div style="background:rgba(124,58,237,0.15);border:1px solid rgba(124,58,237,0.3);color:#7c3aed;border-radius:6px;padding:5px 10px;">/locks/lock-0000000002 <span style="opacity:0.75">客户端B</span></div>
+          <div style="background:rgba(124,58,237,0.08);border:1px solid rgba(124,58,237,0.2);color:#7c3aed;border-radius:6px;padding:5px 10px;">/locks/lock-0000000003 <span style="opacity:0.75">客户端C</span></div>
+        </div>
+        <!-- 步骤流程 -->
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div style="display:flex;align-items:stretch;gap:8px">
+            <div style="width:24px;flex-shrink:0;background:#7c3aed;color:#fff;border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:700">①</div>
+            <div style="flex:1;background:rgba(124,58,237,0.08);border:1px solid rgba(124,58,237,0.2);border-radius:6px;padding:7px 12px;color:var(--text-2)">创建临时顺序节点，获取到自身节点序号</div>
+          </div>
+          <div style="text-align:center;color:var(--text-3);font-size:14px">↓</div>
+          <div style="display:flex;align-items:stretch;gap:8px">
+            <div style="width:24px;flex-shrink:0;background:#d97706;color:#fff;border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:700">②</div>
+            <div style="flex:1;border-radius:6px;padding:7px 12px;color:var(--text-2)">
+              <div style="display:flex;gap:8px">
+                <div style="flex:1;background:rgba(21,128,61,0.08);border:1px solid rgba(21,128,61,0.2);border-radius:6px;padding:7px 10px;color:#15803d;font-weight:600">序号最小？→ 获得锁，执行业务</div>
+                <div style="flex:1;background:rgba(217,119,6,0.07);border:1px solid rgba(217,119,6,0.2);border-radius:6px;padding:7px 10px;color:#d97706;font-weight:600">非最小？→ Watch 前一个节点</div>
+              </div>
+            </div>
+          </div>
+          <div style="text-align:center;color:var(--text-3);font-size:14px">↓ 前驱节点删除</div>
+          <div style="display:flex;align-items:stretch;gap:8px">
+            <div style="width:24px;flex-shrink:0;background:#0d9488;color:#fff;border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:700">③</div>
+            <div style="flex:1;background:rgba(13,148,136,0.07);border:1px solid rgba(13,148,136,0.2);border-radius:6px;padding:7px 12px;color:var(--text-2)">ZK 通知后继节点（Watch 触发） → 后继节点重新检查序号</div>
+          </div>
+          <div style="text-align:center;color:var(--text-3);font-size:14px">↓ 确认为最小节点</div>
+          <div style="display:flex;align-items:stretch;gap:8px">
+            <div style="width:24px;flex-shrink:0;background:#15803d;color:#fff;border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:700">④</div>
+            <div style="flex:1;background:rgba(21,128,61,0.07);border:1px solid rgba(21,128,61,0.2);border-radius:6px;padding:7px 12px;color:var(--text-2)">获得锁，执行业务；完成后删除节点释放锁（会话断开自动删临时节点）</div>
+          </div>
+        </div>
+        <div style="margin-top:10px;padding:6px 10px;background:rgba(0,0,0,0.04);border-radius:6px;color:var(--text-3);font-size:10px">优化：Watch 前驱而非全量节点，避免"羊群效应"（N-1 次无效唤醒）</div>
       </div>
 
       <!-- Redis vs ZK 对比表 -->
@@ -362,26 +486,52 @@
 
       <!-- 服务注册/发现流程 -->
       <p class="sub-body" style="margin-top:1rem;font-weight:600;color:var(--text-2)">服务注册 / 发现 / 健康检查流程</p>
-      <div class="arch-box" style="margin-top:0.5rem">
-        <pre class="arch-pre" style="font-size:0.78rem;line-height:1.8">
-  ┌────────────┐  ① 启动注册   ┌──────────────────────┐
-  │  服务提供者  │ ────────────►│                      │
-  │  Provider  │              │   注册中心              │
-  │            │ ◄──────────── │   Registry            │
-  └────────────┘  ④ 心跳续约   │                      │
-                               │  维护服务列表:           │
-  ┌────────────┐  ② 订阅/拉取  │  name → [IP:Port]    │
-  │  服务消费者  │ ────────────►│                      │
-  │  Consumer  │              └──────────────────────┘
-  │            │  ③ 推送/返回服务列表
-  │            │ ◄──────────────────────────────────
-  │            │  ⑤ 本地缓存 → 负载均衡 → 直接调用
-  └────────────┘</pre>
+      <div style="padding:16px;background:rgba(124,58,237,0.04);border:1px solid rgba(124,58,237,0.15);border-radius:10px;margin-top:0.5rem;font-size:11px;font-family:var(--fm)">
+        <div style="display:flex;gap:8px;align-items:flex-start">
+          <!-- Provider -->
+          <div style="flex:1;background:rgba(21,128,61,0.07);border:1px solid rgba(21,128,61,0.2);border-radius:8px;padding:10px;text-align:center">
+            <div style="font-weight:700;color:#15803d;margin-bottom:6px">服务提供者<br>Provider</div>
+            <div style="font-size:10px;color:var(--text-3);line-height:1.7">启动时注册<br>定期心跳续约</div>
+          </div>
+          <!-- Arrows中间 -->
+          <div style="flex:1.4;display:flex;flex-direction:column;gap:5px;padding-top:12px">
+            <div style="display:flex;align-items:center;gap:4px">
+              <div style="color:#15803d;font-size:12px;white-space:nowrap">① 启动注册</div>
+              <div style="flex:1;height:1px;background:#15803d;opacity:0.4"></div>
+              <div style="color:#15803d;font-size:14px">→</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:4px">
+              <div style="color:#15803d;font-size:14px">←</div>
+              <div style="flex:1;height:1px;background:#15803d;opacity:0.4"></div>
+              <div style="color:#15803d;font-size:12px;white-space:nowrap">④ 心跳续约</div>
+            </div>
+            <!-- Registry中心 -->
+            <div style="background:#7c3aed;color:#fff;border-radius:8px;padding:8px 6px;text-align:center;margin:4px 0;font-weight:700">
+              注册中心<br>Registry<br>
+              <span style="font-size:10px;opacity:0.85;font-weight:400">name → [IP:Port]</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:4px">
+              <div style="color:var(--teal,#0d9488);font-size:14px">←</div>
+              <div style="flex:1;height:1px;background:var(--teal,#0d9488);opacity:0.4"></div>
+              <div style="color:var(--teal,#0d9488);font-size:12px;white-space:nowrap">② 订阅/拉取</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:4px">
+              <div style="color:var(--teal,#0d9488);font-size:12px;white-space:nowrap">③ 推送服务列表</div>
+              <div style="flex:1;height:1px;background:var(--teal,#0d9488);opacity:0.4"></div>
+              <div style="color:var(--teal,#0d9488);font-size:14px">→</div>
+            </div>
+          </div>
+          <!-- Consumer -->
+          <div style="flex:1;background:rgba(13,148,136,0.07);border:1px solid rgba(13,148,136,0.2);border-radius:8px;padding:10px;text-align:center">
+            <div style="font-weight:700;color:var(--teal,#0d9488);margin-bottom:6px">服务消费者<br>Consumer</div>
+            <div style="font-size:10px;color:var(--text-3);line-height:1.7">⑤ 本地缓存<br>负载均衡 → 直接调用</div>
+          </div>
+        </div>
+      </div>
   
       <div class="callout callout-info" style="margin-top:1rem;border-left-color:#7c3aed;background:rgba(0,0,0,0.03)">
         <strong>面试要点：</strong>注册中心选型：Nacos 同时支持 CP（Raft，适合配置）和 AP（适合服务发现），且内置配置中心，是目前新项目的首选。Eureka 已停维护，仅 AP 模式，适合遗留系统。Consul 支持 CP + 健康检查 + KV 存储。<strong>注册中心高可用</strong>：客户端本地缓存服务列表，注册中心短暂不可用时仍能发现服务，防止雪崩。
       </div>
-    </div>
 
       <!-- 四种注册中心对比表 -->
       <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">主流注册中心对比</p>
@@ -429,11 +579,7 @@
         <div class="kv-row">
           <span class="kv-key" style="color:#7c3aed">Leader</span>
           <span class="kv-val">同一时刻集群只有一个 Leader。接收所有客户端写请求、复制日志到 Follower、定期发心跳防止其他节点超时选举</span>
-    
-      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#7c3aed;background:rgba(0,0,0,0.03)">
-        <strong>面试要点：</strong>Raft 三个核心问题：① <strong>领导选举</strong>：term + 随机选举超时，超时先投自己，获多数票成 Leader；② <strong>日志复制</strong>：Leader 接收请求，并发复制到 Follower，超半数确认后 commit 并回复客户端；③ <strong>安全性</strong>：只有日志最新的节点才能当选 Leader（防止已提交日志丢失）。与 Paxos 的区别：Raft 更易理解，明确分离选举/日志/快照三个子问题。
-      </div>
-    </div>
+        </div>
         <div class="kv-row">
           <span class="kv-key" style="color:#7c3aed">Follower</span>
           <span class="kv-val">被动接收 Leader 的 AppendEntries 和心跳。Election Timeout 内未收到心跳则转为 Candidate 发起选举</span>
@@ -443,42 +589,98 @@
           <span class="kv-val">选举过渡态。广播 RequestVote RPC，获多数票成为 Leader；收到更高 term 的消息退回 Follower</span>
         </div>
       </div>
+      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#7c3aed;background:rgba(0,0,0,0.03)">
+        <strong>面试要点：</strong>Raft 三个核心问题：① <strong>领导选举</strong>：term + 随机选举超时，超时先投自己，获多数票成 Leader；② <strong>日志复制</strong>：Leader 接收请求，并发复制到 Follower，超半数确认后 commit 并回复客户端；③ <strong>安全性</strong>：只有日志最新的节点才能当选 Leader（防止已提交日志丢失）。与 Paxos 的区别：Raft 更易理解，明确分离选举/日志/快照三个子问题。
+      </div>
 
       <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">① Leader 选举</p>
-      <div class="arch-box" style="margin-top:0.5rem">
-        <pre class="arch-pre" style="font-size:0.76rem;line-height:1.75">
-  Follower Election Timeout 到期（随机 150-300 ms，避免同时超时）
-       │
-       ▼
-  转为 Candidate，currentTerm++，先投票给自己
-       │
-       ▼
-  并发广播 RequestVote RPC（携带自身 term 和最后日志的 index/term）
-       │
-       ├─── 获多数票（> N/2） ───────► 成为 Leader，立即广播心跳占位
-       │
-       ├─── 收到同 term 的其他 Leader ► 退回 Follower
-       │
-       └─── 选举超时（分票） ──────── ► 随机等待后重新选举</pre>
+      <div style="padding:16px;background:rgba(124,58,237,0.04);border:1px solid rgba(124,58,237,0.15);border-radius:10px;margin-top:0.5rem;font-size:11px;font-family:var(--fm)">
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <!-- 触发 -->
+          <div style="background:rgba(124,58,237,0.08);border:1px solid rgba(124,58,237,0.2);border-radius:6px;padding:8px 12px;color:var(--text-2)">
+            Follower <span style="color:#7c3aed;font-weight:600">Election Timeout 到期</span>（随机 150–300 ms，避免同时超时）
+          </div>
+          <div style="text-align:center;color:var(--text-3);font-size:14px">↓</div>
+          <!-- 转Candidate -->
+          <div style="background:rgba(217,119,6,0.08);border:1px solid rgba(217,119,6,0.2);border-radius:6px;padding:8px 12px;color:var(--text-2)">
+            转为 <span style="color:#d97706;font-weight:600">Candidate</span>，currentTerm++，先投票给自己
+          </div>
+          <div style="text-align:center;color:var(--text-3);font-size:14px">↓</div>
+          <!-- 广播 -->
+          <div style="background:rgba(124,58,237,0.06);border:1px solid rgba(124,58,237,0.15);border-radius:6px;padding:8px 12px;color:var(--text-2)">
+            并发广播 <code style="color:var(--zgc-2,#7c3aed)">RequestVote RPC</code>（携带自身 term 和最后日志的 index/term）
+          </div>
+          <div style="text-align:center;color:var(--text-3);font-size:14px">↓</div>
+          <!-- 三种结果 -->
+          <div style="display:flex;gap:8px">
+            <div style="flex:1;background:rgba(21,128,61,0.08);border:1px solid rgba(21,128,61,0.2);border-radius:6px;padding:8px 10px;line-height:1.6;color:var(--text-2)">
+              <div style="font-weight:600;color:#15803d;margin-bottom:4px">获多数票 (&gt; N/2)</div>
+              成为 <span style="color:#15803d;font-weight:600">Leader</span>，立即广播心跳占位
+            </div>
+            <div style="flex:1;background:rgba(13,148,136,0.06);border:1px solid rgba(13,148,136,0.18);border-radius:6px;padding:8px 10px;line-height:1.6;color:var(--text-2)">
+              <div style="font-weight:600;color:var(--teal,#0d9488);margin-bottom:4px">收到同 term 其他 Leader</div>
+              退回 <span style="color:var(--teal,#0d9488);font-weight:600">Follower</span>
+            </div>
+            <div style="flex:1;background:rgba(220,38,38,0.05);border:1px solid rgba(220,38,38,0.15);border-radius:6px;padding:8px 10px;line-height:1.6;color:var(--text-2)">
+              <div style="font-weight:600;color:#dc2626;margin-bottom:4px">选举超时（分票）</div>
+              随机等待后<span style="color:#dc2626;font-weight:600">重新选举</span>
+            </div>
+          </div>
+        </div>
       </div>
       <p class="sub-body" style="margin-top:0.6rem"><strong>投票安全规则：</strong>只投给日志"至少一样新"的 Candidate——先比较最后日志的 term，term 相同再比 index。这保证了新 Leader 一定包含所有已提交的日志（至少在多数节点上存在的日志 = 已提交）。</p>
 
       <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">② 日志复制</p>
-      <div class="arch-box" style="margin-top:0.5rem">
-        <pre class="arch-pre" style="font-size:0.76rem;line-height:1.75">
-  客户端写请求 → Leader
-       │
-       ▼ 追加到本地日志（未提交，状态 uncommitted）
-       │
-       ▼ 并发发送 AppendEntries RPC 给所有 Follower
-       │   ├─ 携带 (term, prevLogIndex, prevLogTerm, entries[], leaderCommit)
-       │   └─ Follower 执行日志一致性检查：prevLog 不匹配则拒绝，Leader 回退 nextIndex 重试
-       │
-       ▼ 多数 Follower 写入成功（N/2 + 1 包含 Leader 自身）
-       │
-       ▼ Leader 提交日志，apply 到状态机，回复客户端成功
-       │
-       ▼ 下一次心跳 / AppendEntries 携带 leaderCommit 通知 Follower 提交</pre>
+      <div style="padding:16px;background:rgba(124,58,237,0.04);border:1px solid rgba(124,58,237,0.15);border-radius:10px;margin-top:0.5rem;font-size:11px;font-family:var(--fm)">
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <!-- 步骤1 -->
+          <div style="display:flex;align-items:stretch;gap:8px">
+            <div style="width:22px;flex-shrink:0;background:#7c3aed;color:#fff;border-radius:5px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:10px">1</div>
+            <div style="flex:1;background:rgba(124,58,237,0.08);border:1px solid rgba(124,58,237,0.2);border-radius:6px;padding:7px 12px;color:var(--text-2)">
+              <span style="font-weight:600;color:#7c3aed">客户端写请求 → Leader</span>
+            </div>
+          </div>
+          <div style="text-align:center;color:var(--text-3);font-size:14px">↓</div>
+          <!-- 步骤2 -->
+          <div style="display:flex;align-items:stretch;gap:8px">
+            <div style="width:22px;flex-shrink:0;background:#d97706;color:#fff;border-radius:5px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:10px">2</div>
+            <div style="flex:1;background:rgba(217,119,6,0.07);border:1px solid rgba(217,119,6,0.18);border-radius:6px;padding:7px 12px;color:var(--text-2)">
+              Leader 追加到本地日志（<span style="color:#d97706">uncommitted</span>）
+            </div>
+          </div>
+          <div style="text-align:center;color:var(--text-3);font-size:14px">↓</div>
+          <!-- 步骤3：广播 -->
+          <div style="display:flex;align-items:stretch;gap:8px">
+            <div style="width:22px;flex-shrink:0;background:#0d9488;color:#fff;border-radius:5px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:10px">3</div>
+            <div style="flex:1;border-radius:6px;overflow:hidden">
+              <div style="background:rgba(13,148,136,0.1);border:1px solid rgba(13,148,136,0.22);border-radius:6px;padding:7px 12px;color:var(--text-2);line-height:1.6">
+                并发发送 <code style="color:var(--zgc-2,#7c3aed)">AppendEntries RPC</code> 给所有 Follower<br>
+                <span style="color:var(--text-3);font-size:10px">携带 (term, prevLogIndex, prevLogTerm, entries[], leaderCommit) · prevLog 不匹配则拒绝，Leader 回退 nextIndex 重试</span>
+              </div>
+              <div style="display:flex;gap:5px;margin-top:5px">
+                <div style="flex:1;background:rgba(13,148,136,0.07);border:1px solid rgba(13,148,136,0.15);border-radius:5px;padding:5px 8px;text-align:center;color:var(--teal,#0d9488);font-weight:600">Follower A ✓</div>
+                <div style="flex:1;background:rgba(13,148,136,0.07);border:1px solid rgba(13,148,136,0.15);border-radius:5px;padding:5px 8px;text-align:center;color:var(--teal,#0d9488);font-weight:600">Follower B ✓</div>
+                <div style="flex:1;background:rgba(0,0,0,0.04);border:1px solid var(--border,#e2e8f0);border-radius:5px;padding:5px 8px;text-align:center;color:var(--text-3)">Follower C …</div>
+              </div>
+            </div>
+          </div>
+          <div style="text-align:center;color:var(--text-3);font-size:14px">↓ 多数 Follower 写入成功（N/2 + 1 含 Leader）</div>
+          <!-- 步骤4 -->
+          <div style="display:flex;align-items:stretch;gap:8px">
+            <div style="width:22px;flex-shrink:0;background:#15803d;color:#fff;border-radius:5px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:10px">4</div>
+            <div style="flex:1;background:rgba(21,128,61,0.07);border:1px solid rgba(21,128,61,0.2);border-radius:6px;padding:7px 12px;color:var(--text-2)">
+              Leader <span style="color:#15803d;font-weight:600">提交日志</span>，apply 到状态机，<span style="color:#15803d;font-weight:600">回复客户端成功</span>
+            </div>
+          </div>
+          <div style="text-align:center;color:var(--text-3);font-size:14px">↓</div>
+          <!-- 步骤5 -->
+          <div style="display:flex;align-items:stretch;gap:8px">
+            <div style="width:22px;flex-shrink:0;background:rgba(124,58,237,0.4);color:#fff;border-radius:5px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:10px">5</div>
+            <div style="flex:1;background:rgba(124,58,237,0.05);border:1px solid rgba(124,58,237,0.12);border-radius:6px;padding:7px 12px;color:var(--text-2)">
+              下一次心跳 / AppendEntries 携带 <code style="color:var(--zgc-2,#7c3aed)">leaderCommit</code> 通知 Follower 提交
+            </div>
+          </div>
+        </div>
       </div>
 
       <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">③ 安全性保证</p>
@@ -524,11 +726,7 @@
         <div class="kv-row">
           <span class="kv-key" style="color:#7c3aed">全局唯一</span>
           <span class="kv-val">同一业务场景下 ID 不重复，是基本要求</span>
-    
-      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#7c3aed;background:rgba(0,0,0,0.03)">
-        <strong>面试要点：</strong>Snowflake ID 结构：1 bit 符号位 + 41 bit 时间戳（ms，约 69 年）+ 10 bit 机器 ID + 12 bit 序列号（每 ms 最多 4096 个）。<strong>时钟回拨</strong>是最大风险：需要处理（等待 / 拒绝请求 / 使用备用序列号）。百度 UidGenerator / 美团 Leaf 等均是 Snowflake 的改进版，主要解决时钟回拨和机器 ID 分配问题。号段模式（DB 预取一段 ID）适合对时间无序要求不高的场景。
-      </div>
-    </div>
+        </div>
         <div class="kv-row">
           <span class="kv-key" style="color:#7c3aed">趋势递增</span>
           <span class="kv-val">MySQL B+ Tree 的叶节点顺序写入时性能最优，随机 ID（UUID）导致页分裂，写性能下降</span>
@@ -541,6 +739,9 @@
           <span class="kv-key" style="color:#7c3aed">高可用</span>
           <span class="kv-val">ID 生成服务不能单点，需容灾和降级方案</span>
         </div>
+      </div>
+      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#7c3aed;background:rgba(0,0,0,0.03)">
+        <strong>面试要点：</strong>Snowflake ID 结构：1 bit 符号位 + 41 bit 时间戳（ms，约 69 年）+ 10 bit 机器 ID + 12 bit 序列号（每 ms 最多 4096 个）。<strong>时钟回拨</strong>是最大风险：需要处理（等待 / 拒绝请求 / 使用备用序列号）。百度 UidGenerator / 美团 Leaf 等均是 Snowflake 的改进版，主要解决时钟回拨和机器 ID 分配问题。号段模式（DB 预取一段 ID）适合对时间无序要求不高的场景。
       </div>
 
       <!-- 方案对比表 -->
@@ -560,22 +761,26 @@
 
       <!-- Snowflake 详解 -->
       <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">Snowflake 算法详解</p>
-      <div class="arch-box" style="margin-top:0.5rem">
-        <pre class="arch-pre" style="font-size:0.78rem;line-height:1.8">
-  64 bit long 整数结构：
-
-  ┌─┬─────────────────────────────────────────┬──────────────┬────────────┐
-  │0│          41 位时间戳（ms）                │  10位机器ID  │ 12位序列号 │
-  └─┴─────────────────────────────────────────┴──────────────┴────────────┘
-  符号位                                          ↑               ↑
-                                           5位datacenter    序列号 0~4095
-                                           + 5位workerId
-
-  时间戳基准：2010-11-04 01:42:54 UTC（Twitter 纪元）
-  41位时间戳：可用约 69 年（2^41 ms ≈ 69年）
-  10位机器ID：最多 1024 台机器
-  12位序列号：同一毫秒内最多生成 4096 个 ID
-  → 理论 QPS：1024 × 4096 × 1000 ≈ 42 亿/秒</pre>
+      <div style="padding:16px;background:rgba(124,58,237,0.04);border:1px solid rgba(124,58,237,0.15);border-radius:10px;margin-top:0.5rem;font-size:11px;font-family:var(--fm)">
+        <div style="color:var(--text-2);margin-bottom:10px;font-weight:600">64 bit long 整数结构</div>
+        <!-- 位段条 -->
+        <div style="display:flex;border-radius:6px;overflow:hidden;height:40px;font-size:10px;font-weight:600">
+          <div style="width:20px;flex-shrink:0;background:#6b7280;color:#fff;display:flex;align-items:center;justify-content:center;writing-mode:vertical-rl;font-size:9px">符</div>
+          <div style="flex:41;background:#7c3aed;color:#fff;display:flex;align-items:center;justify-content:center">41 位时间戳（ms）</div>
+          <div style="flex:10;background:#0d9488;color:#fff;display:flex;align-items:center;justify-content:center">10 位机器 ID</div>
+          <div style="flex:12;background:#d97706;color:#fff;display:flex;align-items:center;justify-content:center">12 位序列号</div>
+        </div>
+        <!-- 标注行 -->
+        <div style="display:flex;margin-top:6px;font-size:10px;color:var(--text-3)">
+          <div style="width:20px;flex-shrink:0;text-align:center">0</div>
+          <div style="flex:41;padding-left:4px;color:#7c3aed">可用约 69 年（2⁴¹ ms）<br>基准：Twitter 纪元</div>
+          <div style="flex:10;text-align:center;color:var(--teal,#0d9488)">5位 DC<br>+5位 Worker<br>最多 1024 台</div>
+          <div style="flex:12;text-align:center;color:#d97706">0~4095<br>每 ms 最多<br>4096 个 ID</div>
+        </div>
+        <!-- 理论QPS -->
+        <div style="margin-top:10px;padding:7px 12px;background:rgba(124,58,237,0.07);border-radius:6px;color:var(--text-2)">
+          理论 QPS：<span style="color:#7c3aed;font-weight:600">1024 × 4096 × 1000 ≈ 42 亿/秒</span>
+        </div>
       </div>
 
       <!-- 时钟回拨问题 -->
@@ -601,19 +806,41 @@
 
       <!-- 号段模式 -->
       <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">号段模式（Leaf-segment）</p>
-      <div class="arch-box" style="margin-top:0.5rem">
-        <pre class="arch-pre" style="font-size:0.78rem;line-height:1.8">
-  DB 表：id_alloc(biz_tag, max_id, step)
-
-  1. 应用启动时从 DB 取一个号段：[max_id, max_id + step)
-     UPDATE id_alloc SET max_id = max_id + step WHERE biz_tag = ?
-     step = 1000（每次批量取 1000 个）
-
-  2. 应用在内存中自增分配，用完再取下一号段
-     → DB 压力：QPS 降低 1000 倍
-
-  3. 双 Buffer 优化：当前号段剩余 20% 时，异步预加载下一号段
-     → 消除取号段时的延迟毛刺</pre>
+      <div style="padding:16px;background:rgba(124,58,237,0.04);border:1px solid rgba(124,58,237,0.15);border-radius:10px;margin-top:0.5rem;font-size:11px;font-family:var(--fm)">
+        <!-- DB 表结构 -->
+        <div style="background:rgba(0,0,0,0.04);border:1px solid var(--border,#e2e8f0);border-radius:6px;padding:8px 12px;margin-bottom:10px;color:var(--text-2)">
+          <span style="color:var(--text-3);font-size:10px">DB 表：</span> <code style="color:var(--zgc-2,#7c3aed)">id_alloc(biz_tag, max_id, step)</code>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <!-- 步骤1 -->
+          <div style="display:flex;align-items:stretch;gap:8px">
+            <div style="width:22px;flex-shrink:0;background:#7c3aed;color:#fff;border-radius:5px;display:flex;align-items:center;justify-content:center;font-weight:700">1</div>
+            <div style="flex:1;background:rgba(124,58,237,0.08);border:1px solid rgba(124,58,237,0.2);border-radius:6px;padding:8px 12px;color:var(--text-2);line-height:1.6">
+              <span style="font-weight:600;color:#7c3aed">从 DB 取一个号段</span>：<code style="color:var(--zgc-2,#7c3aed)">UPDATE id_alloc SET max_id = max_id + step WHERE biz_tag = ?</code><br>
+              <span style="color:var(--text-3);font-size:10px">step = 1000，即一次批量取 1000 个，分配范围 [max_id, max_id + step)</span>
+            </div>
+          </div>
+          <div style="text-align:center;color:var(--text-3);font-size:14px">↓ DB 压力降低 1000 倍</div>
+          <!-- 步骤2 -->
+          <div style="display:flex;align-items:stretch;gap:8px">
+            <div style="width:22px;flex-shrink:0;background:#15803d;color:#fff;border-radius:5px;display:flex;align-items:center;justify-content:center;font-weight:700">2</div>
+            <div style="flex:1;background:rgba(21,128,61,0.07);border:1px solid rgba(21,128,61,0.2);border-radius:6px;padding:8px 12px;color:var(--text-2)">
+              <span style="font-weight:600;color:#15803d">内存自增分配</span>：在当前号段内依次分配，用完再取下一号段
+            </div>
+          </div>
+          <div style="text-align:center;color:var(--text-3);font-size:14px">↓ 当前号段剩余 20%</div>
+          <!-- 步骤3 双Buffer -->
+          <div style="display:flex;align-items:stretch;gap:8px">
+            <div style="width:22px;flex-shrink:0;background:#d97706;color:#fff;border-radius:5px;display:flex;align-items:center;justify-content:center;font-weight:700">3</div>
+            <div style="flex:1;background:rgba(217,119,6,0.07);border:1px solid rgba(217,119,6,0.2);border-radius:6px;padding:8px 12px;color:var(--text-2);line-height:1.6">
+              <span style="font-weight:600;color:#d97706">双 Buffer 优化</span>：异步预加载下一号段，消除取号段时的<em>延迟毛刺</em><br>
+              <div style="display:flex;gap:6px;margin-top:6px">
+                <div style="flex:1;text-align:center;background:rgba(124,58,237,0.1);border-radius:5px;padding:5px 8px;color:#7c3aed;font-weight:600">Buffer A（使用中）</div>
+                <div style="flex:1;text-align:center;background:rgba(217,119,6,0.1);border-radius:5px;padding:5px 8px;color:#d97706;font-weight:600">Buffer B（预加载中）</div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -645,41 +872,92 @@
 
       <!-- 令牌桶流程图 -->
       <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">令牌桶算法流程</p>
-      <div class="arch-box" style="margin-top:0.5rem">
-        <pre class="arch-pre" style="font-size:0.78rem;line-height:1.8">
-  ┌──────────────────────────────────────────────────────┐
-  │  令牌生成器：每隔 1/rate 秒放入 1 个令牌               │
-  │  桶容量：burst（最多积累 burst 个令牌）                 │
-  └─────────────────────┬────────────────────────────────┘
-                        │ 按速率持续放令牌
-                        ▼
-                 ┌────────────┐
-                 │   令牌桶   │  容量 = burst
-                 │  ●●●●●○○○ │
-                 └─────┬──────┘
-                       │
-          请求到来 ─────►  令牌充足？
-                             ┌──┴──┐
-                           YES    NO
-                            │      │
-                        获取令牌  丢弃 / 排队等待
-                        通过请求</pre>
+      <div style="padding:16px;background:rgba(124,58,237,0.04);border:1px solid rgba(124,58,237,0.15);border-radius:10px;margin-top:0.5rem;font-size:11px;font-family:var(--fm)">
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <!-- 令牌生成器 -->
+          <div style="background:rgba(124,58,237,0.1);border:1px solid rgba(124,58,237,0.25);border-radius:6px;padding:8px 12px;color:var(--text-2);text-align:center">
+            <span style="font-weight:600;color:#7c3aed">① 令牌生成器</span>：每隔 1/rate 秒放入 1 个令牌（固定速率）
+          </div>
+          <div style="text-align:center;color:var(--text-3);font-size:14px">↓ 持续放入</div>
+          <!-- 令牌桶 -->
+          <div style="background:rgba(13,148,136,0.08);border:2px solid rgba(13,148,136,0.25);border-radius:8px;padding:10px 16px;text-align:center">
+            <div style="font-weight:700;color:var(--teal,#0d9488);margin-bottom:6px">② 令牌桶　容量 = burst</div>
+            <div style="display:flex;gap:3px;justify-content:center;flex-wrap:wrap">
+              <span style="background:#0d9488;width:14px;height:14px;border-radius:50%;display:inline-block"></span>
+              <span style="background:#0d9488;width:14px;height:14px;border-radius:50%;display:inline-block"></span>
+              <span style="background:#0d9488;width:14px;height:14px;border-radius:50%;display:inline-block"></span>
+              <span style="background:#0d9488;width:14px;height:14px;border-radius:50%;display:inline-block"></span>
+              <span style="background:#0d9488;width:14px;height:14px;border-radius:50%;display:inline-block"></span>
+              <span style="background:rgba(13,148,136,0.15);border:1px solid rgba(13,148,136,0.3);width:14px;height:14px;border-radius:50%;display:inline-block"></span>
+              <span style="background:rgba(13,148,136,0.15);border:1px solid rgba(13,148,136,0.3);width:14px;height:14px;border-radius:50%;display:inline-block"></span>
+              <span style="background:rgba(13,148,136,0.15);border:1px solid rgba(13,148,136,0.3);width:14px;height:14px;border-radius:50%;display:inline-block"></span>
+            </div>
+            <div style="font-size:10px;color:var(--text-3);margin-top:4px">● = 可用令牌 &nbsp;○ = 空位（可继续积累）</div>
+          </div>
+          <div style="text-align:center;color:var(--text-3);font-size:14px">↓ 请求到来</div>
+          <!-- 判断 -->
+          <div style="background:rgba(217,119,6,0.07);border:1px solid rgba(217,119,6,0.2);border-radius:6px;padding:8px 12px;text-align:center;color:var(--text-2)">
+            <span style="font-weight:600;color:#d97706">③ 令牌是否充足？</span>
+          </div>
+          <div style="display:flex;gap:8px">
+            <div style="flex:1;background:rgba(21,128,61,0.08);border:1px solid rgba(21,128,61,0.2);border-radius:6px;padding:8px 10px;text-align:center">
+              <div style="font-weight:600;color:#15803d">YES</div>
+              <div style="color:var(--text-2)">获取令牌，通过请求</div>
+            </div>
+            <div style="flex:1;background:rgba(220,38,38,0.06);border:1px solid rgba(220,38,38,0.18);border-radius:6px;padding:8px 10px;text-align:center">
+              <div style="font-weight:600;color:#dc2626">NO</div>
+              <div style="color:var(--text-2)">丢弃 / 排队等待</div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- 熔断状态机 -->
       <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">熔断器状态机</p>
-      <div class="arch-box" style="margin-top:0.5rem">
-        <pre class="arch-pre" style="font-size:0.78rem;line-height:1.8">
-  ┌───────────┐  错误率超阈值   ┌──────────┐
-  │  CLOSED   │ ─────────────► │  OPEN    │
-  │（正常计数）│                │（快速失败）│
-  └───────────┘                └────┬─────┘
-        ▲                           │ 超过等待时间（如 5s）
-        │                           ▼
-        │               ┌──────────────────┐
-        │ 探测成功        │   HALF-OPEN      │
-        └──────────────── │ （放行少量请求探测）│
-          / 失败→OPEN      └──────────────────┘</pre>
+      <div style="padding:16px;background:rgba(124,58,237,0.04);border:1px solid rgba(124,58,237,0.15);border-radius:10px;margin-top:0.5rem;font-size:11px;font-family:var(--fm)">
+        <div style="display:flex;gap:8px;align-items:stretch;flex-wrap:wrap">
+          <!-- CLOSED -->
+          <div style="flex:1;min-width:140px;background:rgba(21,128,61,0.08);border:2px solid rgba(21,128,61,0.3);border-radius:8px;padding:10px 12px;text-align:center">
+            <div style="font-weight:700;font-size:13px;color:#15803d;margin-bottom:4px">CLOSED</div>
+            <div style="color:var(--text-2);line-height:1.6;font-size:10px">正常计数<br>统计失败率</div>
+          </div>
+          <!-- 箭头 CLOSED→OPEN -->
+          <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-width:80px">
+            <div style="font-size:10px;color:#dc2626;font-weight:600;text-align:center">错误率超阈值</div>
+            <div style="color:#dc2626;font-size:18px">→</div>
+          </div>
+          <!-- OPEN -->
+          <div style="flex:1;min-width:140px;background:rgba(220,38,38,0.08);border:2px solid rgba(220,38,38,0.3);border-radius:8px;padding:10px 12px;text-align:center">
+            <div style="font-weight:700;font-size:13px;color:#dc2626;margin-bottom:4px">OPEN</div>
+            <div style="color:var(--text-2);line-height:1.6;font-size:10px">快速失败<br>执行 fallback</div>
+          </div>
+        </div>
+        <!-- 下方：HALF-OPEN 居中 + 双向箭头 -->
+        <div style="display:flex;justify-content:center;margin-top:6px">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+            <!-- CLOSED回来的箭头 -->
+            <div style="display:flex;gap:60px;align-items:flex-end">
+              <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
+                <div style="font-size:10px;color:#15803d;font-weight:600">探测成功 → CLOSED</div>
+                <div style="color:#15803d;font-size:18px">↖</div>
+              </div>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
+                <div style="color:#dc2626;font-size:18px">↗</div>
+                <div style="font-size:10px;color:#dc2626;font-weight:600">失败 → OPEN</div>
+              </div>
+            </div>
+            <!-- HALF-OPEN -->
+            <div style="background:rgba(217,119,6,0.1);border:2px solid rgba(217,119,6,0.35);border-radius:8px;padding:10px 20px;text-align:center">
+              <div style="font-weight:700;font-size:13px;color:#d97706;margin-bottom:4px">HALF-OPEN</div>
+              <div style="color:var(--text-2);line-height:1.6;font-size:10px">放行少量请求探测<br>（如 10%）</div>
+            </div>
+            <!-- 超时进入 -->
+            <div style="display:flex;align-items:center;gap:4px;font-size:10px;color:#d97706">
+              <div style="color:#dc2626;font-size:18px">↑</div>
+              <div style="color:#dc2626;font-weight:600">超过等待时间（如 5s）后从 OPEN 进入</div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- 三种状态说明 -->
@@ -713,61 +991,115 @@
 
       <!-- 传统取模哈希缺陷 -->
       <p class="sub-body" style="margin-top:1rem;font-weight:600;color:var(--text-2)">传统取模哈希的缺陷</p>
-      <div class="arch-box" style="margin-top:0.5rem">
-        <pre class="arch-pre" style="font-size:0.78rem;line-height:1.8">
-  hash(key) % N   →   N 变化时，几乎所有 key 的映射都改变！
-
-  3 个节点：key → hash % 3 = {0, 1, 2}
-  扩容到 4 个节点：key → hash % 4 = {0, 1, 2, 3}
-
-  假设 key 的 hash 值为 7：
-    3 节点：7 % 3 = 1  (Node1)
-    4 节点：7 % 4 = 3  (Node3)  ← 映射完全改变
-
-  结论：N 节点扩/缩时，约 (N-1)/N 的缓存失效，引发缓存雪崩</pre>
+      <div style="padding:16px;background:rgba(124,58,237,0.04);border:1px solid rgba(124,58,237,0.15);border-radius:10px;margin-top:0.5rem;font-size:11px;font-family:var(--fm)">
+        <div style="color:var(--text-2);margin-bottom:10px">当节点数 N 变化时，<code style="color:var(--zgc-2,#7c3aed)">hash(key) % N</code> 几乎所有映射都改变！</div>
+        <div style="display:flex;gap:10px">
+          <!-- 3节点 -->
+          <div style="flex:1;background:rgba(21,128,61,0.07);border:1px solid rgba(21,128,61,0.2);border-radius:8px;padding:10px">
+            <div style="font-weight:600;color:#15803d;margin-bottom:8px;text-align:center">3 个节点</div>
+            <div style="display:flex;gap:4px;justify-content:center;margin-bottom:8px">
+              <div style="background:#15803d;color:#fff;border-radius:5px;padding:4px 8px;font-weight:600;font-size:10px">Node0</div>
+              <div style="background:#15803d;color:#fff;border-radius:5px;padding:4px 8px;font-weight:600;font-size:10px">Node1</div>
+              <div style="background:#15803d;color:#fff;border-radius:5px;padding:4px 8px;font-weight:600;font-size:10px">Node2</div>
+            </div>
+            <div style="background:rgba(21,128,61,0.1);border-radius:5px;padding:6px 8px;color:var(--text-2);line-height:1.6;font-size:10px">
+              key (hash=7)：<br>
+              7 % 3 = <span style="color:#15803d;font-weight:600">1 → Node1</span>
+            </div>
+          </div>
+          <!-- 箭头 -->
+          <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:#dc2626">
+            <div style="font-size:10px;font-weight:600">扩容</div>
+            <div style="font-size:18px">→</div>
+          </div>
+          <!-- 4节点 -->
+          <div style="flex:1;background:rgba(220,38,38,0.06);border:1px solid rgba(220,38,38,0.2);border-radius:8px;padding:10px">
+            <div style="font-weight:600;color:#dc2626;margin-bottom:8px;text-align:center">4 个节点</div>
+            <div style="display:flex;gap:4px;justify-content:center;margin-bottom:8px;flex-wrap:wrap">
+              <div style="background:#6b7280;color:#fff;border-radius:5px;padding:4px 8px;font-weight:600;font-size:10px">Node0</div>
+              <div style="background:#6b7280;color:#fff;border-radius:5px;padding:4px 8px;font-weight:600;font-size:10px">Node1</div>
+              <div style="background:#6b7280;color:#fff;border-radius:5px;padding:4px 8px;font-weight:600;font-size:10px">Node2</div>
+              <div style="background:#dc2626;color:#fff;border-radius:5px;padding:4px 8px;font-weight:600;font-size:10px">Node3 ★</div>
+            </div>
+            <div style="background:rgba(220,38,38,0.08);border-radius:5px;padding:6px 8px;color:var(--text-2);line-height:1.6;font-size:10px">
+              key (hash=7)：<br>
+              7 % 4 = <span style="color:#dc2626;font-weight:600">3 → Node3</span> ← 映射改变！
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:10px;padding:7px 12px;background:rgba(220,38,38,0.06);border:1px solid rgba(220,38,38,0.15);border-radius:6px;color:#dc2626;font-weight:600">
+          结论：N 节点扩/缩时，约 (N-1)/N 的缓存失效 → 引发缓存雪崩
+        </div>
+      </div>
   
       <div class="callout callout-info" style="margin-top:1rem;border-left-color:#7c3aed;background:rgba(0,0,0,0.03)">
         <strong>面试要点：</strong>一致性哈希解决了取模分片的<strong>扩容迁移量大</strong>问题：增减节点时只影响相邻节点的数据，迁移量 ≈ 1/N（N 为节点总数）。<strong>虚拟节点</strong>（每个物理节点映射多个虚拟节点）解决数据倾斜问题，使负载更均匀。实际生产中，Consistent Hash 广泛用于 Redis Cluster 的槽位分配、分库分表路由、Nginx upstream 负载均衡。
       </div>
-    </div>
 
       <!-- 哈希环原理 -->
       <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">一致性哈希环原理</p>
-      <div class="arch-box" style="margin-top:0.5rem">
-        <pre class="arch-pre" style="font-size:0.78rem;line-height:1.8">
-  哈希空间：[0, 2³²-1] 首尾相连形成环
-
-                    0
-          ┌─────────●──────────┐
-          │  NodeA(hash=10) ●  │
-          │                    │
-  2³²-1 ──●                    ●── NodeB(hash=80)
-          │                    │
-          └─────────●──────────┘
-               NodeC(hash=200)
-
-  Key 定位规则：hash(key) 在环上顺时针查找，遇到第一个 Node 即为目标节点
-
-  示例：hash(keyX)=50 → 顺时针找到 NodeB(80) → 存储在 NodeB
-        hash(keyY)=5  → 顺时针找到 NodeA(10) → 存储在 NodeA
-
-  新增/删除节点只影响该节点到前驱节点之间的数据（约 1/N）</pre>
+      <div style="padding:16px;background:rgba(124,58,237,0.04);border:1px solid rgba(124,58,237,0.15);border-radius:10px;margin-top:0.5rem;font-size:11px;font-family:var(--fm)">
+        <div style="color:var(--text-2);margin-bottom:10px">哈希空间 [0, 2³²-1] 首尾相连形成环，节点和 key 均映射到环上：</div>
+        <!-- 线性环示意 -->
+        <div style="position:relative;margin:0 8px 12px 8px">
+          <div style="height:8px;background:linear-gradient(90deg,rgba(124,58,237,0.15),rgba(124,58,237,0.35),rgba(124,58,237,0.15));border-radius:4px;position:relative">
+            <!-- NodeA -->
+            <div style="position:absolute;left:8%;top:-24px;transform:translateX(-50%);background:#7c3aed;color:#fff;border-radius:4px;padding:2px 6px;font-size:10px;font-weight:600;white-space:nowrap">NodeA<br><span style="opacity:0.8;font-weight:400">hash=10</span></div>
+            <div style="position:absolute;left:8%;top:0;width:2px;height:100%;background:#7c3aed"></div>
+            <!-- NodeB -->
+            <div style="position:absolute;left:55%;top:-24px;transform:translateX(-50%);background:#0d9488;color:#fff;border-radius:4px;padding:2px 6px;font-size:10px;font-weight:600;white-space:nowrap">NodeB<br><span style="opacity:0.8;font-weight:400">hash=80</span></div>
+            <div style="position:absolute;left:55%;top:0;width:2px;height:100%;background:#0d9488"></div>
+            <!-- NodeC -->
+            <div style="position:absolute;left:85%;top:-24px;transform:translateX(-50%);background:#d97706;color:#fff;border-radius:4px;padding:2px 6px;font-size:10px;font-weight:600;white-space:nowrap">NodeC<br><span style="opacity:0.8;font-weight:400">hash=200</span></div>
+            <div style="position:absolute;left:85%;top:0;width:2px;height:100%;background:#d97706"></div>
+            <!-- keyX -->
+            <div style="position:absolute;left:36%;bottom:-22px;transform:translateX(-50%);font-size:10px;color:#0d9488;font-weight:600;white-space:nowrap">keyX(50)→NodeB</div>
+            <div style="position:absolute;left:36%;top:0;width:1px;height:100%;background:#0d9488;opacity:0.6;border-left:1px dashed #0d9488"></div>
+            <!-- keyY -->
+            <div style="position:absolute;left:3%;bottom:-22px;transform:translateX(-50%);font-size:10px;color:#7c3aed;font-weight:600;white-space:nowrap">keyY(5)→NodeA</div>
+            <div style="position:absolute;left:3%;top:0;width:1px;height:100%;background:#7c3aed;opacity:0.6;border-left:1px dashed #7c3aed"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-3);margin-top:28px">
+            <span>0</span>
+            <span style="font-size:9px;color:var(--text-3)">顺时针查找，遇到第一个 Node 即为目标</span>
+            <span>2³²-1（→ 0 首尾相连）</span>
+          </div>
+        </div>
+        <div style="padding:7px 12px;background:rgba(124,58,237,0.07);border-radius:6px;color:var(--text-2);margin-top:8px">
+          <span style="font-weight:600;color:#7c3aed">新增/删除节点</span>：只影响该节点到前驱节点之间的数据（约 <span style="color:#7c3aed;font-weight:600">1/N</span>），其余数据无需迁移
+        </div>
       </div>
 
       <!-- 虚拟节点 -->
       <p class="sub-body" style="margin-top:1.2rem;font-weight:600;color:var(--text-2)">虚拟节点解决数据倾斜</p>
-      <div class="arch-box" style="margin-top:0.5rem">
-        <pre class="arch-pre" style="font-size:0.78rem;line-height:1.8">
-  问题：节点少时分布不均，一个节点承载大量数据（数据倾斜）
-
-  解决：每个物理节点映射多个虚拟节点分散在环上
-
-  NodeA → NodeA#1, NodeA#2, NodeA#3 ... NodeA#150
-  NodeB → NodeB#1, NodeB#2, NodeB#3 ... NodeB#150
-  NodeC → NodeC#1, NodeC#2, NodeC#3 ... NodeC#150
-
-  总共 450 个虚拟节点均匀分布在环上
-  → 每个物理节点平均承担约 1/3 的数据，负载均衡</pre>
+      <div style="padding:16px;background:rgba(124,58,237,0.04);border:1px solid rgba(124,58,237,0.15);border-radius:10px;margin-top:0.5rem;font-size:11px;font-family:var(--fm)">
+        <div style="color:var(--text-2);margin-bottom:10px"><span style="color:#dc2626;font-weight:600">问题：</span>节点少时分布不均，部分节点承载大量数据（数据倾斜）<br><span style="color:#15803d;font-weight:600">解决：</span>每个物理节点映射多个虚拟节点，分散在环上</div>
+        <!-- 映射表格 -->
+        <div style="border:1px solid var(--border,#e2e8f0);border-radius:8px;overflow:hidden">
+          <div style="display:flex;background:rgba(124,58,237,0.08);font-weight:600;color:var(--text-2)">
+            <div style="flex:1;padding:7px 12px;border-right:1px solid var(--border,#e2e8f0)">物理节点</div>
+            <div style="flex:3;padding:7px 12px">虚拟节点（各 150 个）</div>
+            <div style="flex:1;padding:7px 12px;border-left:1px solid var(--border,#e2e8f0);text-align:center">数据占比</div>
+          </div>
+          <div style="display:flex;border-top:1px solid var(--border,#e2e8f0)">
+            <div style="flex:1;padding:7px 12px;border-right:1px solid var(--border,#e2e8f0);font-weight:600;color:#7c3aed">NodeA</div>
+            <div style="flex:3;padding:7px 12px;color:var(--text-3);font-size:10px">NodeA#1, NodeA#2, NodeA#3 … NodeA#150</div>
+            <div style="flex:1;padding:7px 12px;border-left:1px solid var(--border,#e2e8f0);text-align:center;color:#7c3aed;font-weight:600">≈ 1/3</div>
+          </div>
+          <div style="display:flex;border-top:1px solid var(--border,#e2e8f0)">
+            <div style="flex:1;padding:7px 12px;border-right:1px solid var(--border,#e2e8f0);font-weight:600;color:var(--teal,#0d9488)">NodeB</div>
+            <div style="flex:3;padding:7px 12px;color:var(--text-3);font-size:10px">NodeB#1, NodeB#2, NodeB#3 … NodeB#150</div>
+            <div style="flex:1;padding:7px 12px;border-left:1px solid var(--border,#e2e8f0);text-align:center;color:var(--teal,#0d9488);font-weight:600">≈ 1/3</div>
+          </div>
+          <div style="display:flex;border-top:1px solid var(--border,#e2e8f0)">
+            <div style="flex:1;padding:7px 12px;border-right:1px solid var(--border,#e2e8f0);font-weight:600;color:#d97706">NodeC</div>
+            <div style="flex:3;padding:7px 12px;color:var(--text-3);font-size:10px">NodeC#1, NodeC#2, NodeC#3 … NodeC#150</div>
+            <div style="flex:1;padding:7px 12px;border-left:1px solid var(--border,#e2e8f0);text-align:center;color:#d97706;font-weight:600">≈ 1/3</div>
+          </div>
+        </div>
+        <div style="margin-top:10px;padding:7px 12px;background:rgba(21,128,61,0.07);border-radius:6px;color:var(--text-2)">
+          总共 <span style="color:#15803d;font-weight:600">450</span> 个虚拟节点均匀分布在环上 → 每个物理节点平均承担约 <span style="color:#15803d;font-weight:600">1/3</span> 的数据，负载均衡
+        </div>
       </div>
 
       <!-- 应用场景 -->
@@ -787,360 +1119,18 @@
       </div>
     </div>
 
-    <!-- ── 8. 面试题 ── -->
-    <div class="subsection" id="dist-qa">
-      <h3 class="sub-title">
-        <span class="dot" style="background:#7c3aed;box-shadow:0 0 0 3px rgba(124,58,237,0.15)"></span>
-        分布式高频面试题
-      </h3>
-      <div class="qa-list">
+  </section>
 
-        <div class="qa-item" id="q-dist-1">
-          <div class="qa-question" onclick="toggleQA('q-dist-1')">
-            <span class="qa-num" style="background:rgba(124,58,237,0.1);color:#7c3aed;border:1px solid rgba(124,58,237,0.25)">Q1</span>
-            <span class="qa-q-text">CAP 理论是什么？分布式系统为什么不能同时满足三者？</span>
-            <span class="qa-toggle">+</span>
-          </div>
-          <div class="qa-answer"><div class="qa-answer-inner">
-            <ul>
-              <li><strong>C（一致性）</strong>：所有节点同一时刻读到相同数据；<strong>A（可用性）</strong>：每个请求都能收到响应；<strong>P（分区容忍性）</strong>：网络分区时系统仍可运行。</li>
-              <li><em>P 在分布式系统中不可放弃</em>——网络故障是客观存在的，真正的选择只在 C 和 A 之间。</li>
-              <li><strong>网络分区时</strong>：选 C（CP）则拒绝写请求直到节点同步，牺牲可用性；选 A（AP）则立即返回可能过期的数据，牺牲一致性。</li>
-              <li>典型 CP：ZooKeeper、etcd（选主期间不可用）；典型 AP：Eureka（自我保护，不剔除实例）、Cassandra。</li>
-            </ul>
-          </div></div>
-        </div>
-        <div class="qa-item" id="q-dist-2">
-          <div class="qa-question" onclick="toggleQA('q-dist-2')">
-            <span class="qa-num" style="background:rgba(124,58,237,0.1);color:#7c3aed;border:1px solid rgba(124,58,237,0.25)">Q2</span>
-            <span class="qa-q-text">BASE 理论是什么？和 ACID 有什么区别？</span>
-            <span class="qa-toggle">+</span>
-          </div>
-          <div class="qa-answer"><div class="qa-answer-inner">
-            <ul>
-              <li><strong>BA（基本可用）</strong>：系统故障时允许降级，核心功能仍可用（如双十一限流降级、展示兜底数据）。</li>
-              <li><strong>S（软状态）</strong>：允许中间状态存在，节点间数据同步有延迟，不要求实时一致。</li>
-              <li><strong>E（最终一致性）</strong>：无新更新时，经过一段时间所有副本最终达到一致。</li>
-              <li>与 ACID 对比：ACID 强调<em>强一致性</em>（事务内立即一致），适合金融/订单；BASE 强调<em>高可用优先</em>，适合社交/推荐等高并发场景。</li>
-              <li>BASE 不是"随便不一致"，需通过<strong>对账</strong>、<strong>重试补偿</strong>、<strong>版本号</strong>等机制保证最终收敛到一致。</li>
-            </ul>
-          </div></div>
-        </div>
-        <div class="qa-item" id="q-dist-3">
-          <div class="qa-question" onclick="toggleQA('q-dist-3')">
-            <span class="qa-num" style="background:rgba(124,58,237,0.1);color:#7c3aed;border:1px solid rgba(124,58,237,0.25)">Q3</span>
-            <span class="qa-q-text">分布式事务有哪些解决方案？各自适用什么场景？</span>
-            <span class="qa-toggle">+</span>
-          </div>
-          <div class="qa-answer"><div class="qa-answer-inner">
-            <ul>
-              <li><strong>2PC</strong>：强一致，性能差（同步阻塞），业务侵入低，适合 DB 层 XA 协议；缺点是单点故障和数据不一致风险。</li>
-              <li><strong>TCC</strong>（Try-Confirm-Cancel）：最终一致，性能好，<em>业务侵入性强</em>（需实现 3 个接口）；适合资金、库存等核心业务；需处理空回滚/悬挂/幂等三大异常。</li>
-              <li><strong>Saga</strong>：将长事务拆成本地事务序列，每步立即提交，失败时逆向补偿；适合订单、物流等长流程业务。</li>
-              <li><strong>本地消息表</strong>：业务操作与消息写入同一本地事务，定时任务扫描发送 MQ；<em>对业务侵入最小</em>，适合跨服务异步通知。</li>
-              <li><strong>事务消息（RocketMQ）</strong>：生产者发送半消息，本地事务执行后提交/回滚，Broker 定期回查；适合生产者与消费者解耦场景。</li>
-            </ul>
-          </div></div>
-        </div>
-        <div class="qa-item" id="q-dist-4">
-          <div class="qa-question" onclick="toggleQA('q-dist-4')">
-            <span class="qa-num" style="background:rgba(124,58,237,0.1);color:#7c3aed;border:1px solid rgba(124,58,237,0.25)">Q4</span>
-            <span class="qa-q-text">2PC 的原理是什么？有哪些缺陷？</span>
-            <span class="qa-toggle">+</span>
-          </div>
-          <div class="qa-answer"><div class="qa-answer-inner">
-            <ul>
-              <li><strong>同步阻塞</strong>：Prepare 阶段参与者持有锁等待协调者指令，高并发下锁竞争严重，吞吐量极低。</li>
-              <li><strong>单点故障</strong>：协调者宕机后，参与者将永久阻塞并持锁无法释放，系统僵死。</li>
-              <li><strong>数据不一致</strong>：Phase 2 协调者发出部分 Commit 后宕机，已提交和未提交的参与者数据出现分歧。</li>
-              <li><strong>过于保守</strong>：任一参与者返回 No，整个事务回滚；网络抖动可能导致误判，降低成功率。</li>
-              <li><em>3PC</em> 通过增加 CanCommit 阶段和超时机制部分缓解单点问题，但实现复杂，生产中极少使用。</li>
-            </ul>
-          </div></div>
-        </div>
-        <div class="qa-item" id="q-dist-5">
-          <div class="qa-question" onclick="toggleQA('q-dist-5')">
-            <span class="qa-num" style="background:rgba(124,58,237,0.1);color:#7c3aed;border:1px solid rgba(124,58,237,0.25)">Q5</span>
-            <span class="qa-q-text">TCC 的原理是什么？和 2PC 相比有什么优缺点？</span>
-            <span class="qa-toggle">+</span>
-          </div>
-          <div class="qa-answer"><div class="qa-answer-inner">
-            <ul>
-              <li><strong>无全局锁</strong>：TCC 的 Try 阶段只预留资源不加全局 DB 锁，Confirm/Cancel 完成实际提交，<em>并发性能远优于 2PC</em>。</li>
-              <li><strong>业务侵入性</strong>：TCC 需要为每个服务实现 Try/Confirm/Cancel 三个接口，开发成本高；2PC 由 DB 层（XA 协议）自动处理，对业务透明。</li>
-              <li><strong>三大异常必须处理</strong>：
-                <ul>
-                  <li><strong>空回滚</strong>：Try 未收到（网络超时），Cancel 先到达，需判断 Try 是否执行过再决定是否回滚</li>
-                  <li><strong>悬挂</strong>：Cancel 先执行，Try 才到达，需拒绝后来的 Try（事务已结束）</li>
-                  <li><strong>幂等</strong>：Confirm/Cancel 网络重试，需保证重复执行结果相同</li>
-                </ul>
-              </li>
-              <li>实践中推荐用 <strong>Seata TCC 模式</strong>，框架层处理幂等和空回滚，减少手动实现负担。</li>
-            </ul>
-          </div></div>
-        </div>
-        <div class="qa-item" id="q-dist-6">
-          <div class="qa-question" onclick="toggleQA('q-dist-6')">
-            <span class="qa-num" style="background:rgba(124,58,237,0.1);color:#7c3aed;border:1px solid rgba(124,58,237,0.25)">Q6</span>
-            <span class="qa-q-text">如何用 Redis 实现分布式锁？有哪些常见问题？</span>
-            <span class="qa-toggle">+</span>
-          </div>
-          <div class="qa-answer"><div class="qa-answer-inner">
-            <ul>
-              <li><strong>加锁</strong>：<code>SET lock_key ${uuid} NX PX 30000</code>——NX 保证只有一个客户端能设置成功，PX 设置过期时间防止死锁，value 存 UUID 标识持锁方。</li>
-              <li><strong>释放锁</strong>：必须用 Lua 脚本原子执行"判断 value 相等 + DEL"，<em>不能直接 DEL</em>——否则可能误删其他线程的锁（A 锁过期，B 获锁，A 此时 DEL 会删 B 的锁）。</li>
-              <li><strong>Redisson</strong>：封装了 SET NX + Lua 删除 + 看门狗续期，支持可重入锁、公平锁、读写锁，生产推荐使用。</li>
-              <li><strong>常见问题</strong>：锁过期业务未完成（看门狗解决）、主从切换锁丢失（RedLock 解决）、无法重入（Redisson 用 hash 结构记录重入次数）。</li>
-            </ul>
-          </div></div>
-        </div>
-        <div class="qa-item" id="q-dist-7">
-          <div class="qa-question" onclick="toggleQA('q-dist-7')">
-            <span class="qa-num" style="background:rgba(124,58,237,0.1);color:#7c3aed;border:1px solid rgba(124,58,237,0.25)">Q7</span>
-            <span class="qa-q-text">Redisson 的看门狗机制是什么？如何防止锁提前过期？</span>
-            <span class="qa-toggle">+</span>
-          </div>
-          <div class="qa-answer"><div class="qa-answer-inner">
-            <ul>
-              <li><strong>看门狗（WatchDog）</strong>：调用 <code>lock()</code> 时如果不指定 leaseTime，Redisson 默认 leaseTime = 30s，同时启动后台 WatchDog 线程。</li>
-              <li><strong>续期机制</strong>：WatchDog 每隔 <em>leaseTime / 3（默认 10s）</em> 检查锁是否仍被持有，若是则重置过期时间为 30s，防止业务未完成时锁自动过期。</li>
-              <li><strong>停止续期</strong>：调用 <code>unlock()</code> 后，Redisson 删除锁并取消 WatchDog 定时任务，不再续期。</li>
-              <li><strong>注意</strong>：若指定了 leaseTime（如 <code>lock(10, TimeUnit.SECONDS)</code>），看门狗<em>不会启动</em>，锁在指定时间后自动过期，需自行估算业务执行时间。</li>
-              <li>JVM 进程崩溃时 WatchDog 线程也消失，锁会在 30s 后自动过期，不会死锁。</li>
-            </ul>
-          </div></div>
-        </div>
-        <div class="qa-item" id="q-dist-8">
-          <div class="qa-question" onclick="toggleQA('q-dist-8')">
-            <span class="qa-num" style="background:rgba(124,58,237,0.1);color:#7c3aed;border:1px solid rgba(124,58,237,0.25)">Q8</span>
-            <span class="qa-q-text">ZooKeeper 如何实现分布式锁？和 Redis 分布式锁有什么区别？</span>
-            <span class="qa-toggle">+</span>
-          </div>
-          <div class="qa-answer"><div class="qa-answer-inner">
-            <ul>
-              <li><strong>实现步骤</strong>：① 在 <code>/locks/</code> 下创建<strong>临时顺序节点</strong>；② 获取所有子节点并排序；③ 若自己是序号最小的节点则获锁；④ 否则 Watch 前一个节点（非 Watch 所有节点）。</li>
-              <li><strong>自动释放</strong>：持锁方宕机后会话断开，ZK 自动删除临时节点，触发后继节点的 Watch，<em>不会死锁</em>。</li>
-              <li><strong>羊群效应优化</strong>：Watch 前驱节点而非所有节点，避免节点释放时唤醒所有等待者（N-1 次无效唤醒）。</li>
-              <li>Redis vs ZK 对比：Redis 性能高（AP），ZK 可靠性强（CP）；Redis 主从切换可能锁丢失，ZK 临时节点无此问题；ZK 吞吐低，不适合高并发锁竞争。</li>
-            </ul>
-          </div></div>
-        </div>
-        <div class="qa-item" id="q-dist-9">
-          <div class="qa-question" onclick="toggleQA('q-dist-9')">
-            <span class="qa-num" style="background:rgba(124,58,237,0.1);color:#7c3aed;border:1px solid rgba(124,58,237,0.25)">Q9</span>
-            <span class="qa-q-text">Nacos、Eureka、ZooKeeper 作为注册中心有什么区别？如何选型？</span>
-            <span class="qa-toggle">+</span>
-          </div>
-          <div class="qa-answer"><div class="qa-answer-inner">
-            <ul>
-              <li><strong>Eureka（AP）</strong>：Spring Cloud 早期标配，自我保护机制（15min 内心跳丢失 &gt;15% 不剔除）保障可用性，但<em>已停止维护</em>，新项目不推荐。</li>
-              <li><strong>Nacos（AP/CP 可切换）</strong>：阿里开源，服务注册默认 AP（高可用），配置中心用 CP（强一致）；支持推送 + 健康检查，生态完善，<em>国内首选</em>。</li>
-              <li><strong>ZooKeeper（CP）</strong>：Leader 选举期间服务不可用，服务发现场景下可用性差，适合做分布式锁/配置协调而非注册中心。</li>
-              <li><strong>Consul（CP）</strong>：支持多数据中心，内置 DNS 服务发现，适合云原生和 K8s 场景。</li>
-              <li>选型建议：<em>国内 Spring Cloud 项目首选 Nacos</em>；K8s 场景可用 Consul 或直接使用 etcd；强一致配置管理用 etcd/ZK。</li>
-            </ul>
-          </div></div>
-        </div>
-        <div class="qa-item" id="q-dist-10">
-          <div class="qa-question" onclick="toggleQA('q-dist-10')">
-            <span class="qa-num" style="background:rgba(124,58,237,0.1);color:#7c3aed;border:1px solid rgba(124,58,237,0.25)">Q10</span>
-            <span class="qa-q-text">Snowflake 算法的原理是什么？有哪些缺陷？</span>
-            <span class="qa-toggle">+</span>
-          </div>
-          <div class="qa-answer"><div class="qa-answer-inner">
-            <ul>
-              <li><strong>结构（64 bit）</strong>：1位符号位（固定0）+ 41位时间戳（ms，可用约69年）+ 10位机器ID（5位datacenter + 5位workerId，最多1024台）+ 12位序列号（同毫秒内最多4096个ID）。</li>
-              <li><strong>特点</strong>：本地生成无网络依赖，每毫秒可生成 4096 × 1024 ≈ 420万个 ID；趋势递增（时间戳在高位），对 B+树友好。</li>
-              <li><strong>时钟回拨问题</strong>：NTP 校正导致系统时间倒退，若直接使用当前时间戳会生成重复 ID。</li>
-              <li><strong>解决方案</strong>：① 回拨量小（&lt;5ms）时 spin 等待追上；② 回拨量大时抛异常由上层重试；③ 美团 Leaf 借用扩展位标记回拨，继续生成不重复 ID。</li>
-              <li>实践中需保证<strong>机器ID不重复</strong>，可从 ZK/DB 动态分配；K8s 环境中 Pod 重启可能导致机器ID复用，需额外处理。</li>
-            </ul>
-          </div></div>
-        </div>
-        <div class="qa-item" id="q-dist-11">
-          <div class="qa-question" onclick="toggleQA('q-dist-11')">
-            <span class="qa-num" style="background:rgba(124,58,237,0.1);color:#7c3aed;border:1px solid rgba(124,58,237,0.25)">Q11</span>
-            <span class="qa-q-text">如何实现接口限流？令牌桶和漏桶算法有什么区别？</span>
-            <span class="qa-toggle">+</span>
-          </div>
-          <div class="qa-answer"><div class="qa-answer-inner">
-            <ul>
-              <li><strong>令牌桶</strong>：以固定速率向桶中放令牌（容量=burst），请求消费令牌；桶满时令牌积累，可应对<em>突发流量</em>（允许瞬间通过 burst 个请求）。适合：API 限流、允许短暂突发的场景（Guava RateLimiter）。</li>
-              <li><strong>漏桶</strong>：请求进入漏桶排队，桶以固定速率漏出（处理）；桶满则丢弃新请求，<em>强制平滑输出</em>，无论输入多大，输出速率恒定。适合：保护下游固定处理速率的服务。</li>
-              <li>核心区别：令牌桶<em>允许突发</em>（积累令牌），漏桶<em>绝对平滑</em>（固定输出）；接口保护通常用令牌桶（兼顾弹性和保护），消息队列消费速率控制用漏桶。</li>
-              <li>固定窗口问题：窗口边界处可能放过双倍流量（前一窗口末尾 + 后一窗口开头）；<strong>滑动窗口</strong>通过细分子窗口解决此问题，Sentinel 默认使用。</li>
-            </ul>
-          </div></div>
-        </div>
-        <div class="qa-item" id="q-dist-12">
-          <div class="qa-question" onclick="toggleQA('q-dist-12')">
-            <span class="qa-num" style="background:rgba(124,58,237,0.1);color:#7c3aed;border:1px solid rgba(124,58,237,0.25)">Q12</span>
-            <span class="qa-q-text">什么是服务熔断？熔断器的三种状态是什么？</span>
-            <span class="qa-toggle">+</span>
-          </div>
-          <div class="qa-answer"><div class="qa-answer-inner">
-            <ul>
-              <li><strong>CLOSED（关闭）</strong>：正常工作状态，请求正常通过，同时统计最近时间窗口内的成功/失败率；当失败率超过阈值（如50%）或慢调用比例过高时，切换到 OPEN。</li>
-              <li><strong>OPEN（打开）</strong>：熔断打开，所有请求<em>直接快速失败</em>（执行 fallback 逻辑），不再调用下游，防止级联雪崩；持续一段时间（如5秒）后自动进入 HALF-OPEN。</li>
-              <li><strong>HALF-OPEN（半开）</strong>：探测恢复阶段，放行少量请求（如10%）到下游；若成功率达标则恢复 CLOSED，若仍有大量失败则回到 OPEN。</li>
-              <li>熔断的意义：下游服务故障时快速失败，避免请求堆积耗尽线程池资源，防止<em>级联雪崩</em>（一个服务故障拖垮整个调用链）。</li>
-              <li><strong>Sentinel</strong> vs <strong>Resilience4j</strong>：Sentinel 适合国内微服务，规则配置丰富；Resilience4j 轻量，适合 Spring Boot 项目，两者均支持三状态熔断器。</li>
-            </ul>
-          </div></div>
-        </div>
-        <div class="qa-item" id="q-dist-13">
-          <div class="qa-question" onclick="toggleQA('q-dist-13')">
-            <span class="qa-num" style="background:rgba(124,58,237,0.1);color:#7c3aed;border:1px solid rgba(124,58,237,0.25)">Q13</span>
-            <span class="qa-q-text">一致性哈希算法是什么？如何解决数据倾斜问题？</span>
-            <span class="qa-toggle">+</span>
-          </div>
-          <div class="qa-answer"><div class="qa-answer-inner">
-            <ul>
-              <li><strong>哈希环</strong>：将 [0, 2³²-1] 的哈希空间首尾相连构成环，节点和 key 都映射到环上；key 沿<em>顺时针方向</em>找到第一个节点即为目标节点。</li>
-              <li><strong>优势</strong>：新增/删除节点只影响该节点到前驱节点之间的 key（约 1/N），其余 key 映射不变，<em>极大减少缓存失效范围</em>（传统取模则约 (N-1)/N 失效）。</li>
-              <li><strong>数据倾斜问题</strong>：节点少时分布不均，某节点可能承载大量数据；解决方案：<strong>虚拟节点</strong>——每个物理节点映射 150+ 虚拟节点均匀散布在环上，负载均衡。</li>
-              <li>应用场景：Redis Cluster（16384槽的变种实现）、Memcached ketama 算法、Nginx 一致性哈希负载均衡、Dubbo 集群路由。</li>
-            </ul>
-          </div></div>
-        </div>
-        <div class="qa-item" id="q-dist-14">
-          <div class="qa-question" onclick="toggleQA('q-dist-14')">
-            <span class="qa-num" style="background:rgba(124,58,237,0.1);color:#7c3aed;border:1px solid rgba(124,58,237,0.25)">Q14</span>
-            <span class="qa-q-text">分布式系统中如何保证接口幂等性？</span>
-            <span class="qa-toggle">+</span>
-          </div>
-          <div class="qa-answer"><div class="qa-answer-inner">
-            <ul>
-              <li><strong>唯一请求 ID</strong>：客户端生成全局唯一 requestId，服务端查 Redis/DB 判断是否已处理；已处理则直接返回上次结果。适合：支付、下单。</li>
-              <li><strong>Token 机制</strong>：请求前先获取一次性 Token（存 Redis），提交时携带 Token，服务端原子判断+删除 Token（Lua）；Token 不存在则拒绝，防止表单重复提交。</li>
-              <li><strong>数据库唯一索引</strong>：在业务唯一字段（如 order_no）上建唯一索引，重复插入抛 DuplicateKeyException 并捕获返回成功。适合写入类幂等。</li>
-              <li><strong>状态机</strong>：通过状态流转（如 PENDING→PAID）保证幂等，已流转则不再重复处理；<code>UPDATE ... WHERE status='PENDING'</code> 乐观锁控制。</li>
-              <li><strong>乐观锁版本号</strong>：更新时携带 version，<code>UPDATE ... WHERE id=? AND version=?</code>，并发更新时只有一个成功。</li>
-            </ul>
-          </div></div>
-        </div>
-        <div class="qa-item" id="q-dist-15">
-          <div class="qa-question" onclick="toggleQA('q-dist-15')">
-            <span class="qa-num" style="background:rgba(124,58,237,0.1);color:#7c3aed;border:1px solid rgba(124,58,237,0.25)">Q15</span>
-            <span class="qa-q-text">什么是分布式链路追踪？TraceId 如何实现全链路透传？</span>
-            <span class="qa-toggle">+</span>
-          </div>
-          <div class="qa-answer"><div class="qa-answer-inner">
-            <ul>
-              <li><strong>核心概念</strong>：<strong>TraceId</strong> 标识整条请求链路（全局唯一），<strong>SpanId</strong> 标识链路中的单个操作（父子关系组成调用树），一个 Trace 包含多个 Span。</li>
-              <li><strong>MDC 透传</strong>：利用 <code>MDC.put("traceId", traceId)</code> 将 TraceId 存入线程本地变量，日志框架自动打印；跨线程需手动传递（线程池场景用 <code>TransmittableThreadLocal</code>）。</li>
-              <li><strong>跨服务透传</strong>：HTTP 调用时将 TraceId 放入请求头（如 <code>X-Trace-Id</code>），下游服务通过拦截器/Filter 提取并放入 MDC；MQ 场景放入消息属性。</li>
-              <li><strong>Skywalking</strong>：字节码增强（Java Agent），<em>无侵入</em>，自动采集 TraceId/SpanId 并上报；Zipkin 需要业务代码集成（Spring Cloud Sleuth）。</li>
-              <li>链路追踪解决<em>分布式系统下日志分散</em>的问题，结合 ELK/Jaeger 可以按 TraceId 聚合完整调用链，快速定位性能瓶颈和错误根因。</li>
-            </ul>
-          </div></div>
-        </div>
-        <div class="qa-item" id="q-dist-16">
-          <div class="qa-question" onclick="toggleQA('q-dist-16')">
-            <span class="qa-num" style="background:rgba(124,58,237,0.1);color:#7c3aed;border:1px solid rgba(124,58,237,0.25)">Q16</span>
-            <span class="qa-q-text">Raft 算法的 Leader 选举和日志复制流程是什么？和 Paxos 有什么区别？</span>
-            <span class="qa-toggle">+</span>
-          </div>
-          <div class="qa-answer"><div class="qa-answer-inner">
-            <p><strong>Leader 选举（三步）：</strong></p>
-            <ol style="margin:0.4rem 0 0.4rem 1.2rem;line-height:1.9">
-              <li>Follower 超过 Election Timeout（随机 150-300ms）未收到心跳，转为 Candidate，term++，先投自己一票</li>
-              <li>并发广播 RequestVote RPC，携带自身最后日志的 (index, term) 用于比较日志新旧</li>
-              <li>获多数票（>N/2）成为 Leader，立即广播心跳；否则随机等待后重试</li>
-            </ol>
-            <p><strong>投票安全规则：</strong>只投给日志"至少一样新"的 Candidate——先比 term，再比 index。确保当选 Leader 一定包含所有已提交日志。</p>
-            <p><strong>日志复制（四步）：</strong></p>
-            <ol style="margin:0.4rem 0 0.4rem 1.2rem;line-height:1.9">
-              <li>写请求到达 Leader，追加到本地日志（未提交）</li>
-              <li>并发发 AppendEntries RPC 给所有 Follower，携带日志条目和前驱日志的 (index, term) 做一致性检查</li>
-              <li>多数 Follower 写入成功后，Leader 提交（apply 到状态机），回复客户端</li>
-              <li>下次心跳通知 Follower 更新 commitIndex，Follower 提交</li>
-            </ol>
-            <p><strong>Raft vs Paxos：</strong></p>
-            <ul>
-              <li><strong>Paxos</strong>：解决单值共识，理论严谨，但 Multi-Paxos 没有规范工程实现，各家（Chubby、Spanner）做了大量私有扩展，实现复杂、难以理解和验证正确性</li>
-              <li><strong>Raft</strong>：直接面向日志复制，Leader 唯一使写路径清晰；工程实现有参考规范（etcd、TiKV、Nacos CP、CockroachDB、Consul 均采用）；代价是 Leader 单点成为写瓶颈，可通过 Multi-Raft（多个 Raft 组分片）缓解</li>
-              <li><strong>面试答法：</strong>Raft 本质是 Multi-Paxos 的工程化简化版——限制了 Leader 的唯一性和日志只能从 Leader 流向 Follower，牺牲了一点灵活性，换取可理解性和实现确定性</li>
-            </ul>
-          </div></div>
-        </div>
-        <div class="qa-item practical" id="q-dist-p1">
-          <div class="qa-question" onclick="toggleQA('q-dist-p1')">
-            <span class="qa-num">⚡ 实战</span>
-            <span class="qa-q-text">Redisson 分布式锁续期失败导致业务异常，怎么排查？</span>
-            <span class="qa-toggle">+</span>
-          </div>
-          <div class="qa-answer"><div class="qa-answer-inner">
-            <p><strong>一、Redisson Watchdog 机制回顾</strong></p>
-            <p>Redisson 的 <code>RLock</code> 默认使用 watchdog 自动续期机制：加锁时如果未指定 <code>leaseTime</code>，锁超时时间为 <strong>30 秒</strong>（由 <code>lockWatchdogTimeout</code> 配置），后台 watchdog 线程每隔 <strong>lockWatchdogTimeout / 3 = 10 秒</strong> 执行一次续期操作（通过 Lua 脚本将 Redis 中锁的 TTL 重置为 30s）。只要持有锁的线程还活着，锁就不会过期释放。</p>
-            <p>关键源码路径：<code>RedissonLock#scheduleRenewal()</code> → 注册 <code>Timeout</code> 任务 → <code>renewExpiration()</code> 执行 Lua 续期脚本。如果客户端与 Redis 之间连接断开，watchdog 无法续期，锁将在 30s 后自动过期，其他客户端可以获取锁——这是导致业务异常的核心场景。</p>
-            <p><strong>二、续期失败常见原因</strong></p>
-            <ul>
-              <li><strong>Redis 节点宕机 / 网络分区</strong>：Redis 主节点不可达，watchdog 的续期请求无法送达。主从切换期间（Sentinel 故障转移通常 5-15s），锁的 key 可能尚未同步到从节点，新主节点上锁不存在，续期直接失败。</li>
-              <li><strong>JVM GC 停顿（STW）</strong>：Full GC 或长时间 Young GC（如大堆内存 + 大量老年代对象）导致应用线程全部暂停，watchdog 续期任务无法按时执行。可通过 <code>-Xlog:gc*:file=gc.log</code>（JDK11+）或 <code>-XX:+PrintGCDetails</code>（JDK8）查看 GC 停顿时长。如果 STW 超过 10s，续期窗口被错过。</li>
-              <li><strong>应用重启 / OOM Kill</strong>：进程异常退出后 watchdog 线程随之终止，锁在 30s 后自动过期。重启后新实例无法感知旧锁的存在，可能导致并发问题。</li>
-              <li><strong>Redis 慢查询阻塞</strong>：如果 Redis 单线程被慢命令（如 <code>KEYS *</code>、大 key 操作）阻塞，续期的 <code>PEXPIRE</code> 命令排队等待，可能超时。</li>
-            </ul>
-            <p><strong>三、排查步骤与命令</strong></p>
-            <ul>
-              <li><strong>检查 Redis 连接状态</strong>：
-                <code>redis-cli info clients</code> 查看 connected_clients 是否骤降；
-                <code>redis-cli slowlog get 20</code> 查看近期慢查询，确认是否有阻塞续期的慢命令；
-                <code>redis-cli info replication</code> 确认主从同步状态和 offset 差距。</li>
-              <li><strong>检查 GC 日志</strong>：分析 GC 日志中是否有超过数秒的 STW 停顿。使用 <code>jstat -gcutil &lt;pid&gt; 1000</code> 实时监控，或用 GCEasy（gceasy.io）上传日志可视化分析。重点关注 Full GC 频率和耗时。</li>
-              <li><strong>确认锁参数配置</strong>：检查代码中 <code>tryLock(waitTime, leaseTime, unit)</code> 的设置。如果设置了 <code>leaseTime</code>（如 10s），则 watchdog <strong>不会启动</strong>，锁到期自动释放——这是最常见的配置错误。正确做法：不传 <code>leaseTime</code> 或传入 -1 让 watchdog 生效。</li>
-              <li><strong>查看 Redisson 日志</strong>：Redisson 使用 <code>org.redisson</code> 包下的 logger，开启 DEBUG 级别可看到续期任务的执行情况：
-                <code>logback.xml: &lt;logger name="org.redisson" level="DEBUG"/&gt;</code></li>
-            </ul>
-            <p><strong>四、解决方案</strong></p>
-            <ul>
-              <li><strong>tryLock 超时兜底</strong>：始终使用 <code>tryLock(waitTime, TimeUnit)</code> 而非 <code>lock()</code>，设置合理的等待时间避免无限阻塞。捕获返回 false 的情况走降级逻辑。</li>
-              <li><strong>RedLock 多节点部署</strong>：Redisson 提供 <code>RedissonRedLock</code>，在 N 个独立 Redis 节点上加锁，超过 N/2+1 个节点加锁成功才算成功。但 Martin Kleppmann 与 Antirez 对此有过经典争论——RedLock 在时钟跳跃场景下仍不安全，不适合强一致性场景。</li>
-              <li><strong>关键业务降级方案</strong>：对资金类、库存扣减等核心操作，使用 <strong>数据库乐观锁</strong>（<code>UPDATE stock SET count=count-1 WHERE id=? AND count&gt;0</code>）或 <strong>ZooKeeper 临时有序节点锁</strong>（Curator <code>InterProcessMutex</code>）作为降级，ZK 基于会话心跳检测，不存在续期问题。</li>
-              <li><strong>监控告警</strong>：对 Redisson 锁获取耗时（通过 AOP 切面统计）和锁等待队列长度设置 Prometheus 指标，锁获取超过阈值时告警。</li>
-            </ul>
-          </div></div>
-        </div>
-        <div class="qa-item practical" id="q-dist-p2">
-          <div class="qa-question" onclick="toggleQA('q-dist-p2')">
-            <span class="qa-num">⚡ 实战</span>
-            <span class="qa-q-text">Seata AT 模式全局事务回滚失败怎么处理？</span>
-            <span class="qa-toggle">+</span>
-          </div>
-          <div class="qa-answer"><div class="qa-answer-inner">
-            <p><strong>一、AT 模式回滚原理</strong></p>
-            <p>Seata AT（Automatic Transaction）模式的核心思路是<strong>无侵入自动补偿</strong>。事务提交阶段（Phase 1），各分支 RM（Resource Manager）在本地事务提交前，Seata 拦截 SQL 并自动记录 <strong>undo_log</strong>（包含 beforeImage 和 afterImage），与业务数据在同一个本地事务中提交。全局事务需要回滚时（Phase 2），TC（Transaction Coordinator）通知各 RM 根据 undo_log 生成<strong>反向补偿 SQL</strong>：INSERT 变 DELETE，UPDATE 用 beforeImage 还原，DELETE 重新 INSERT。</p>
-            <p>关键表：<code>undo_log</code>（每个业务库都需要建）记录回滚日志；<code>global_table</code>、<code>branch_table</code>、<code>lock_table</code> 在 Seata Server 端记录全局事务和分支状态。</p>
-            <p><strong>二、回滚失败常见原因</strong></p>
-            <ul>
-              <li><strong>undo_log 表被清理</strong>：运维误删或定时清理任务（如保留 7 天的 cron job）在事务尚未完成时删除了对应的 undo_log 记录，导致 RM 无法构造回滚 SQL。报错：<code>io.seata.rm.datasource.undo.AbstractUndoExecutor: undo_log not found</code>。</li>
-              <li><strong>脏写（Dirty Write）</strong>：AT 模式下全局锁（global_lock）保护被修改的行，但如果其他<strong>非 Seata 管理的事务</strong>（如直接操作数据库的脚本、未接入 Seata 的旧服务）修改了同一行数据，回滚时 afterImage 与当前数据不匹配，校验失败报错：<code>DirtyDataException: data has been modified by other transaction</code>。</li>
-              <li><strong>数据库连接断开</strong>：分支 RM 所在服务宕机或数据库连接池耗尽，Phase 2 回滚请求无法送达或执行超时。Seata Server 默认重试 5 次，每次间隔递增。</li>
-              <li><strong>DDL 变更</strong>：在分布式事务期间对表执行了 ALTER TABLE（加字段、改类型），导致 beforeImage 的列结构与当前表结构不匹配，undo SQL 执行报错。</li>
-            </ul>
-            <p><strong>三、排查步骤</strong></p>
-            <ul>
-              <li><strong>查 Seata Server 日志</strong>：在 <code>seata-server/logs/seata-server.log</code> 中搜索 XID（全局事务 ID），定位哪个分支回滚失败。关注 <code>BranchRollbackResponse</code> 的 resultCode 和异常堆栈。也可以通过 Seata 1.5+ 的 Web Console（默认端口 7091）查看全局事务状态和各分支状态。</li>
-              <li><strong>检查 undo_log 表</strong>：<code>SELECT * FROM undo_log WHERE xid = 'your-xid' ORDER BY log_created</code>，确认回滚日志是否存在且完整。如果记录已被删除，需要手动构造补偿 SQL。</li>
-              <li><strong>检查 global_lock 表</strong>：<code>SELECT * FROM lock_table WHERE xid = 'your-xid'</code>，确认全局锁是否有残留（事务超时后锁未释放）。残留锁会阻塞其他事务获取同一行的全局锁，导致新事务超时。</li>
-              <li><strong>检查分支数据库</strong>：对比 undo_log 中的 afterImage 与当前数据库中的实际数据，确认是否被脏写：<code>SELECT * FROM your_table WHERE id = ? </code>，与 afterImage 逐字段比对。</li>
-            </ul>
-            <p><strong>四、处理方式</strong></p>
-            <ul>
-              <li><strong>手动补偿 SQL</strong>：如果 undo_log 还在但自动回滚失败，可以手动取出 beforeImage 数据执行还原：<code>UPDATE your_table SET col1=before_val1, col2=before_val2 WHERE id=?</code>，然后手动删除 undo_log 记录并通过 Seata API 标记分支为已完成。</li>
-              <li><strong>调整重试与超时配置</strong>：在 <code>application.yml</code> 中设置 Seata 重试策略：<code>service.enable-degrade=true</code> 开启降级；<code>client.rm.async-commit-buffer-limit</code> 调整异步提交缓冲区；<code>transport.thread-factory.boss-thread-size</code> 增加通信线程。全局事务超时时间通过 <code>@GlobalTransactional(timeoutMills=60000)</code> 设置。</li>
-              <li><strong>监控告警</strong>：集成 Prometheus，监控 <code>seata_transaction</code> 指标（status=rollback 的数量），设置全局事务超时未完成时告警。Grafana 面板展示全局事务成功率、平均耗时、回滚率。</li>
-            </ul>
-            <p><strong>五、架构建议</strong></p>
-            <ul>
-              <li><strong>核心支付链路用 TCC 替代 AT</strong>：AT 模式依赖数据库层面的 undo_log 和全局锁，对脏写敏感且不适合跨异构数据源。TCC（Try-Confirm-Cancel）在业务层面实现三阶段操作——Try 冻结资源（如冻结金额到中间账户）、Confirm 确认扣减、Cancel 解冻——控制粒度更细，不依赖数据库机制，更适合金融场景。Seata 同时支持 TCC 模式，通过 <code>@TwoPhaseBusinessAction</code> 注解实现。</li>
-              <li><strong>防御性设计</strong>：接入 Seata 的库严格禁止非 Seata 管理的事务修改受保护的数据行；undo_log 清理任务必须检查事务状态（只清理 COMMITTED/ROLLBACKED 的记录）；生产环境对 DDL 变更加审批流程，禁止在活跃事务期间执行。</li>
-            </ul>
-          </div></div>
-        </div>
-        </div>
+  <section class="gc-section" id="dist-qa-ref">
+    <span class="section-badge" style="background:rgba(124,58,237,0.08);color:#7c3aed;border:1px solid rgba(124,58,237,0.28)">● 分布式面试题</span>
+    <h2 class="section-title">分布式高频面试题</h2>
+    <div class="callout callout-info" style="border-left-color:#7c3aed;background:rgba(124,58,237,0.04)">
+      <span class="callout-icon">→</span>
+      <div class="callout-body">
+        面试题已迁移至独立页面，涵盖 CAP/BASE、分布式事务、分布式锁、注册中心、Raft、限流熔断与一致性哈希。<br>
+        <a href="distributed-qa.html" style="display:inline-block;margin-top:10px;background:#7c3aed;color:#fff;border-radius:7px;padding:7px 20px;font-size:13px;font-weight:600;text-decoration:none">进入分布式面试题 →</a>
+      </div>
     </div>
-
   </section>
 </main>
 </div>
