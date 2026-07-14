@@ -76,14 +76,15 @@ navLinks.forEach(link => {
 /* ── Page tabs (shared list, auto-highlights current page) ── */
 (function () {
   var TABS = [
-    { href: 'juc.html',           label: 'JUC',     cls: 'active-juc'    },
-    { href: 'spring.html',        label: 'Spring',  cls: 'active-spring' },
-    { href: 'gc-principles.html', label: 'GC 原理', cls: 'active-g1'     },
-    { href: 'mysql.html',         label: 'MySQL',   cls: 'active-mysql'  },
-    { href: 'redis.html',         label: 'Redis',   cls: 'active-redis'  },
-    { href: 'mq.html',            label: 'MQ',      cls: 'active-mq'     },
-    { href: 'distributed.html',   label: '分布式',  cls: 'active-dist'   },
-    { href: 'jvm.html',           label: 'JVM',     cls: 'active-jvm'    },
+    { href: 'juc.html',           label: 'JUC',       cls: 'active-juc'    },
+    { href: 'spring.html',        label: 'Spring',    cls: 'active-spring' },
+    { href: 'gc-principles.html', label: 'GC 原理',   cls: 'active-g1'     },
+    { href: 'mysql.html',         label: 'MySQL',     cls: 'active-mysql'  },
+    { href: 'redis.html',         label: 'Redis',     cls: 'active-redis'  },
+    { href: 'mq.html',            label: 'MQ',        cls: 'active-mq'     },
+    { href: 'distributed.html',   label: '分布式',    cls: 'active-dist'   },
+    { href: 'jvm.html',           label: 'JVM',       cls: 'active-jvm'    },
+    { href: 'architecture.html',  label: '微服务&DDD', cls: 'active-arch'   },
   ];
   var container = document.querySelector('.page-tabs');
   if (!container) return;
