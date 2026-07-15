@@ -15,7 +15,7 @@ const observer = new IntersectionObserver((entries) => {
       });
     }
   });
-}, { rootMargin: '-20% 0px -70% 0px' });
+}, { rootMargin: '-10% 0px -60% 0px' });
 
 sections.forEach(s => observer.observe(s));
 
@@ -35,11 +35,15 @@ function toggleSidebar() {
   const sidebar = document.getElementById('sidebar');
   const isOpen = sidebar.classList.toggle('open');
   getOverlay().classList.toggle('open', isOpen);
+  const btn = document.getElementById('menuBtn');
+  if (btn) btn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
 }
 
 function closeSidebar() {
   document.getElementById('sidebar').classList.remove('open');
   getOverlay().classList.remove('open');
+  const btn = document.getElementById('menuBtn');
+  if (btn) btn.setAttribute('aria-expanded', 'false');
 }
 
 function toggleQA(id) {
@@ -61,6 +65,40 @@ function toggleQA(id) {
 navLinks.forEach(link => {
   link.addEventListener('click', closeSidebar);
 });
+
+/* ── Menu button: add missing accessibility attributes ── */
+(function () {
+  var btn = document.getElementById('menuBtn');
+  if (!btn) return;
+  btn.setAttribute('type', 'button');
+  btn.setAttribute('aria-label', '打开菜单');
+  btn.setAttribute('aria-expanded', 'false');
+})();
+
+/* ── Hero back-link: enlarge tap target on mobile ── */
+(function () {
+  if (!window.matchMedia('(max-width: 768px)').matches) return;
+  document.querySelectorAll('.hero > div > a').forEach(function (a) {
+    a.style.padding = '12px 16px';
+    a.style.minHeight = '44px';
+  });
+})();
+(function () {
+  var startX = 0, startY = 0;
+  document.addEventListener('touchstart', function (e) {
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+  }, { passive: true });
+  document.addEventListener('touchend', function (e) {
+    var dx = e.changedTouches[0].clientX - startX;
+    var dy = e.changedTouches[0].clientY - startY;
+    if (Math.abs(dy) > Math.abs(dx) || Math.abs(dx) < 50) return;
+    var sidebar = document.getElementById('sidebar');
+    if (!sidebar) return;
+    if (startX < 30 && dx > 0 && !sidebar.classList.contains('open')) { toggleSidebar(); }
+    else if (sidebar.classList.contains('open') && dx < 0) { closeSidebar(); }
+  }, { passive: true });
+})();
 
 /* ── Sidebar home link ── */
 (function () {
@@ -144,7 +182,7 @@ const tocObserver = new IntersectionObserver((entries) => {
       if (a) { a.classList.add('toc-active'); a.scrollIntoView({ block: 'nearest' }); }
     }
   });
-}, { rootMargin: '-15% 0px -75% 0px' });
+}, { rootMargin: '-10% 0px -60% 0px' });
 
 document.querySelectorAll('.gc-section[id], .subsection[id]').forEach(s => tocObserver.observe(s));
 
@@ -346,6 +384,7 @@ document.querySelectorAll('.arch-box').forEach(box => {
     + '<span style="margin-left:auto;opacity:.6">Ctrl+K 或 /</span>'
     + '</div></div>';
   document.body.appendChild(overlay);
+  window.openSearch = open; // exposed for index.html search trigger
 
   var input = document.getElementById('search-input');
   var results = document.getElementById('search-results');
@@ -444,7 +483,7 @@ document.querySelectorAll('.arch-box').forEach(box => {
   var btn = document.createElement('button');
   btn.id = 'toc-toggle-btn';
   btn.title = '目录';
-  btn.innerHTML = '&#9776;';
+  btn.innerHTML = '目录';
   btn.addEventListener('click', function (e) {
     e.stopPropagation();
     document.body.classList.toggle('toc-open');

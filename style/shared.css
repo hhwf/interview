@@ -512,7 +512,7 @@ body {
   .nav-link { padding: 11px 12px; font-size: 13px; }
   .tab { padding: 11px 12px; }
   .qa-question { min-height: 52px; }
-  .qa-toggle { width: 30px; height: 30px; font-size: 18px; }
+  .qa-toggle { width: 44px; height: 44px; font-size: 20px; border-radius: 8px; }
 
   /* Reduce vertical whitespace on mobile */
   .gc-section    { padding: 32px 0 20px; }
@@ -557,19 +557,31 @@ body {
   /* Q&A answer inner: tighter, scrollable */
   .qa-answer-inner { overflow-x: auto; padding: 14px 12px; font-size: 13px; }
   .qa-q-text { font-size: 13.5px; line-height: 1.55; }
-  .qa-num    { font-size: 9.5px; padding: 2px 7px; }
+  .qa-num    { font-size: 11px; padding: 2px 7px; }
   .qa-list   { gap: 10px; }
 
   /* Q&A toggle-all button */
   .qa-toggle-all { font-size: 12px; padding: 8px 14px; }
 
   /* Section badge */
-  .section-badge { font-size: 9.5px; padding: 4px 11px; }
+  .section-badge { font-size: 11px; padding: 4px 11px; }
 
   /* Pointer layout: scrollable */
   .pointer-layout { overflow-x: auto; overflow-y: visible; }
   .ptr-field { padding: 10px 4px; }
-  .ptr-bits  { font-size: 9px; }
+  .ptr-bits  { font-size: 11px; }
+
+  /* Prevent any overflowing child from creating page-level horizontal scroll */
+  .main { overflow-x: hidden; }
+
+  /* Inline code: long identifiers must wrap rather than overflow.
+     overflow-wrap:anywhere (unlike break-word) reduces min-content-width
+     so the ancestor block cannot be pushed wider than the viewport. */
+  code { overflow-wrap: anywhere; word-break: break-all; }
+
+  /* ZGC timeline: narrower label avoids overflow at 320px */
+  .timeline-label { width: 60px; }
+  .t-seg { white-space: normal; }
 
   /* Heap grid: 4 columns instead of 8 */
   .heap-grid { grid-template-columns: repeat(4, 1fr); }
@@ -649,7 +661,7 @@ body {
 #back-top-btn {
   position: fixed; bottom: 32px; right: 262px; z-index: 300;
   transform: translateY(10px);
-  width: 36px; height: 36px; border-radius: 50%;
+  width: 44px; height: 44px; border-radius: 50%;
   background: transparent; color: var(--accent);
   border: 1.5px solid var(--accent);
   cursor: pointer; font-size: 16px; line-height: 1;
@@ -660,7 +672,7 @@ body {
 #back-top-btn.visible { opacity: 1; transform: translateY(0); }
 #back-top-btn:hover { background: var(--accent-nav-d); }
 /* When TOC is hidden, move to bottom-right */
-@media (max-width: 1280px) { #back-top-btn { right: 20px; } }
+@media (max-width: 1280px) { #back-top-btn { right: 20px; bottom: 84px; } }
 
 /* ══════════════════════════════════════════════════
    ── 4. Reading Progress Bar ───────────────────────
@@ -870,10 +882,10 @@ body {
    ══════════════════════════════════════════════════ */
 #toc-toggle-btn {
   display: none; position: fixed; bottom: 32px; right: 20px; z-index: 300;
-  width: 40px; height: 40px; border-radius: 50%;
+  width: 44px; height: 44px; border-radius: 50%;
   background: var(--bg-card); color: var(--text-2);
   border: 1px solid var(--border); cursor: pointer;
-  font-size: 16px; line-height: 1;
+  font-size: 11px; font-weight: 700; letter-spacing: 0.04em; line-height: 1;
   box-shadow: 0 2px 12px rgba(0,0,0,0.1);
   transition: background 0.15s, color 0.15s, box-shadow 0.15s;
   align-items: center; justify-content: center;
@@ -893,6 +905,7 @@ body {
 @media (max-width: 768px) {
   #toc-toggle-btn { display: none; }
   .toc-panel { bottom: 68px; right: 12px; max-height: 50vh; }
+  #back-top-btn { bottom: 20px; right: 16px; }
 }
 
 /* ── Sidebar Home Link ── */

@@ -69,6 +69,36 @@ body { flex-direction: column; }
   line-height: 1.6;
 }
 
+/* ── Hero Search Button ── */
+.hero-search-btn {
+  display: flex; align-items: center; gap: 8px;
+  margin: 20px auto 0;
+  padding: 10px 22px; border-radius: 24px;
+  background: rgba(255,255,255,0.9); border: 1px solid rgba(0,0,0,0.12);
+  font-family: var(--fb); font-size: 14px; color: #6b7280;
+  cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  transition: border-color 0.15s, box-shadow 0.15s, color 0.15s;
+}
+.hero-search-btn:hover {
+  border-color: rgba(0,0,0,0.22); box-shadow: 0 4px 14px rgba(0,0,0,0.1); color: #374151;
+}
+.hero-search-btn kbd {
+  font-family: var(--fm); font-size: 11px; color: #9ca3af;
+  background: #f3f4f6; border: 1px solid #e5e7eb;
+  padding: 1px 6px; border-radius: 4px;
+}
+[data-theme="dark"] .hero-search-btn {
+  background: rgba(28,33,40,0.9); border-color: rgba(255,255,255,0.1); color: #8b949e;
+}
+[data-theme="dark"] .hero-search-btn:hover { border-color: rgba(255,255,255,0.22); color: #adbac7; }
+[data-theme="dark"] .hero-search-btn kbd {
+  background: #21262d; border-color: rgba(255,255,255,0.1); color: #6e7681;
+}
+@media (max-width: 640px) {
+  .hero-search-btn { font-size: 15px; padding: 12px 24px; min-height: 44px; }
+  .hero-search-btn kbd { display: none; }
+}
+
 /* ── Dark Mode Toggle (header) ── */
 #dark-toggle-index {
   position: absolute;
@@ -76,7 +106,12 @@ body { flex-direction: column; }
   background: #fff;
   border: 1px solid rgba(0,0,0,0.08);
   border-radius: 8px;
-  padding: 6px 10px;
+  padding: 10px 14px;
+  min-height: 44px;
+  min-width: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
   font-size: 15px;
   color: #6b7280;
@@ -257,7 +292,7 @@ body { flex-direction: column; }
   display: flex; flex-direction: column; gap: 5px; flex: 1;
 }
 .preview-list li {
-  font-family: var(--fb); font-size: 12px; color: #374151;
+  font-family: var(--fb); font-size: 13px; color: #374151;
   padding-left: 13px; position: relative; line-height: 1.4;
 }
 .preview-list li::before {
@@ -299,7 +334,8 @@ body { flex-direction: column; }
   .card:hover .card-preview { transform: none; }
   .preview-heading { margin-bottom: 6px; }
   .preview-cta { display: none; }
-  #dark-toggle-index { top: 16px; right: 16px; }
+  .stat-dot { display: none; }
+  #dark-toggle-index { position: fixed; top: 16px; right: 16px; }
 }
 @media (min-width: 641px) and (max-width: 1024px) {
   .header { padding: 56px 28px 40px; }
