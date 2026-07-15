@@ -17,6 +17,12 @@
   --accent-nav: #0369a1; --accent-nav-d: rgba(3,105,161,0.08);
   --accent-em:  #6d28d9; --accent-em-d:  rgba(109,40,217,0.08);
 }
+@media (max-width: 768px) {
+  /* TX propagation table: 典型场景 column needs more room */
+  #spring-tx .cmp-table { min-width: 560px; }
+  #spring-tx .cmp-table th:last-child,
+  #spring-tx .cmp-table td:last-child { min-width: 90px; }
+}
 </style>
 </head>
 <body>
