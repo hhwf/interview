@@ -71,6 +71,10 @@
 
 <main class="main">
 
+  <div style="padding:20px 0 0">
+    <a href="gc-principles.html" style="font-family:var(--fm);font-size:12px;color:var(--text-3);text-decoration:none;display:inline-flex;align-items:center;gap:5px;padding:5px 14px;border:1px solid var(--border);border-radius:20px;background:var(--bg-2);transition:color .15s,border-color .15s,background .15s" onmouseover="this.style.color='#d97706';this.style.borderColor='rgba(217,119,6,0.35)'" onmouseout="this.style.color='var(--text-3)';this.style.borderColor='var(--border)'">← GC 总览</a>
+  </div>
+
   <section class="hero" id="overview">
     <div class="hero-eyebrow">Java Virtual Machine · Garbage Collection</div>
     <h1><span class="zgc-text">ZGC</span><br>亚毫秒停顿解析</h1>
@@ -106,9 +110,6 @@
             <div class="ptr-bits">bits 63–46<br>（18 位）</div>
 
     </div>
-      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#16a34a;background:rgba(0,0,0,0.03)">
-        <strong>面试要点：</strong>ZGC 染色指针的本质是将元数据（Finalizable、Remapped、Marked1、Marked0）编码进指针的高 4 位，读对象时通过读屏障解码。<strong>好处</strong>：不需要 Card Table / RSet，降低 GC 元数据内存；<strong>代价</strong>：需要 64 位系统、多重映射支持，寻址空间限制（&lt;64TB）。JDK 21 的 Generational ZGC 引入分代，进一步提升吞吐量。
-      </div>
           <div class="ptr-field ptr-fin">
             <div class="ptr-field-name">Finalizable</div>
             <div class="ptr-bits">bit 45</div>
@@ -126,6 +127,9 @@
             <div class="ptr-bits">bits 42–0（43 位，最大 8TB）</div>
           </div>
         </div>
+      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#16a34a;background:rgba(0,0,0,0.03)">
+        <strong>面试要点：</strong>ZGC 染色指针的本质是将元数据（Finalizable、Remapped、Marked1、Marked0）编码进指针的高 4 位，读对象时通过读屏障解码。<strong>好处</strong>：不需要 Card Table / RSet，降低 GC 元数据内存；<strong>代价</strong>：需要 64 位系统、多重映射支持，寻址空间限制（&lt;64TB）。JDK 21 的 Generational ZGC 引入分代，进一步提升吞吐量。
+      </div>
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-top:12px">
           <div style="font-family:var(--fm);font-size:11px;color:var(--text-2);line-height:1.7;padding:10px 12px;background:var(--red-d);border-radius:5px;border:1px solid rgba(248,113,113,0.2)">
             <span style="color:var(--red)">Finalizable</span><br>
@@ -170,9 +174,6 @@
               <div class="vaddr-page" style="background:rgba(249,115,22,0.12);color:var(--zgc-2)">0x0100…0000 Page A</div>
 
     </div>
-      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#16a34a;background:rgba(0,0,0,0.03)">
-        <strong>面试要点：</strong>多重映射（Multi-Mapping）是 ZGC 实现染色指针的底层机制：将同一物理内存页映射到 3 个不同的虚拟地址空间（Marked0 / Marked1 / Remapped），应用程序访问不同颜色的指针都能访问到同一物理页，只是触发不同的读屏障逻辑。这使得 ZGC 可以在不 STW 的情况下修改指针颜色。
-      </div>
             <div class="vaddr-space" style="margin-bottom:6px;border-color:rgba(74,222,128,0.25)">
               <div class="vaddr-title" style="color:var(--g1)">Marked1 空间</div>
               <div class="vaddr-page" style="background:rgba(74,222,128,0.1);color:var(--g1-2)">0x0200…0000 Page A</div>
@@ -200,6 +201,9 @@
           物理内存只有一份，虚拟映射是操作系统层面的 mmap 技巧，几乎零开销。
         </div>
       </div>
+      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#16a34a;background:rgba(0,0,0,0.03)">
+        <strong>面试要点：</strong>多重映射（Multi-Mapping）是 ZGC 实现染色指针的底层机制：将同一物理内存页映射到 3 个不同的虚拟地址空间（Marked0 / Marked1 / Remapped），应用程序访问不同颜色的指针都能访问到同一物理页，只是触发不同的读屏障逻辑。这使得 ZGC 可以在不 STW 的情况下修改指针颜色。
+      </div>
     </div>
 
     <!-- 3. 读屏障 -->
@@ -224,9 +228,6 @@
               <div class="lb-box lb-return">直接返回对象引用<br>无额外开销</div>
 
     </div>
-      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#16a34a;background:rgba(0,0,0,0.03)">
-        <strong>面试要点：</strong>ZGC 读屏障（Load Barrier）在<strong>应用线程读取对象引用时</strong>触发（而非写时），检查指针是否需要更新（Remap）。这使 ZGC 能并发移动对象而不需要 STW：移动完成后，下次读该引用时读屏障将旧指针更新为新地址。代价是每次对象读都有额外检查开销（但 JIT 优化后约 10–20ns）。
-      </div>
             <div style="display:flex;flex-direction:column;align-items:center">
               <div class="lb-no">否（对象已移动）</div>
               <div class="lb-box lb-fix">查转发表 → 获取新地址<br>就地修复 *ptr = 新地址</div>
@@ -235,6 +236,9 @@
             </div>
           </div>
         </div>
+      </div>
+      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#16a34a;background:rgba(0,0,0,0.03)">
+        <strong>面试要点：</strong>ZGC 读屏障（Load Barrier）在<strong>应用线程读取对象引用时</strong>触发（而非写时），检查指针是否需要更新（Remap）。这使 ZGC 能并发移动对象而不需要 STW：移动完成后，下次读该引用时读屏障将旧指针更新为新地址。代价是每次对象读都有额外检查开销（但 JIT 优化后约 10–20ns）。
       </div>
       <div class="callout callout-warn">
         <span class="callout-icon">⚡</span>
@@ -268,9 +272,6 @@
               <div class="t-run">运行中（与重定位并发）</div>
 
     </div>
-      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#16a34a;background:rgba(0,0,0,0.03)">
-        <strong>面试要点：</strong>ZGC 并发周期包含：① Pause Mark Start（STW，极短，标记 GC Root）② Concurrent Mark（并发，标记所有可达对象）③ Pause Mark End（STW，同步标记结果）④ Concurrent Prepare for Relocation（并发，选 CSet）⑤ Pause Relocate Start（STW，极短）⑥ Concurrent Relocate（并发移动对象）。全程 STW 仅 3 次且均极短（通常 < 1ms），停顿时间与堆大小无关。
-      </div>
           </div>
           <div class="timeline-row">
             <div class="timeline-label">GC 线程</div>
@@ -289,6 +290,9 @@
           <span style="color:var(--red)">■ STW（P1/P2/P3 均 &lt;1ms）</span>&nbsp;&nbsp;
           <span style="color:var(--teal)">■ 并发阶段（与应用同时运行）</span>
         </div>
+      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#16a34a;background:rgba(0,0,0,0.03)">
+        <strong>面试要点：</strong>ZGC 并发周期包含：① Pause Mark Start（STW，极短，标记 GC Root）② Concurrent Mark（并发，标记所有可达对象）③ Pause Mark End（STW，同步标记结果）④ Concurrent Prepare for Relocation（并发，选 CSet）⑤ Pause Relocate Start（STW，极短）⑥ Concurrent Relocate（并发移动对象）。全程 STW 仅 3 次且均极短（通常 &lt; 1ms），停顿时间与堆大小无关。
+      </div>
 
         <!-- Phase detail table -->
         <div style="display:flex;flex-direction:column;gap:6px">
