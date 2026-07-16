@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CMS GC 原理 — 并发标记清除·卡表·三大问题</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=DM+Mono:wght@400;500;600&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=DM+Mono:wght@400;500;600&display=swap"></noscript>
+<link rel="preload" as="style" href="https://fontsapi.zeoseven.com/161/main/result.css" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fontsapi.zeoseven.com/161/main/result.css"></noscript>
+<link rel="stylesheet" href="style/shared.css">
+<style>
+:root {
+  --accent:     #c2410c;
+  --accent-nav: #c2410c; --accent-nav-d: rgba(194,65,12,0.08);
+  --accent-em:  #6d28d9; --accent-em-d:  rgba(109,40,217,0.08);
+}
+/* GC uses a darker/muted diagram palette — override shared.css lighter defaults */
+.phase-stw  { background: rgba(185,28,28,0.07);  border-color: rgba(185,28,28,0.22); }
+.phase-stw  .phase-label { color: #b91c1c; }
+.phase-conc { background: rgba(5,150,105,0.07);  border-color: rgba(5,150,105,0.22); }
+.phase-conc .phase-label { color: #047857; }
+.phase-g1   { background: rgba(22,163,74,0.08);  border-color: rgba(22,163,74,0.22); }
+.phase-g1   .phase-label { color: #16a34a; }
+.region.eden     { background: rgba(22,163,74,0.12);  border-color: rgba(22,163,74,0.38); }
+.region.survivor { background: rgba(180,83,9,0.12);   border-color: rgba(180,83,9,0.35); }
+.region.old      { background: rgba(194,65,12,0.1);   border-color: rgba(194,65,12,0.32); }
+.region.huge     { background: rgba(109,40,217,0.1);  border-color: rgba(109,40,217,0.32); color: #6d28d9; }
+.ptr-fin    { background: rgba(185,28,28,0.08); }
+.ptr-remap  { background: rgba(5,150,105,0.08); }
+.ptr-mark   { background: rgba(109,40,217,0.08); }
+.ptr-fin   .ptr-field-name { color: #b91c1c; }
+.ptr-remap .ptr-field-name { color: #047857; }
+.t-stw   { background: rgba(185,28,28,0.08);  border: 1px solid rgba(185,28,28,0.28);   color: #b91c1c; }
+.t-conc  { background: rgba(5,150,105,0.08);  border: 1px solid rgba(5,150,105,0.25);   color: #047857; }
+.t-pause { background: rgba(185,28,28,0.04);  border: 1px dashed rgba(185,28,28,0.18);  color: rgba(185,28,28,0.5); }
+.lb-action { background: rgba(194,65,12,0.08);  border: 1px solid rgba(194,65,12,0.25);  color: #c2410c; }
+.lb-check  { background: rgba(146,64,14,0.08);  border: 1px solid rgba(146,64,14,0.22);  color: #92400e; }
+.lb-fix    { background: rgba(185,28,28,0.08);  border: 1px solid rgba(185,28,28,0.22);  color: #b91c1c; }
+.lb-return { background: rgba(22,163,74,0.08);  border: 1px solid rgba(22,163,74,0.22);  color: #16a34a; }
+.lb-yes    { color: #16a34a; }
+.lb-no     { color: #b91c1c; }
+</style>
+</head>
+<body>
+
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <span class="logo-badge" style="background:linear-gradient(135deg,#c2410c,#9a3412)">GC</span>
+    <span class="logo-text">CMS GC</span>
+  </div>
+  <div class="page-tabs"></div>
+  <div class="nav-section-label" style="color:rgba(194,65,12,0.85)">CMS GC</div>
+  <a href="#cms-overview"    class="nav-link" data-section="cms-overview">概览与背景</a>
+  <a href="#cms-phases"      class="nav-link" data-section="cms-phases">六阶段流程</a>
+  <a href="#cms-card-table"  class="nav-link" data-section="cms-card-table">卡表</a>
+  <a href="#cms-incremental" class="nav-link" data-section="cms-incremental">增量更新算法</a>
+  <a href="#cms-problems"    class="nav-link" data-section="cms-problems">三大核心问题</a>
+  <div class="nav-section-label">相关页面</div>
+  <a href="gc-g1.html"    class="nav-link">G1 GC 原理 →</a>
+  <a href="gc-zgc.html"   class="nav-link">ZGC 原理 →</a>
+  <a href="gc-qa.html"    class="nav-link" style="color:rgba(22,163,74,0.8)">GC 面试题（独立页）→</a>
+  <a href="gc-principles.html" class="nav-link" style="color:var(--text-3)">← GC 总览</a>
+</nav>
+
+<div class="content-wrap">
+<button class="menu-btn" id="menuBtn" onclick="toggleSidebar()">☰</button>
+
+<main class="main">
+
+  <section class="hero" id="overview">
+    <div class="hero-eyebrow">Java Virtual Machine · Garbage Collection</div>
+    <h1><span style="color:var(--accent)">CMS</span><br>Concurrent Mark Sweep</h1>
+    <p class="hero-desc">
+      深入解析 CMS 的历史设计——六阶段并发收集流程、卡表跨代引用追踪、增量更新算法，以及 Concurrent Mode Failure、内存碎片和晋升失败三大核心问题。理解 CMS 的局限是理解为什么需要 G1 的关键。
+    </p>
+  </section>
+
+  <!-- ══════════════ CMS GC ══════════════ -->
+  <section class="gc-section" id="cms-section">
+    <span class="section-badge" style="background:rgba(194,65,12,0.08);color:var(--orange);border:1px solid rgba(194,65,12,0.28)">● CMS Garbage Collector</span>
+    <h2 class="section-title">CMS —— Concurrent Mark Sweep</h2>
+    <p class="section-intro">
+      CMS 是 G1 的前身，JDK 5u3 引入、JDK 9 废弃、JDK 14 正式移除。
+      它以<strong>并发清除老年代</strong>为核心目标，大幅降低老年代 GC 停顿，
+      但代价是内存碎片、Concurrent Mode Failure 与更高的 CPU 消耗。
+      理解 CMS 的局限是理解为什么设计 G1 的关键。
+    </p>
+
+    <!-- 1. 概览与堆布局 -->
+    <div class="subsection" id="cms-overview">
+      <h3 class="sub-title"><span class="dot" style="background:var(--orange);box-shadow:0 0 0 3px rgba(194,65,12,0.15)"></span>概览与传统分代堆布局</h3>
+      <p class="sub-body">
+        CMS 使用<strong>传统固定分代布局</strong>：Young 区（Eden + Survivor × 2）+ Old 区（单块连续内存）。
+        Old 区由 <em>free-list</em> 管理空闲块，分配时从列表中查找合适的空间——这是碎片化的根源。
+        与 G1 的可变 Region 模型形成鲜明对比。
+      </p>
+      <div class="diagram">
+        <div class="diagram-title">CMS 堆布局 vs G1 堆布局</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <div>
+            <div style="font-family:var(--fm);font-size:10px;color:var(--orange);margin-bottom:10px;letter-spacing:.1em;text-transform:uppercase">CMS — 固定分代</div>
+            <div style="display:flex;flex-direction:column;gap:3px">
+              <div style="display:flex;gap:3px">
+                <div style="flex:2;height:28px;background:rgba(74,222,128,0.2);border:1px solid rgba(74,222,128,0.35);border-radius:5px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:10px;color:var(--g1)">Eden</div>
+                <div style="flex:0.7;height:28px;background:rgba(251,191,36,0.2);border:1px solid rgba(251,191,36,0.35);border-radius:5px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:10px;color:#fbbf24">S0</div>
+                <div style="flex:0.7;height:28px;background:rgba(251,191,36,0.2);border:1px solid rgba(251,191,36,0.35);border-radius:5px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:10px;color:#fbbf24">S1</div>
+              </div>
+              <div style="height:40px;background:rgba(249,115,22,0.15);border:1px solid rgba(249,115,22,0.3);border-radius:5px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:10px;color:var(--zgc)">Old Gen（单块连续，free-list 管理）</div>
+            </div>
+            <div style="font-family:var(--fm);font-size:10px;color:var(--text-3);margin-top:8px;line-height:1.6">各代大小固定，只能通过参数调整<br>Young 区比例 = -XX:NewRatio</div>
+          </div>
+          <div>
+            <div style="font-family:var(--fm);font-size:10px;color:var(--g1);margin-bottom:10px;letter-spacing:.1em;text-transform:uppercase">G1 — 可变 Region</div>
+            <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:3px">
+              <div style="height:26px;background:rgba(74,222,128,0.2);border:1px solid rgba(74,222,128,0.35);border-radius:4px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:9px;color:var(--g1)">E</div>
+              <div style="height:26px;background:rgba(249,115,22,0.15);border:1px solid rgba(249,115,22,0.3);border-radius:4px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:9px;color:var(--zgc)">O</div>
+              <div style="height:26px;background:rgba(0,0,0,0.03);border:1px dashed rgba(0,0,0,0.1);border-radius:4px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:9px;color:var(--text-3)">·</div>
+              <div style="height:26px;background:rgba(74,222,128,0.2);border:1px solid rgba(74,222,128,0.35);border-radius:4px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:9px;color:var(--g1)">E</div>
+              <div style="height:26px;background:rgba(249,115,22,0.15);border:1px solid rgba(249,115,22,0.3);border-radius:4px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:9px;color:var(--zgc)">O</div>
+              <div style="height:26px;background:rgba(251,191,36,0.2);border:1px solid rgba(251,191,36,0.35);border-radius:4px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:9px;color:#fbbf24">S</div>
+              <div style="height:26px;background:rgba(0,0,0,0.03);border:1px dashed rgba(0,0,0,0.1);border-radius:4px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:9px;color:var(--text-3)">·</div>
+              <div style="height:26px;background:rgba(249,115,22,0.15);border:1px solid rgba(249,115,22,0.3);border-radius:4px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:9px;color:var(--zgc)">O</div>
+              <div style="height:26px;background:rgba(74,222,128,0.2);border:1px solid rgba(74,222,128,0.35);border-radius:4px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:9px;color:var(--g1)">E</div>
+              <div style="height:26px;background:rgba(192,132,252,0.2);border:1px solid rgba(192,132,252,0.35);border-radius:4px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:9px;color:#6d28d9">H</div>
+              <div style="height:26px;background:rgba(0,0,0,0.03);border:1px dashed rgba(0,0,0,0.1);border-radius:4px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:9px;color:var(--text-3)">·</div>
+              <div style="height:26px;background:rgba(249,115,22,0.15);border:1px solid rgba(249,115,22,0.3);border-radius:4px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:9px;color:var(--zgc)">O</div>
+            </div>
+            <div style="font-family:var(--fm);font-size:10px;color:var(--text-3);margin-top:8px;line-height:1.6">Region 角色可变，动态分配<br>Young 区数量由停顿目标驱动</div>
+          </div>
+        </div>
+      </div>
+      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#16a34a;background:rgba(0,0,0,0.03)">
+        <strong>面试要点：</strong>CMS（Concurrent Mark Sweep）是 G1 之前最主流的低延迟收集器，只负责老年代。<strong>已在 JDK 9 标记废弃、JDK 14 彻底移除</strong>，新项目不应再用。理解 CMS 有助于理解 G1 设计取舍。最大问题：Concurrent Mode Failure（并发收集期间老年代填满，退化为 Full GC）和碎片化（Sweep 不压缩，碎片导致大对象分配失败）。
+      </div>
+    </div>
+
+    <!-- 2. 六阶段流程 -->
+    <div class="subsection" id="cms-phases">
+      <h3 class="sub-title"><span class="dot" style="background:var(--orange);box-shadow:0 0 0 3px rgba(194,65,12,0.15)"></span>六阶段 GC 流程</h3>
+      <p class="sub-body">
+        CMS 将老年代 GC 拆分为六个阶段，大部分与应用线程<strong>并发执行</strong>。
+        只有 Initial Mark 和 Remark 两次 STW，但 Remark 的停顿时间远比 G1 的 Remark 更长。
+      </p>
+      <div class="diagram">
+        <div class="diagram-title">CMS 六阶段时序</div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div class="phase-bar phase-stw" style="padding:14px 16px">
+            <div class="phase-label">① Initial Mark（STW · 短）</div>
+            <div class="phase-desc">从 GC Roots 出发，标记所有<strong style="color:rgba(248,113,113,0.9)">直接可达</strong>的老年代对象。<br>工作量 = GC Root 数量，停顿极短（毫秒级）。</div>
+          </div>
+          <div class="phase-bar phase-conc">
+            <div class="phase-label">② Concurrent Mark（并发）</div>
+            <div class="phase-desc">从 Initial Mark 的结果出发，DFS 遍历整个老年代对象图。<br>与应用线程并发，可能漏标（需 Remark 修正）。<br>耗时最长，通常占整个 CMS GC 80% 以上时间。</div>
+          </div>
+          <div class="phase-bar phase-conc">
+            <div class="phase-label">③ Concurrent Preclean（并发）</div>
+            <div class="phase-desc">扫描并发标记期间被写屏障标记为 Dirty 的 Card Table 条目。<br>提前处理部分引用变更，减轻 Remark 的工作量（减少 STW 时间）。</div>
+          </div>
+          <div class="phase-bar phase-stw" style="background:rgba(248,113,113,0.2);border-color:rgba(248,113,113,0.4)">
+            <div class="phase-label" style="color:#b91c1c">④ Remark（STW · 较长⚠）</div>
+            <div class="phase-desc">使用<strong style="color:rgba(248,113,113,0.9)">增量更新（Incremental Update）</strong>处理并发标记期间的所有引用变更。<br>需要重扫所有被"重新变灰"的黑色对象的子树。<br>停顿时间随堆大小增长，远比 G1 的 Remark 更长（10ms ~ 数百ms）。</div>
+          </div>
+          <div class="phase-bar phase-conc">
+            <div class="phase-label">⑤ Concurrent Sweep（并发）</div>
+            <div class="phase-desc">遍历老年代，将未标记对象占用的空间归还到 <strong style="color:var(--teal)">free-list</strong>（空闲链表）。<br>注意：只清除，<strong style="color:rgba(248,113,113,0.8)">不整理内存</strong>，碎片化从此产生。</div>
+          </div>
+          <div class="phase-bar phase-g1">
+            <div class="phase-label">⑥ Concurrent Reset（并发）</div>
+            <div class="phase-desc">重置 CMS 的内部数据结构（Card Table、Bitmap 等），为下一轮 GC 做准备。</div>
+          </div>
+        </div>
+        <div style="font-family:var(--fm);font-size:11px;color:var(--text-3);margin-top:12px;line-height:1.8">
+          <span style="color:var(--red)">■ STW</span>&nbsp;&nbsp;
+          <span style="color:var(--teal)">■ 并发（与应用线程同时运行）</span>&nbsp;&nbsp;
+          <span style="color:var(--g1)">■ 并发（辅助/重置）</span>
+        </div>
+      </div>
+
+      <div class="callout callout-info" style="margin-top:16px">
+        <span class="callout-icon">💡</span>
+        <div class="callout-body">
+          <strong>CMS 触发时机：</strong>Old Gen 占用率达到阈值（<code>-XX:CMSInitiatingOccupancyFraction</code>，默认 92%）时启动并发标记周期。<br>
+          默认阈值 92% 非常高，几乎没有余量——推荐调低到 <strong>70~75%</strong>，给并发阶段留出缓冲，避免 Concurrent Mode Failure。
+        </div>
+      </div>
+      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#16a34a;background:rgba(0,0,0,0.03)">
+        <strong>面试要点：</strong>CMS 四阶段：Initial Mark（STW，标 GC Root 直接引用）→ Concurrent Mark（并发，不 STW）→ Remark（STW，修正并发期间变化，增量更新写屏障记录新增引用）→ Concurrent Sweep（并发清除，不压缩）。Remark 是最长 STW，可用 <code>-XX:+CMSScavengeBeforeRemark</code> 先触发 Minor GC 减少 Remark 扫描量。
+      </div>
+    </div>
+
+    <!-- 卡表 -->
+    <div class="subsection" id="cms-card-table">
+      <h3 class="sub-title"><span class="dot" style="background:var(--orange);box-shadow:0 0 0 3px rgba(194,65,12,0.15)"></span>卡表（Card Table）</h3>
+      <p class="sub-body">
+        Young GC 需要找出所有从 Old Gen 指向 Young Gen 的引用作为 GC Root。
+        若每次都全量扫描 Old Gen 则开销极大。
+        <strong>卡表</strong>将堆划分为 512 字节的小块（Card），用一个字节数组记录每块是否被修改，
+        Young GC 时只扫描被标记为<em>脏（dirty）</em>的 Card，大幅缩小扫描范围。
+      </p>
+
+      <div class="diagram">
+        <div class="diagram-title">卡表结构与脏标记</div>
+        <div style="font-family:var(--fm);font-size:12px;color:var(--text-2);line-height:1.8;margin-bottom:16px">
+          Old Gen 按 512 字节切分为若干 Card，卡表数组中每个字节对应一个 Card：
+        </div>
+        <div class="callout callout-info" style="margin-top:1rem;border-left-color:#16a34a;background:rgba(0,0,0,0.03)">
+          <strong>面试要点：</strong>Card Table 是 CMS（和 G1 的部分场景）记录跨代引用的数据结构：将堆划分为 512B 的 Card，若 Old 区对象引用了 Young 区对象则标记该 Card 为脏（Dirty）。Minor GC 时只扫描脏 Card 而不必扫描全 Old 区，大幅减少根扫描开销。写屏障在每次引用写操作时标记 Card。
+        </div>
+        <div style="overflow-x:auto">
+          <div style="min-width:500px">
+            <div style="display:flex;gap:2px;margin-bottom:6px">
+              <div style="font-family:var(--fm);font-size:10px;color:var(--text-3);width:80px;flex-shrink:0;text-align:right;padding-right:8px;line-height:28px">Old Gen</div>
+              <div style="display:flex;gap:2px;flex:1">
+                <div style="flex:1;height:28px;background:rgba(22,163,74,0.1);border:1px solid rgba(22,163,74,0.25);border-radius:4px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:10px;color:var(--g1)">Card 0<br style="display:none">512B</div>
+                <div style="flex:1;height:28px;background:rgba(185,28,28,0.1);border:1px solid rgba(185,28,28,0.3);border-radius:4px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:10px;color:var(--red);font-weight:600">Card 1 ★</div>
+                <div style="flex:1;height:28px;background:rgba(22,163,74,0.1);border:1px solid rgba(22,163,74,0.25);border-radius:4px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:10px;color:var(--g1)">Card 2</div>
+                <div style="flex:1;height:28px;background:rgba(22,163,74,0.1);border:1px solid rgba(22,163,74,0.25);border-radius:4px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:10px;color:var(--g1)">Card 3</div>
+                <div style="flex:1;height:28px;background:rgba(185,28,28,0.1);border:1px solid rgba(185,28,28,0.3);border-radius:4px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:10px;color:var(--red);font-weight:600">Card 4 ★</div>
+                <div style="flex:1;height:28px;background:rgba(22,163,74,0.1);border:1px solid rgba(22,163,74,0.25);border-radius:4px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:10px;color:var(--g1)">Card 5</div>
+              </div>
+            </div>
+            <div style="display:flex;gap:2px;margin-bottom:6px">
+              <div style="width:80px;flex-shrink:0"></div>
+              <div style="display:flex;gap:2px;flex:1">
+                <div style="flex:1;text-align:center;font-family:var(--fm);font-size:9px;color:var(--text-3)">↕</div>
+                <div style="flex:1;text-align:center;font-family:var(--fm);font-size:9px;color:var(--text-3)">↕</div>
+                <div style="flex:1;text-align:center;font-family:var(--fm);font-size:9px;color:var(--text-3)">↕</div>
+                <div style="flex:1;text-align:center;font-family:var(--fm);font-size:9px;color:var(--text-3)">↕</div>
+                <div style="flex:1;text-align:center;font-family:var(--fm);font-size:9px;color:var(--text-3)">↕</div>
+                <div style="flex:1;text-align:center;font-family:var(--fm);font-size:9px;color:var(--text-3)">↕</div>
+              </div>
+            </div>
+            <div style="display:flex;gap:2px;margin-bottom:14px">
+              <div style="font-family:var(--fm);font-size:10px;color:var(--text-3);width:80px;flex-shrink:0;text-align:right;padding-right:8px;line-height:28px">卡表</div>
+              <div style="display:flex;gap:2px;flex:1">
+                <div style="flex:1;height:28px;background:rgba(22,163,74,0.1);border:1px solid rgba(22,163,74,0.25);border-radius:4px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:11px;font-weight:700;color:var(--g1)">0</div>
+                <div style="flex:1;height:28px;background:rgba(185,28,28,0.12);border:1px solid rgba(185,28,28,0.35);border-radius:4px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:11px;font-weight:700;color:var(--red)">1</div>
+                <div style="flex:1;height:28px;background:rgba(22,163,74,0.1);border:1px solid rgba(22,163,74,0.25);border-radius:4px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:11px;font-weight:700;color:var(--g1)">0</div>
+                <div style="flex:1;height:28px;background:rgba(22,163,74,0.1);border:1px solid rgba(22,163,74,0.25);border-radius:4px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:11px;font-weight:700;color:var(--g1)">0</div>
+                <div style="flex:1;height:28px;background:rgba(185,28,28,0.12);border:1px solid rgba(185,28,28,0.35);border-radius:4px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:11px;font-weight:700;color:var(--red)">1</div>
+                <div style="flex:1;height:28px;background:rgba(22,163,74,0.1);border:1px solid rgba(22,163,74,0.25);border-radius:4px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:11px;font-weight:700;color:var(--g1)">0</div>
+              </div>
+            </div>
+            <div style="font-family:var(--fm);font-size:11px;color:var(--text-3);padding-left:88px;line-height:1.8">
+              <span style="color:var(--red)">■ 1 = 脏（dirty）</span>&nbsp;&nbsp;该 Card 中有引用字段被修改，Young GC 时需扫描&nbsp;&nbsp;
+              <span style="color:var(--g1)">■ 0 = 干净（clean）</span>&nbsp;&nbsp;无需扫描
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="diagram" style="margin-top:20px">
+        <div class="diagram-title">卡表工作流程</div>
+        <div style="display:flex;flex-direction:column;gap:0;border:1px solid var(--border);border-radius:6px;overflow:hidden;font-family:var(--fm);font-size:12px">
+          <div style="display:grid;grid-template-columns:28px 1fr;gap:0">
+            <div style="background:rgba(194,65,12,0.1);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--orange);font-weight:700;border-bottom:1px solid var(--border)">1</div>
+            <div style="padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text-2);line-height:1.7"><strong style="color:var(--text)">应用线程修改引用</strong>：Old Gen 对象的引用字段被赋值（如 <code style="background:rgba(0,0,0,0.06);padding:1px 5px;border-radius:3px;color:var(--zgc)">oldObj.field = youngObj</code>）</div>
+
+            <div style="background:rgba(194,65,12,0.1);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--orange);font-weight:700;border-bottom:1px solid var(--border)">2</div>
+            <div style="padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text-2);line-height:1.7"><strong style="color:var(--text)">写后屏障触发</strong>：JIT 在赋值指令后注入屏障代码，计算该对象所在 Card 的下标，将卡表字节设为 <span style="color:var(--red);font-weight:600">dirty（1）</span></div>
+
+            <div style="background:rgba(194,65,12,0.1);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--orange);font-weight:700;border-bottom:1px solid var(--border)">3</div>
+            <div style="padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text-2);line-height:1.7"><strong style="color:var(--text)">加入 Dirty Card Queue</strong>：脏 Card 索引入队（线程本地队列，满则 flush 到全局队列）</div>
+
+            <div style="background:rgba(194,65,12,0.1);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--orange);font-weight:700;border-bottom:1px solid var(--border)">4</div>
+            <div style="padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text-2);line-height:1.7"><strong style="color:var(--text)">Concurrent Preclean / Remark 处理</strong>：后台/STW 阶段扫描脏 Card，找出其中的跨代引用，完成标记修正，将处理完的 Card 重置为 clean（0）</div>
+
+            <div style="background:rgba(22,163,74,0.12);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--g1);font-weight:700">5</div>
+            <div style="padding:10px 14px;color:var(--text-2);line-height:1.7"><strong style="color:var(--text)">Young GC 扫描</strong>：Minor GC 只需遍历卡表，扫描值为 1 的 Card，即可获取所有老年代 → 新生代的引用，无需全量扫描 Old Gen</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="diagram" style="margin-top:20px">
+        <div class="diagram-title">CMS 卡表 vs G1 RSet</div>
+        <table class="cmp-table">
+          <thead>
+            <tr>
+              <th>维度</th>
+              <th style="color:var(--orange)">CMS 卡表</th>
+              <th style="color:var(--g1)">G1 RSet</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>记录方向</td>
+              <td style="background:rgba(194,65,12,0.03)">记录「谁被修改了」（哪个 Card 含脏引用）</td>
+              <td style="background:rgba(22,163,74,0.03)">记录「谁引用了我」（哪些外部 Card 指向本 Region）</td>
+            </tr>
+            <tr>
+              <td>粒度</td>
+              <td style="background:rgba(194,65,12,0.03)">全堆统一卡表，Card 固定 512 字节</td>
+              <td style="background:rgba(22,163,74,0.03)">每个 Region 独立 RSet，基于 Card Table 二次索引</td>
+            </tr>
+            <tr>
+              <td>查找方式</td>
+              <td style="background:rgba(194,65,12,0.03)">扫描全部脏 Card → 找跨代引用</td>
+              <td style="background:rgba(22,163,74,0.03)">直接查 RSet → 只扫描有引用的来源 Card</td>
+            </tr>
+            <tr>
+              <td>内存开销</td>
+              <td style="background:rgba(194,65,12,0.03)">极低（堆大小 ÷ 512 字节），4GB 堆仅 8MB</td>
+              <td style="background:rgba(22,163,74,0.03)">较高（1%~20% 堆），跨区引用密集时显著增大</td>
+            </tr>
+            <tr>
+              <td>适用场景</td>
+              <td style="background:rgba(194,65,12,0.03)">固定分代，只需区分 Young/Old 跨代引用</td>
+              <td style="background:rgba(22,163,74,0.03)">Region 可变，需精确追踪任意跨 Region 引用</td>
+            </tr>
+          </tbody>
+        </table>
+        <div style="font-family:var(--fm);font-size:11px;color:var(--text-3);margin-top:10px;line-height:1.7">
+          G1 的 RSet 底层同样依赖卡表实现（写后屏障将修改的 Card 记入 Dirty Card Queue），
+          再由 Refinement 线程将 Card 信息汇总到目标 Region 的 RSet 中——可以理解为 <strong style="color:var(--text)">RSet 是卡表的精确化升级版</strong>。
+        </div>
+      </div>
+
+      <div class="kv-grid" style="margin-top:16px">
+        <div class="kv-item">
+          <div class="kv-key" style="color:var(--orange)">Card 大小</div>
+          <div class="kv-val" style="font-size:12px">固定 512 字节。4GB 堆 → 卡表仅 8MB，内存开销极小。</div>
+        </div>
+        <div class="kv-item">
+          <div class="kv-key" style="color:var(--orange)">写后屏障</div>
+          <div class="kv-val" style="font-size:12px">赋值后执行，计算 <code style="background:rgba(0,0,0,0.05);padding:1px 4px;border-radius:3px">card_table[addr >> 9] = dirty</code>，开销极低。</div>
+        </div>
+        <div class="kv-item">
+          <div class="kv-key" style="color:var(--orange)">与增量更新的关系</div>
+          <div class="kv-val" style="font-size:12px">卡表负责「记位置」（哪个 Card 脏了）；增量更新负责「修正标记」（Remark 时重扫灰色对象子树）。两者协作完成 Remark STW。</div>
+        </div>
+        <div class="kv-item">
+          <div class="kv-key" style="color:var(--orange)">Young GC 加速</div>
+          <div class="kv-val" style="font-size:12px">Minor GC 时仅扫描脏 Card，避免全量扫描 Old Gen，是分代 GC 高效运行的基础设施。</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. 增量更新 -->
+    <div class="subsection" id="cms-incremental">
+      <h3 class="sub-title"><span class="dot" style="background:var(--orange);box-shadow:0 0 0 3px rgba(194,65,12,0.15)"></span>增量更新（Incremental Update）</h3>
+      <p class="sub-body">
+        CMS 使用<strong>写后屏障 + 增量更新</strong>解决并发标记漏标问题。
+        当一个黑色对象新增对白色对象的引用时，写后屏障将该黑色对象<em>重新标记为灰色</em>，
+        Remark 阶段重新扫描其所有子引用——这正是 CMS Remark 停顿较长的根本原因。
+      </p>
+      <div class="diagram">
+        <div class="diagram-title">SATB（G1）vs 增量更新（CMS）对比</div>
+        <table class="cmp-table">
+          <thead>
+            <tr>
+              <th>维度</th>
+              <th style="color:var(--g1)">SATB（G1 使用）</th>
+              <th style="color:var(--orange)">增量更新（CMS 使用）</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>屏障时机</td>
+              <td style="background:rgba(21,128,61,0.03)">写<strong>前</strong>屏障，记录被覆盖的<strong>旧引用</strong></td>
+              <td style="background:rgba(194,65,12,0.03)">写<strong>后</strong>屏障，记录新赋入的<strong>新引用目标</strong></td>
+            </tr>
+            <tr>
+              <td>破坏漏标条件</td>
+              <td style="background:rgba(21,128,61,0.03)">破坏条件②：旧引用被删除时保留，防止灰色路径断开</td>
+              <td style="background:rgba(194,65,12,0.03)">破坏条件①：黑色对象新增白色引用后，将黑色重置为灰色重新扫描</td>
+            </tr>
+            <tr>
+              <td>Remark 停顿</td>
+              <td style="background:rgba(21,128,61,0.03)"><strong style="color:var(--g1)">短</strong>——只处理 SATB 队列（通常远小于全堆）</td>
+              <td style="background:rgba(194,65,12,0.03)"><strong style="color:var(--red)">长</strong>——需重扫所有变灰的黑色对象的完整子树</td>
+            </tr>
+            <tr>
+              <td>浮动垃圾</td>
+              <td style="background:rgba(21,128,61,0.03)">较多（快照中存活对象本轮不回收）</td>
+              <td style="background:rgba(194,65,12,0.03)">较少（实时追踪新引用，更精准）</td>
+            </tr>
+            <tr>
+              <td>实现复杂度</td>
+              <td style="background:rgba(21,128,61,0.03)">相对简单，只记录一个旧值</td>
+              <td style="background:rgba(194,65,12,0.03)">复杂，需管理"重新变灰"的黑色对象集合</td>
+            </tr>
+          </tbody>
+        </table>
+        <div style="font-family:var(--fm);font-size:11px;color:var(--text-3);margin-top:10px;line-height:1.7">
+          G1 选择 SATB 而非增量更新的核心原因：<strong style="color:var(--text)">更短的 Remark STW 停顿</strong>，这与 G1 的低停顿目标高度一致。
+        </div>
+      </div>
+      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#16a34a;background:rgba(0,0,0,0.03)">
+        <strong>面试要点：</strong>CMS 的并发阶段（Concurrent Mark / Concurrent Sweep）与应用线程同时运行，会与应用线程<strong>抢占 CPU</strong>（默认使用 (CPU数+3)/4 个线程），在 4 核以下机器上影响较明显。<code>-XX:CMSInitiatingOccupancyFraction</code>（默认 68%）控制何时触发 CMS，设太高会导致 Concurrent Mode Failure，设太低浪费 CPU。
+      </div>
+    </div>
+
+    <!-- 4. 三大核心问题 -->
+    <div class="subsection" id="cms-problems">
+      <h3 class="sub-title"><span class="dot" style="background:var(--orange);box-shadow:0 0 0 3px rgba(194,65,12,0.15)"></span>三大核心问题</h3>
+
+      <div class="diagram">
+        <div class="diagram-title">CMS 三大核心问题</div>
+        <div style="display:flex;flex-direction:column;gap:12px">
+
+          <!-- CMF -->
+          <div style="background:rgba(248,113,113,0.1);border:1px solid rgba(248,113,113,0.3);border-radius:10px;padding:16px">
+            <div style="font-family:var(--fm);font-size:12px;color:var(--red);font-weight:700;margin-bottom:8px;letter-spacing:.03em">① Concurrent Mode Failure（CMF）——最严重</div>
+            <div style="font-family:var(--fm);font-size:12px;color:var(--text-2);line-height:1.8">
+              <strong style="color:var(--text)">触发：</strong>并发清除阶段，应用线程分配速度 &gt; CMS 回收速度，Old Gen 在 GC 结束前被填满。<br>
+              <strong style="color:var(--text)">后果：</strong>CMS 中止，JVM 退化为 <span style="color:var(--red);font-weight:600">Serial Old 单线程 Full GC</span>（STW + 整堆标记压缩），停顿时间可达秒级。<br>
+              <strong style="color:var(--g1)">预防：</strong>调低 <code style="font-family:var(--fm);background:rgba(0,0,0,0.05);padding:1px 5px;border-radius:3px;color:var(--zgc-2)">-XX:CMSInitiatingOccupancyFraction</code> 到 70~75%（提前触发 CMS）；增大堆；优化应用分配热点。
+            </div>
+          </div>
+          <div class="callout callout-info" style="margin-top:1rem;border-left-color:#16a34a;background:rgba(0,0,0,0.03)">
+            <strong>面试要点：</strong>CMS 核心问题：① <strong>浮动垃圾</strong>（并发标记/清除期间新产生的垃圾本轮无法回收）；② <strong>碎片化</strong>（Mark-Sweep 不压缩，大对象分配失败时触发 Full GC）；③ <strong>Concurrent Mode Failure</strong>（老年代在并发阶段满了，退化 Serial Old Full GC，停顿极长）。这三个问题推动了 G1 的设计，G1 通过 Region + Evacuation 同时解决碎片和 CMF。
+          </div>
+
+          <!-- Promotion Failure -->
+          <div style="background:rgba(248,113,113,0.08);border:1px solid rgba(248,113,113,0.2);border-radius:10px;padding:16px">
+            <div style="font-family:var(--fm);font-size:12px;color:var(--red);font-weight:700;margin-bottom:8px;letter-spacing:.03em">② Promotion Failure（晋升失败）</div>
+            <div style="font-family:var(--fm);font-size:12px;color:var(--text-2);line-height:1.8">
+              <strong style="color:var(--text)">触发：</strong>Young GC 尝试将存活对象晋升到 Old Gen，但 Old Gen 的 free-list 找不到<strong>足够大的连续空间</strong>（即使 Old Gen 总空闲空间足够）。<br>
+              <strong style="color:var(--text)">后果：</strong>同样退化为 Full GC（Serial Old），这是内存碎片直接导致的灾难。<br>
+              <strong style="color:var(--g1)">预防：</strong>定期触发 Full GC 整理（<code style="font-family:var(--fm);background:rgba(0,0,0,0.05);padding:1px 5px;border-radius:3px;color:var(--zgc-2)">-XX:+UseCMSCompactAtFullCollection</code>，已废弃）；最根本的解决是迁移到 G1。
+            </div>
+          </div>
+
+          <!-- Fragmentation -->
+          <div style="background:rgba(249,115,22,0.08);border:1px solid rgba(249,115,22,0.2);border-radius:10px;padding:16px">
+            <div style="font-family:var(--fm);font-size:12px;color:var(--zgc);font-weight:700;margin-bottom:8px;letter-spacing:.03em">③ 内存碎片（Memory Fragmentation）——慢性病</div>
+            <div style="font-family:var(--fm);font-size:12px;color:var(--text-2);line-height:1.8">
+              <strong style="color:var(--text)">根因：</strong>Concurrent Sweep 只是将死亡对象标记为空闲归还 free-list，<strong>从不移动对象、从不整理内存</strong>（标记-清除算法本质）。<br>
+              <strong style="color:var(--text)">演化：</strong>随着应用运行，Old Gen 中出现越来越多的"小空洞"，大对象分配越来越难，free-list 查找开销增大，最终引发 Promotion Failure 或 CMF。<br>
+              <strong style="color:var(--g1)">G1 的解法：</strong>Evacuation 阶段将存活对象复制到空 Region，回收后的 Region 整块释放，<strong>天然无碎片</strong>。这是 G1 相对 CMS 最根本的改进之一。
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="kv-grid" style="margin-top:20px">
+        <div class="kv-item">
+          <div class="kv-key" style="color:var(--orange)">CMSInitiatingOccupancyFraction</div>
+          <div class="kv-val" style="font-size:12px">Old Gen 触发阈值，默认 92%（过高）。推荐 70~75%，给并发阶段留余量。</div>
+        </div>
+        <div class="kv-item">
+          <div class="kv-key" style="color:var(--orange)">+UseConcMarkSweepGC</div>
+          <div class="kv-val" style="font-size:12px">启用 CMS。JDK 9 废弃，JDK 14 移除。现代应用请使用 G1 或 ZGC。</div>
+        </div>
+        <div class="kv-item">
+          <div class="kv-key" style="color:var(--orange)">ConcGCThreads</div>
+          <div class="kv-val" style="font-size:12px">并发 GC 线程数。过高会抢占应用 CPU，过低会使并发标记落后于分配速率。</div>
+        </div>
+        <div class="kv-item">
+          <div class="kv-key" style="color:var(--orange)">历史地位</div>
+          <div class="kv-val" style="font-size:12px">JDK 5u3 引入 → JDK 9 废弃 → JDK 14 正式移除。G1 成为默认收集器（JDK 9+）。</div>
+        </div>
+      </div>
+    </div>
+
+  <div style="display:flex;justify-content:flex-end;padding-top:24px;margin-top:12px;border-top:1px solid var(--border)">
+    <a href="gc-qa.html#interview-cms" style="font-family:var(--fm);font-size:12px;color:var(--orange);text-decoration:none;display:inline-flex;align-items:center;gap:6px;padding:7px 18px;background:rgba(194,65,12,0.07);border:1px solid rgba(194,65,12,0.2);border-radius:20px;font-weight:500">CMS 面试题 →</a>
+  </div>
+  </section>
+
+</main>
+</div>
+
+<aside class="toc-panel" id="toc-panel">
+  <div class="toc-title">≡ &nbsp;On this page</div>
+  <nav id="toc-nav"></nav>
+</aside>
+
+<script src="style/search-data.js"></script>
+<script src="style/shared.js"></script>
+</body>
+</html>

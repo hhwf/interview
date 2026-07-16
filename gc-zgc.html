@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ZGC 原理 — 染色指针·读屏障·并发周期</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=DM+Mono:wght@400;500;600&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=DM+Mono:wght@400;500;600&display=swap"></noscript>
+<link rel="preload" as="style" href="https://fontsapi.zeoseven.com/161/main/result.css" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fontsapi.zeoseven.com/161/main/result.css"></noscript>
+<link rel="stylesheet" href="style/shared.css">
+<style>
+:root {
+  --accent:     #d97706;
+  --accent-nav: #d97706; --accent-nav-d: rgba(217,119,6,0.08);
+  --accent-em:  #6d28d9; --accent-em-d:  rgba(109,40,217,0.08);
+}
+/* GC uses a darker/muted diagram palette — override shared.css lighter defaults */
+.phase-stw  { background: rgba(185,28,28,0.07);  border-color: rgba(185,28,28,0.22); }
+.phase-stw  .phase-label { color: #b91c1c; }
+.phase-conc { background: rgba(5,150,105,0.07);  border-color: rgba(5,150,105,0.22); }
+.phase-conc .phase-label { color: #047857; }
+.phase-g1   { background: rgba(22,163,74,0.08);  border-color: rgba(22,163,74,0.22); }
+.phase-g1   .phase-label { color: #16a34a; }
+.region.eden     { background: rgba(22,163,74,0.12);  border-color: rgba(22,163,74,0.38); }
+.region.survivor { background: rgba(180,83,9,0.12);   border-color: rgba(180,83,9,0.35); }
+.region.old      { background: rgba(194,65,12,0.1);   border-color: rgba(194,65,12,0.32); }
+.region.huge     { background: rgba(109,40,217,0.1);  border-color: rgba(109,40,217,0.32); color: #6d28d9; }
+.ptr-fin    { background: rgba(185,28,28,0.08); }
+.ptr-remap  { background: rgba(5,150,105,0.08); }
+.ptr-mark   { background: rgba(109,40,217,0.08); }
+.ptr-fin   .ptr-field-name { color: #b91c1c; }
+.ptr-remap .ptr-field-name { color: #047857; }
+.t-stw   { background: rgba(185,28,28,0.08);  border: 1px solid rgba(185,28,28,0.28);   color: #b91c1c; }
+.t-conc  { background: rgba(5,150,105,0.08);  border: 1px solid rgba(5,150,105,0.25);   color: #047857; }
+.t-pause { background: rgba(185,28,28,0.04);  border: 1px dashed rgba(185,28,28,0.18);  color: rgba(185,28,28,0.5); }
+.lb-action { background: rgba(194,65,12,0.08);  border: 1px solid rgba(194,65,12,0.25);  color: #c2410c; }
+.lb-check  { background: rgba(146,64,14,0.08);  border: 1px solid rgba(146,64,14,0.22);  color: #92400e; }
+.lb-fix    { background: rgba(185,28,28,0.08);  border: 1px solid rgba(185,28,28,0.22);  color: #b91c1c; }
+.lb-return { background: rgba(22,163,74,0.08);  border: 1px solid rgba(22,163,74,0.22);  color: #16a34a; }
+.lb-yes    { color: #16a34a; }
+.lb-no     { color: #b91c1c; }
+</style>
+</head>
+<body>
+
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <span class="logo-badge" style="background:linear-gradient(135deg,#d97706,#b45309)">GC</span>
+    <span class="logo-text">ZGC</span>
+  </div>
+  <div class="page-tabs"></div>
+  <div class="nav-section-label zgc-label">ZGC</div>
+  <a href="#zgc-pointer"  class="nav-link" data-section="zgc-pointer">染色指针</a>
+  <a href="#zgc-multimap" class="nav-link" data-section="zgc-multimap">多重内存映射</a>
+  <a href="#zgc-barrier"  class="nav-link" data-section="zgc-barrier">读屏障</a>
+  <a href="#zgc-cycle"    class="nav-link" data-section="zgc-cycle">GC 并发周期</a>
+  <div class="nav-section-label">对比</div>
+  <a href="#comparison"   class="nav-link" data-section="comparison">G1 vs ZGC</a>
+  <div class="nav-section-label">相关页面</div>
+  <a href="gc-g1.html"    class="nav-link">G1 GC 原理 →</a>
+  <a href="gc-cms.html"   class="nav-link">CMS 原理 →</a>
+  <a href="gc-qa.html"    class="nav-link" style="color:rgba(22,163,74,0.8)">GC 面试题（独立页）→</a>
+  <a href="gc-principles.html" class="nav-link" style="color:var(--text-3)">← GC 总览</a>
+</nav>
+
+<div class="content-wrap">
+<button class="menu-btn" id="menuBtn" onclick="toggleSidebar()">☰</button>
+
+<main class="main">
+
+  <section class="hero" id="overview">
+    <div class="hero-eyebrow">Java Virtual Machine · Garbage Collection</div>
+    <h1><span class="zgc-text">ZGC</span><br>亚毫秒停顿解析</h1>
+    <p class="hero-desc">
+      深入剖析 ZGC 的核心创新——染色指针将 GC 元数据编码进指针高位、多重虚拟内存映射使并发重定位成为可能、读屏障在应用线程读取引用时透明修复指针，实现停顿时间与堆大小无关的亚毫秒级 GC。
+    </p>
+  </section>
+
+  <!-- ══════════════ ZGC ══════════════ -->
+  <section class="gc-section" id="zgc-section">
+    <span class="section-badge zgc">● Z Garbage Collector</span>
+    <h2 class="section-title">ZGC —— 亚毫秒停顿</h2>
+    <p class="section-intro">
+      ZGC 以 <strong>亚毫秒级停顿</strong> 为核心目标，通过染色指针和读屏障
+      将几乎所有 GC 工作移到并发阶段，STW 仅做极少量的根标记。
+      适合对延迟极敏感的大堆（GB~TB 级）场景。
+    </p>
+
+    <!-- 1. 染色指针 -->
+    <div class="subsection" id="zgc-pointer">
+      <h3 class="sub-title"><span class="dot zgc-dot"></span>染色指针（Colored Pointer）</h3>
+      <p class="sub-body">
+        ZGC 的关键创新：将 GC 元数据直接编码进对象指针的 <strong>高位比特</strong>。
+        64 位系统实际寻址只用低 44 位（最大 16TB），剩余高位被 ZGC 借用存储
+        <em>标记状态、重映射状态、Finalizable 状态</em>。
+        这样 GC 无需额外的 Mark Bitmap，读指针即知对象 GC 状态。
+      </p>
+      <div class="diagram">
+        <div class="diagram-title">64 位指针的染色位布局</div>
+        <div class="pointer-layout">
+          <div class="ptr-field ptr-unused">
+            <div class="ptr-field-name">Unused</div>
+            <div class="ptr-bits">bits 63–46<br>（18 位）</div>
+
+    </div>
+      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#16a34a;background:rgba(0,0,0,0.03)">
+        <strong>面试要点：</strong>ZGC 染色指针的本质是将元数据（Finalizable、Remapped、Marked1、Marked0）编码进指针的高 4 位，读对象时通过读屏障解码。<strong>好处</strong>：不需要 Card Table / RSet，降低 GC 元数据内存；<strong>代价</strong>：需要 64 位系统、多重映射支持，寻址空间限制（&lt;64TB）。JDK 21 的 Generational ZGC 引入分代，进一步提升吞吐量。
+      </div>
+          <div class="ptr-field ptr-fin">
+            <div class="ptr-field-name">Finalizable</div>
+            <div class="ptr-bits">bit 45</div>
+          </div>
+          <div class="ptr-field ptr-remap">
+            <div class="ptr-field-name">Remapped</div>
+            <div class="ptr-bits">bit 44</div>
+          </div>
+          <div class="ptr-field ptr-mark">
+            <div class="ptr-field-name">Marked</div>
+            <div class="ptr-bits">bit 43</div>
+          </div>
+          <div class="ptr-field ptr-addr">
+            <div class="ptr-field-name">Object Address</div>
+            <div class="ptr-bits">bits 42–0（43 位，最大 8TB）</div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-top:12px">
+          <div style="font-family:var(--fm);font-size:11px;color:var(--text-2);line-height:1.7;padding:10px 12px;background:var(--red-d);border-radius:5px;border:1px solid rgba(248,113,113,0.2)">
+            <span style="color:var(--red)">Finalizable</span><br>
+            只剩 Finalizer 持有此对象，可触发 finalize()
+          </div>
+          <div style="font-family:var(--fm);font-size:11px;color:var(--text-2);line-height:1.7;padding:10px 12px;background:rgba(45,212,191,0.07);border-radius:5px;border:1px solid rgba(45,212,191,0.2)">
+            <span style="color:var(--teal)">Remapped</span><br>
+            对象已完成地址重映射，指针有效
+          </div>
+          <div style="font-family:var(--fm);font-size:11px;color:var(--text-2);line-height:1.7;padding:10px 12px;background:var(--zgc-d);border-radius:5px;border:1px solid var(--zgc-b)">
+            <span style="color:var(--zgc)">Marked0/1</span><br>
+            两个标记位交替使用，区分本轮与上轮标记
+          </div>
+        </div>
+      </div>
+      <div class="callout callout-info">
+        <span class="callout-icon">💡</span>
+        <div class="callout-body">
+          <strong>为什么 32 位系统无法用染色指针？</strong>
+          32 位指针所有 32 位都用于寻址（最大 4GB），没有任何多余高位可存储元数据。
+          ZGC 因此只支持 64 位 JVM。
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. 多重映射 -->
+    <div class="subsection" id="zgc-multimap">
+      <h3 class="sub-title"><span class="dot zgc-dot"></span>多重虚拟内存映射</h3>
+      <p class="sub-body">
+        染色指针引发一个问题：同一个对象在不同 GC 阶段，其指针高位不同（Marked0 / Marked1 / Remapped），
+        导致同一物理地址对应多个不同的虚拟地址。ZGC 的解法是
+        <strong>将同一块物理内存映射到三个独立的虚拟地址空间</strong>，
+        访问任意一个虚拟地址都能读到同一份物理数据，OS 层面透明。
+      </p>
+      <div class="diagram">
+        <div class="diagram-title">同一物理页 → 三个虚拟地址空间</div>
+        <div class="multimap">
+          <div style="flex:2;min-width:140px">
+            <div style="font-family:var(--fm);font-size:10px;color:var(--text-3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px">虚拟地址空间</div>
+            <div class="vaddr-space" style="margin-bottom:6px;border-color:rgba(249,115,22,0.25)">
+              <div class="vaddr-title" style="color:var(--zgc)">Marked0 空间</div>
+              <div class="vaddr-page" style="background:rgba(249,115,22,0.12);color:var(--zgc-2)">0x0100…0000 Page A</div>
+
+    </div>
+      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#16a34a;background:rgba(0,0,0,0.03)">
+        <strong>面试要点：</strong>多重映射（Multi-Mapping）是 ZGC 实现染色指针的底层机制：将同一物理内存页映射到 3 个不同的虚拟地址空间（Marked0 / Marked1 / Remapped），应用程序访问不同颜色的指针都能访问到同一物理页，只是触发不同的读屏障逻辑。这使得 ZGC 可以在不 STW 的情况下修改指针颜色。
+      </div>
+            <div class="vaddr-space" style="margin-bottom:6px;border-color:rgba(74,222,128,0.25)">
+              <div class="vaddr-title" style="color:var(--g1)">Marked1 空间</div>
+              <div class="vaddr-page" style="background:rgba(74,222,128,0.1);color:var(--g1-2)">0x0200…0000 Page A</div>
+            </div>
+            <div class="vaddr-space" style="border-color:rgba(45,212,191,0.25)">
+              <div class="vaddr-title" style="color:var(--teal)">Remapped 空间</div>
+              <div class="vaddr-page" style="background:rgba(45,212,191,0.08);color:var(--teal)">0x0400…0000 Page A</div>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;justify-content:space-around;padding:30px 8px">
+            <div style="font-family:var(--fm);font-size:18px;color:var(--text-3)">→</div>
+            <div style="font-family:var(--fm);font-size:18px;color:var(--text-3)">→</div>
+            <div style="font-family:var(--fm);font-size:18px;color:var(--text-3)">→</div>
+          </div>
+          <div style="flex:1.5;min-width:100px">
+            <div style="font-family:var(--fm);font-size:10px;color:var(--text-3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px">物理内存</div>
+            <div style="background:var(--bg-2);border:1px solid var(--border-b);border-radius:8px;padding:16px;height:136px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px">
+              <div style="font-family:var(--fm);font-size:13px;color:var(--gold)">物理 Page A</div>
+              <div style="font-family:var(--fm);font-size:10px;color:var(--text-3);text-align:center">三个虚拟地址<br>指向同一数据</div>
+            </div>
+          </div>
+        </div>
+        <div style="font-family:var(--fm);font-size:11px;color:var(--text-3);margin-top:12px;line-height:1.8">
+          GC 并发标记时使用 Marked0/Marked1 空间；重定位后使用 Remapped 空间。
+          物理内存只有一份，虚拟映射是操作系统层面的 mmap 技巧，几乎零开销。
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. 读屏障 -->
+    <div class="subsection" id="zgc-barrier">
+      <h3 class="sub-title"><span class="dot zgc-dot"></span>读屏障（Load Barrier）</h3>
+      <p class="sub-body">
+        每当应用线程从堆中 <strong>加载一个对象引用</strong> 时，JIT 编译器注入的
+        <em>读屏障代码</em> 会检查指针的染色位。若对象已被 GC 移动但指针尚未更新，
+        屏障自动查询转发表，修复指针后再返回——应用线程完全感知不到对象已被移动。
+        这是 ZGC 并发重定位的核心保障。
+      </p>
+      <div class="diagram">
+        <div class="diagram-title">Load Barrier 执行逻辑</div>
+        <div class="lbflow">
+          <div class="lb-box lb-action">应用线程读取引用：<code style="font-family:var(--fm)">obj = *ptr</code></div>
+          <div class="lb-arrow">↓</div>
+          <div class="lb-box lb-check">检查指针 Remapped 位<br>是否已置位？</div>
+          <div class="lb-arrow">↓</div>
+          <div class="lb-branch">
+            <div style="display:flex;flex-direction:column;align-items:center">
+              <div class="lb-yes">是（已重映射）</div>
+              <div class="lb-box lb-return">直接返回对象引用<br>无额外开销</div>
+
+    </div>
+      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#16a34a;background:rgba(0,0,0,0.03)">
+        <strong>面试要点：</strong>ZGC 读屏障（Load Barrier）在<strong>应用线程读取对象引用时</strong>触发（而非写时），检查指针是否需要更新（Remap）。这使 ZGC 能并发移动对象而不需要 STW：移动完成后，下次读该引用时读屏障将旧指针更新为新地址。代价是每次对象读都有额外检查开销（但 JIT 优化后约 10–20ns）。
+      </div>
+            <div style="display:flex;flex-direction:column;align-items:center">
+              <div class="lb-no">否（对象已移动）</div>
+              <div class="lb-box lb-fix">查转发表 → 获取新地址<br>就地修复 *ptr = 新地址</div>
+              <div class="lb-arrow">↓</div>
+              <div class="lb-box lb-return">返回新地址处的对象</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="callout callout-warn">
+        <span class="callout-icon">⚡</span>
+        <div class="callout-body">
+          <strong>性能影响：</strong>读屏障在每次引用加载时都执行，约带来 <em>4%~8% 吞吐量损耗</em>。
+          JDK 21 的 Generational ZGC 优化了屏障逻辑，通过分代减少全堆扫描频率，实际影响更小。
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. ZGC Cycle -->
+    <div class="subsection" id="zgc-cycle">
+      <h3 class="sub-title"><span class="dot zgc-dot"></span>ZGC GC 并发周期</h3>
+      <p class="sub-body">
+        ZGC 一次完整 GC 包含 <strong>3 次极短 STW</strong> 和大量并发工作。
+        STW 只处理必须在安全点完成的少量任务（扫描根），
+        所有耗时工作——标记、移动对象、修复指针——全部并发执行。
+      </p>
+      <div class="diagram">
+        <div class="diagram-title">ZGC 一次 GC 周期的线程时序</div>
+        <div class="zgc-timeline">
+          <div class="timeline-row">
+            <div class="timeline-label">应用线程</div>
+            <div class="timeline-bar">
+              <div class="t-run">运行中</div>
+              <div class="t-stw" style="min-width:40px" title="STW &lt;1ms">P1</div>
+              <div class="t-run">运行中（与标记并发）</div>
+              <div class="t-stw" style="min-width:40px" title="STW &lt;1ms">P2</div>
+              <div class="t-pause" style="min-width:50px">等待</div>
+              <div class="t-stw" style="min-width:40px" title="STW &lt;1ms">P3</div>
+              <div class="t-run">运行中（与重定位并发）</div>
+
+    </div>
+      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#16a34a;background:rgba(0,0,0,0.03)">
+        <strong>面试要点：</strong>ZGC 并发周期包含：① Pause Mark Start（STW，极短，标记 GC Root）② Concurrent Mark（并发，标记所有可达对象）③ Pause Mark End（STW，同步标记结果）④ Concurrent Prepare for Relocation（并发，选 CSet）⑤ Pause Relocate Start（STW，极短）⑥ Concurrent Relocate（并发移动对象）。全程 STW 仅 3 次且均极短（通常 < 1ms），停顿时间与堆大小无关。
+      </div>
+          </div>
+          <div class="timeline-row">
+            <div class="timeline-label">GC 线程</div>
+            <div class="timeline-bar">
+              <div class="t-run" style="flex:0.5;min-width:30px"></div>
+              <div class="t-stw" style="min-width:40px">STW</div>
+              <div class="t-conc">Concurrent Mark（标记全堆）</div>
+              <div class="t-stw" style="min-width:40px">STW</div>
+              <div class="t-conc" style="flex:0.5;min-width:50px">处理<br>引用</div>
+              <div class="t-stw" style="min-width:40px">STW</div>
+              <div class="t-conc">Concurrent Relocate（移动对象）</div>
+            </div>
+          </div>
+        </div>
+        <div style="font-family:var(--fm);font-size:11px;color:var(--text-3);margin-top:8px;margin-bottom:20px">
+          <span style="color:var(--red)">■ STW（P1/P2/P3 均 &lt;1ms）</span>&nbsp;&nbsp;
+          <span style="color:var(--teal)">■ 并发阶段（与应用同时运行）</span>
+        </div>
+
+        <!-- Phase detail table -->
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div style="display:grid;grid-template-columns:160px 60px 1fr;gap:12px;font-family:var(--fm);font-size:10px;color:var(--text-3);letter-spacing:.1em;text-transform:uppercase;padding-bottom:6px;border-bottom:1px solid var(--border)">
+            <div>阶段</div><div>类型</div><div>主要工作</div>
+          </div>
+          <div style="display:grid;grid-template-columns:160px 60px 1fr;gap:12px;font-family:var(--fm);font-size:12px;align-items:start;padding:8px 0;border-bottom:1px solid var(--border)">
+            <div style="color:var(--text)">Pause Mark Start</div>
+            <div><span style="color:var(--red);font-size:10px">STW</span></div>
+            <div style="color:var(--text-2)">标记 GC Roots（线程栈、全局变量），激活读屏障</div>
+          </div>
+          <div style="display:grid;grid-template-columns:160px 60px 1fr;gap:12px;font-family:var(--fm);font-size:12px;align-items:start;padding:8px 0;border-bottom:1px solid var(--border)">
+            <div style="color:var(--text)">Concurrent Mark</div>
+            <div><span style="color:var(--teal);font-size:10px">并发</span></div>
+            <div style="color:var(--text-2)">从根出发遍历对象图，染色指针置 Marked 位，SATB 处理并发变更</div>
+          </div>
+          <div style="display:grid;grid-template-columns:160px 60px 1fr;gap:12px;font-family:var(--fm);font-size:12px;align-items:start;padding:8px 0;border-bottom:1px solid var(--border)">
+            <div style="color:var(--text)">Pause Mark End</div>
+            <div><span style="color:var(--red);font-size:10px">STW</span></div>
+            <div style="color:var(--text-2)">处理漏标，完成最终标记，统计存活率</div>
+          </div>
+          <div style="display:grid;grid-template-columns:160px 60px 1fr;gap:12px;font-family:var(--fm);font-size:12px;align-items:start;padding:8px 0;border-bottom:1px solid var(--border)">
+            <div style="color:var(--text)">Concurrent Process Refs</div>
+            <div><span style="color:var(--teal);font-size:10px">并发</span></div>
+            <div style="color:var(--text-2)">处理软/弱/虚引用，根据策略决定是否清除</div>
+          </div>
+          <div style="display:grid;grid-template-columns:160px 60px 1fr;gap:12px;font-family:var(--fm);font-size:12px;align-items:start;padding:8px 0;border-bottom:1px solid var(--border)">
+            <div style="color:var(--text)">Concurrent Select Reloc Set</div>
+            <div><span style="color:var(--teal);font-size:10px">并发</span></div>
+            <div style="color:var(--text-2)">按存活率选取 Relocation Set（待回收 Region）</div>
+          </div>
+          <div style="display:grid;grid-template-columns:160px 60px 1fr;gap:12px;font-family:var(--fm);font-size:12px;align-items:start;padding:8px 0;border-bottom:1px solid var(--border)">
+            <div style="color:var(--text)">Pause Relocate Start</div>
+            <div><span style="color:var(--red);font-size:10px">STW</span></div>
+            <div style="color:var(--text-2)">移动 Roots 直接引用的对象，建立转发表初始条目</div>
+          </div>
+          <div style="display:grid;grid-template-columns:160px 60px 1fr;gap:12px;font-family:var(--fm);font-size:12px;align-items:start;padding:8px 0">
+            <div style="color:var(--text)">Concurrent Relocate<br>+ Remap</div>
+            <div><span style="color:var(--teal);font-size:10px">并发</span></div>
+            <div style="color:var(--text-2)">并发复制存活对象，维护转发表；应用读到旧地址时读屏障自动修复。Remap（修复全部旧指针）与下次标记合并执行</div>
+          </div>
+        </div>
+      </div>
+      <div class="callout callout-g1">
+        <span class="callout-icon">🔑</span>
+        <div class="callout-body">
+          <strong>停顿短的根本原因：</strong>ZGC 三次 STW 均只做「遍历根引用」这一最小量工作——
+          根引用数量有界（线程数 × 栈深），与堆大小无关。
+          堆从 4GB 增到 4TB，STW 时间几乎不变。
+        </div>
+      </div>
+      <div class="callout callout-info" style="margin-top:16px">
+        <span class="callout-icon">🚀</span>
+        <div class="callout-body">
+          <strong>Generational ZGC（JDK 21，<code style="font-family:var(--fm);font-size:11px">-XX:+ZGenerational</code>）——吞吐量的飞跃：</strong><br>
+          传统 ZGC 每轮标记全堆，读屏障触发频繁，吞吐量比 G1 低 5~15%。JDK 21 引入分代后：
+          <ul style="margin-top:8px;line-height:1.9">
+            <li><strong>Young Gen 快速回收</strong>：大多数短命对象在年轻代收集，无需全堆并发标记，读屏障触发次数大幅减少。</li>
+            <li><strong>吞吐量接近 G1</strong>：Oracle 实测提升 10%~40%，大幅缩小与 G1 的差距。</li>
+            <li><strong>停顿仍保持亚毫秒</strong>：分代设计不影响 STW 上限，依然只扫根引用。</li>
+            <li><strong>JDK 23+ 隐式启用</strong>：<code style="font-family:var(--fm);font-size:11px">-XX:+UseZGC</code> 默认即为分代模式；旧非分代行为需 <code style="font-family:var(--fm);font-size:11px">-XX:-ZGenerational</code> 显式关闭。</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  <div style="display:flex;justify-content:flex-end;padding-top:24px;margin-top:12px;border-top:1px solid var(--border)">
+    <a href="#interview-zgc" style="font-family:var(--fm);font-size:12px;color:var(--zgc);text-decoration:none;display:inline-flex;align-items:center;gap:6px;padding:7px 18px;background:var(--zgc-d);border:1px solid var(--zgc-b);border-radius:20px;font-weight:500">ZGC 面试题 →</a>
+  </div>
+  </section>
+
+  <!-- ══════════════ COMPARISON ══════════════ -->
+  <section class="gc-section" id="comparison">
+    <span class="section-badge cmp">● Comparison</span>
+    <h2 class="section-title">G1 vs ZGC</h2>
+    <p class="section-intro">
+      两者解决相同问题，但在核心设计取舍上走向了两个极端——
+      G1 用局部回收换吞吐，ZGC 用全量并发换极低延迟。
+    </p>
+
+    <div class="subsection">
+      <div class="diagram" style="padding:0">
+        <table class="cmp-table">
+          <thead>
+            <tr>
+              <th>维度</th>
+              <th>G1 GC</th>
+              <th>ZGC</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>引入版本</td>
+              <td>JDK 7u4，默认 JDK 9+</td>
+              <td>JDK 11（实验）/ JDK 15（正式）</td>
+            </tr>
+            <tr style="background:rgba(37,99,235,0.05)">
+              <td><strong>停顿时间</strong></td>
+              <td>几十 ms ~ 几百 ms<br>随堆大小增长</td>
+              <td>&lt; 1ms（STW）<br>基本不随堆大小增长</td>
+            </tr>
+            <tr>
+              <td>Region 设计</td>
+              <td>固定大小（1~32MB）<br>Young/Old 分代</td>
+              <td>可变大小（Small/Medium/Large）<br>非分代（JDK 21 前）</td>
+            </tr>
+            <tr>
+              <td>写/读屏障</td>
+              <td>Write Barrier（写后屏障）<br>维护 RSet / SATB 队列</td>
+              <td>Load Barrier（读屏障）<br>修复指针 + SATB</td>
+            </tr>
+            <tr>
+              <td>跨区引用追踪</td>
+              <td>RSet（每 Region 一个）<br>内存占用 1%~20%</td>
+              <td>无 RSet<br>全堆并发标记代替</td>
+            </tr>
+            <tr>
+              <td>回收策略</td>
+              <td>局部回收（只处理 CSet）<br>Garbage First 优先</td>
+              <td>全堆标记<br>按存活率选 Reloc Set</td>
+            </tr>
+            <tr>
+              <td>吞吐量</td>
+              <td>较高（Write Barrier 开销低）</td>
+              <td>略低（Read Barrier 每次读触发）<br>约降 5~15%</td>
+            </tr>
+            <tr>
+              <td>堆大小适应</td>
+              <td>4GB ~ 64GB 最优<br>超大堆停顿显著增长</td>
+              <td>TB 级堆也能维持亚毫秒</td>
+            </tr>
+            <tr>
+              <td>Full GC 风险</td>
+              <td>Evacuation Failure 时退化<br>为 Serial Old，代价极高</td>
+              <td>Allocation Stall 时阻塞<br>无传统 Full GC</td>
+            </tr>
+            <tr>
+              <td>分代支持</td>
+              <td>完整分代（Young/Old）</td>
+              <td>JDK 21 起 Generational ZGC<br>（-XX:+ZGenerational）</td>
+            </tr>
+            <tr style="background:rgba(37,99,235,0.05)">
+              <td><strong>适用场景</strong></td>
+              <td>通用场景，追求吞吐/延迟均衡<br>堆 4~32GB</td>
+              <td>低延迟优先（电商/交易/实时）<br>大堆 32GB+，JDK 15+</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout callout-info" style="margin-top:28px">
+        <span class="callout-icon">🎯</span>
+        <div class="callout-body">
+          <strong>如何选择：</strong>
+          需要 &lt;10ms 响应延迟 → <span style="color:var(--zgc)">ZGC</span>；
+          堆 &gt;32GB → <span style="color:var(--zgc)">ZGC</span>；
+          追求最大吞吐量且 JDK 版本 &lt;15 → <span style="color:var(--g1)">G1</span>；
+          通用中大型堆（4~32GB）且对停顿不极端敏感 → <span style="color:var(--g1)">G1</span>。
+        </div>
+      </div>
+    </div>
+  <div style="display:flex;justify-content:flex-end;padding-top:24px;margin-top:12px;border-top:1px solid var(--border)">
+    <a href="#interview-cmp" style="font-family:var(--fm);font-size:12px;color:var(--accent);text-decoration:none;display:inline-flex;align-items:center;gap:6px;padding:7px 18px;background:rgba(37,99,235,0.07);border:1px solid rgba(37,99,235,0.2);border-radius:20px;font-weight:500">对比面试题 →</a>
+  </div>
+  </section>
+
+</main>
+</div>
+
+<aside class="toc-panel" id="toc-panel">
+  <div class="toc-title">≡ &nbsp;On this page</div>
+  <nav id="toc-nav"></nav>
+</aside>
+
+<script src="style/search-data.js"></script>
+<script src="style/shared.js"></script>
+</body>
+</html>

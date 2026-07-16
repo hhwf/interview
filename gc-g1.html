@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>G1 GC 原理 — 堆分区·SATB·RSet·Evacuation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=DM+Mono:wght@400;500;600&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=DM+Mono:wght@400;500;600&display=swap"></noscript>
+<link rel="preload" as="style" href="https://fontsapi.zeoseven.com/161/main/result.css" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fontsapi.zeoseven.com/161/main/result.css"></noscript>
+<link rel="stylesheet" href="style/shared.css">
+<style>
+:root {
+  --accent:     #16a34a;
+  --accent-nav: #16a34a; --accent-nav-d: rgba(22,163,74,0.08);
+  --accent-em:  #6d28d9; --accent-em-d:  rgba(109,40,217,0.08);
+}
+.phase-stw  { background: rgba(185,28,28,0.07);  border-color: rgba(185,28,28,0.22); }
+.phase-stw  .phase-label { color: #b91c1c; }
+.phase-conc { background: rgba(5,150,105,0.07);  border-color: rgba(5,150,105,0.22); }
+.phase-conc .phase-label { color: #047857; }
+.phase-g1   { background: rgba(22,163,74,0.08);  border-color: rgba(22,163,74,0.22); }
+.phase-g1   .phase-label { color: #16a34a; }
+.region.eden     { background: rgba(22,163,74,0.12);  border-color: rgba(22,163,74,0.38); }
+.region.survivor { background: rgba(180,83,9,0.12);   border-color: rgba(180,83,9,0.35); }
+.region.old      { background: rgba(194,65,12,0.1);   border-color: rgba(194,65,12,0.32); }
+.region.huge     { background: rgba(109,40,217,0.1);  border-color: rgba(109,40,217,0.32); color: #6d28d9; }
+.t-stw   { background: rgba(185,28,28,0.08);  border: 1px solid rgba(185,28,28,0.28);   color: #b91c1c; }
+.t-conc  { background: rgba(5,150,105,0.08);  border: 1px solid rgba(5,150,105,0.25);   color: #047857; }
+.t-pause { background: rgba(185,28,28,0.04);  border: 1px dashed rgba(185,28,28,0.18);  color: rgba(185,28,28,0.5); }
+</style>
+</head>
+<body>
+
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <span class="logo-badge">GC</span>
+    <span class="logo-text">G1 GC</span>
+  </div>
+  <div class="page-tabs"></div>
+  <div class="nav-section-label g1-label">G1 GC</div>
+  <a href="#g1-heap"       class="nav-link" data-section="g1-heap">堆分区模型</a>
+  <a href="#g1-satb"       class="nav-link" data-section="g1-satb">并发标记 SATB</a>
+  <a href="#g1-rset"       class="nav-link" data-section="g1-rset">Remembered Set</a>
+  <a href="#g1-cset"       class="nav-link" data-section="g1-cset">Collection Set</a>
+  <a href="#g1-evacuation" class="nav-link" data-section="g1-evacuation">Evacuation</a>
+  <a href="#g1-young"      class="nav-link" data-section="g1-young">Young GC 机制</a>
+  <a href="#g1-flow"       class="nav-link" data-section="g1-flow">GC 完整流程</a>
+  <div class="nav-section-label">相关页面</div>
+  <a href="gc-zgc.html"  class="nav-link">ZGC 原理 →</a>
+  <a href="gc-cms.html"  class="nav-link">CMS 原理 →</a>
+  <a href="gc-qa.html"   class="nav-link" style="color:rgba(22,163,74,0.8)">GC 面试题（独立页）→</a>
+  <a href="gc-principles.html" class="nav-link" style="color:var(--text-3)">← GC 总览</a>
+</nav>
+
+<div class="content-wrap">
+<button class="menu-btn" id="menuBtn" onclick="toggleSidebar()">☰</button>
+
+<main class="main">
+
+  <section class="hero" id="overview">
+    <div class="hero-eyebrow">Java Virtual Machine · Garbage Collection</div>
+    <h1><span class="g1-text">G1</span> Garbage Collector<br>深度解析</h1>
+    <p class="hero-desc">
+      深入剖析 G1 GC 的核心设计——Region 分区模型、SATB 并发标记、Remembered Set 跨区引用、Collection Set 选择策略、Evacuation 复制回收、Young GC 并行机制，以及完整 GC 流程与调优参数。
+    </p>
+  </section>
+
+  <!-- ══════════════ G1 GC ══════════════ -->
+  <section class="gc-section" id="g1-section">
+    <span class="section-badge g1">● G1 Garbage Collector</span>
+    <h2 class="section-title">G1 —— Garbage First</h2>
+    <p class="section-intro">
+      G1 是 JDK 9+ 的默认收集器，目标是在 <strong>有限停顿时间内</strong> 尽可能回收垃圾最多的区域，
+      兼顾吞吐量与低延迟，适合 4GB–64GB 的中大型堆。
+    </p>
+
+    <!-- 1. 堆分区 -->
+    <div class="subsection" id="g1-heap">
+      <h3 class="sub-title"><span class="dot g1-dot"></span>堆分区模型（Region）</h3>
+      <p class="sub-body">
+        G1 将整个堆划分为大小相等的 <em>Region</em>（1~32MB，始终为 2 的幂），
+        数量约为 2048 个。Region 的角色不固定——同一块物理内存可以在不同 GC 周期中充当
+        <strong>Eden / Survivor / Old / Humongous</strong>，这是 G1 灵活调度的基础。
+        超过 Region 50% 大小的对象直接分配在连续的 <strong>Humongous Region</strong> 中。
+      </p>
+      <div class="diagram">
+        <div class="diagram-title">G1 堆内存布局示意（每格 = 一个 Region）</div>
+        <div class="heap-grid">
+          <div class="region eden" title="Eden">E</div>
+          <div class="region eden" title="Eden">E</div>
+          <div class="region survivor" title="Survivor">S</div>
+          <div class="region free" title="Free">·</div>
+          <div class="region old" title="Old">O</div>
+          <div class="region old" title="Old">O</div>
+          <div class="region free" title="Free">·</div>
+          <div class="region old" title="Old">O</div>
+          <div class="region free" title="Free">·</div>
+          <div class="region eden" title="Eden">E</div>
+          <div class="region free" title="Free">·</div>
+          <div class="region old" title="Old">O</div>
+          <div class="region huge" title="Humongous">H</div>
+          <div class="region huge" title="Humongous cont.">H+</div>
+          <div class="region survivor" title="Survivor">S</div>
+          <div class="region free" title="Free">·</div>
+          <div class="region old" title="Old">O</div>
+          <div class="region free" title="Free">·</div>
+          <div class="region eden" title="Eden">E</div>
+          <div class="region eden" title="Eden">E</div>
+          <div class="region old" title="Old">O</div>
+          <div class="region free" title="Free">·</div>
+          <div class="region old" title="Old">O</div>
+          <div class="region free" title="Free">·</div>
+          <div class="region free" title="Free">·</div>
+          <div class="region old" title="Old">O</div>
+          <div class="region free" title="Free">·</div>
+          <div class="region survivor" title="Survivor">S</div>
+          <div class="region free" title="Free">·</div>
+          <div class="region old" title="Old">O</div>
+          <div class="region old" title="Old">O</div>
+          <div class="region free" title="Free">·</div>
+        </div>
+        <div class="callout callout-info" style="margin-top:1rem;border-left-color:#16a34a;background:rgba(0,0,0,0.03)">
+          <strong>面试要点：</strong>G1 的核心设计是将堆划分为大小相等的 Region（1–32MB），逻辑上仍有 Eden/Survivor/Old 分区，但物理上可以不连续。<strong>Humongous Region</strong>：对象大小超过 Region 的 50% 则直接分配到 H 区，横跨多个连续 Region。G1 的目标是在可控停顿时间内尽量回收最多垃圾，通过调整 CSet 的大小来控制 STW 时长（<code>-XX:MaxGCPauseMillis</code>）。
+        </div>
+        <div class="heap-legend">
+          <div class="legend-item"><div class="legend-dot" style="background:rgba(74,222,128,0.6)"></div>Eden（新生代）</div>
+          <div class="legend-item"><div class="legend-dot" style="background:rgba(251,191,36,0.6)"></div>Survivor</div>
+          <div class="legend-item"><div class="legend-dot" style="background:rgba(251,146,60,0.6)"></div>Old（老年代）</div>
+          <div class="legend-item"><div class="legend-dot" style="background:rgba(167,139,250,0.6)"></div>Humongous（大对象）</div>
+          <div class="legend-item"><div class="legend-dot" style="background:rgba(0,0,0,0.05)"></div>Free（空闲）</div>
+        </div>
+      </div>
+      <div class="kv-grid">
+        <div class="kv-item">
+          <div class="kv-key">Region 大小</div>
+          <div class="kv-val">1 ~ 32 MB<br>（2 的幂，自动计算）</div>
+        </div>
+        <div class="kv-item">
+          <div class="kv-key">Region 数量</div>
+          <div class="kv-val">目标约 2048 个<br>（可通过 -Xmx 推算）</div>
+        </div>
+        <div class="kv-item">
+          <div class="kv-key">Humongous 阈值</div>
+          <div class="kv-val">&gt; Region 大小 × 50%<br>直接进老年代区域</div>
+        </div>
+        <div class="kv-item">
+          <div class="kv-key">Young 区比例</div>
+          <div class="kv-val">5% ~ 60%（动态）<br>由 GC 停顿目标驱动</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. SATB -->
+    <div class="subsection" id="g1-satb">
+      <h3 class="sub-title"><span class="dot g1-dot"></span>并发标记 — SATB 算法</h3>
+      <p class="sub-body">
+        SATB（<strong>Snapshot-At-The-Beginning</strong>）是 G1 并发标记的核心正确性保障。
+        它建立在三色标记算法之上，通过"标记开始时对引用关系拍快照"
+        加上<em>写前屏障</em>来解决并发标记期间应用线程修改引用可能导致的<strong>漏标</strong>问题。
+      </p>
+
+      <div class="diagram">
+        <div class="diagram-title">① 三色标记算法——对象的三种状态</div>
+        <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px">
+          <div style="flex:1;min-width:150px;background:rgba(0,0,0,0.025);border:2px dashed rgba(0,0,0,0.12);border-radius:10px;padding:16px 14px;text-align:center">
+            <div style="font-family:var(--fm);font-size:22px;margin-bottom:8px;opacity:0.35">○</div>
+            <div style="font-family:var(--fm);font-size:12px;color:var(--text-3);font-weight:600;margin-bottom:6px;letter-spacing:.05em">白色（White）</div>
+            <div style="font-family:var(--fm);font-size:11px;color:var(--text-3);line-height:1.7">尚未被 GC 发现<br>或已确认不可达<br><br>GC 结束后仍为白色 → 回收</div>
+          </div>
+          <div style="flex:1;min-width:150px;background:rgba(251,191,36,0.08);border:2px solid rgba(251,191,36,0.3);border-radius:10px;padding:16px 14px;text-align:center">
+            <div style="font-family:var(--fm);font-size:22px;margin-bottom:8px;color:#fbbf24">◑</div>
+            <div style="font-family:var(--fm);font-size:12px;color:#92400e;font-weight:600;margin-bottom:6px;letter-spacing:.05em">灰色（Gray）</div>
+            <div style="font-family:var(--fm);font-size:11px;color:var(--text-2);line-height:1.7">已被发现并加入<br>待处理队列<br><br>子引用尚未全部扫描</div>
+          </div>
+          <div style="flex:1;min-width:150px;background:rgba(74,222,128,0.1);border:2px solid rgba(74,222,128,0.35);border-radius:10px;padding:16px 14px;text-align:center">
+            <div style="font-family:var(--fm);font-size:22px;margin-bottom:8px;color:var(--g1)">●</div>
+            <div style="font-family:var(--fm);font-size:12px;color:var(--g1);font-weight:600;margin-bottom:6px;letter-spacing:.05em">黑色（Black）</div>
+            <div style="font-family:var(--fm);font-size:11px;color:var(--text-2);line-height:1.7">自身及所有直接<br>子引用均已扫描<br><br>不会被重复处理</div>
+          </div>
+        </div>
+        <div style="background:rgba(0,0,0,0.03);border:1px solid var(--border);border-radius:8px;padding:12px 14px;font-family:var(--fm);font-size:12px;color:var(--text-2);line-height:1.75">
+          <span style="color:var(--g1);font-weight:600">三色不变式：</span>黑色对象<strong style="color:var(--text)">不能直接引用白色对象</strong>——
+          因为黑色对象已完成扫描，不会再被访问，若它指向白色对象，该对象将永远无法被标记为灰色，最终被错误回收。
+        </div>
+      </div>
+      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#16a34a;background:rgba(0,0,0,0.03)">
+        <strong>面试要点：</strong>SATB（Snapshot At The Beginning）是 G1 并发标记的核心算法。并发标记期间，应用线程修改对象引用时，写屏障会将<strong>旧引用值</strong>记入 SATB 队列，确保「快照时刻活着的对象」不会被漏标（避免黑色对象指向白色对象且灰色对象失去该引用的场景）。与增量更新（CMS/G1 Final Remark 用）的区别：SATB 记录删除边，增量更新记录新增边。
+      </div>
+
+      <!-- ② 漏标问题 -->
+      <div class="diagram" style="margin-top:20px">
+        <div class="diagram-title">② 并发修改导致漏标——三色不变式被破坏的场景</div>
+        <div style="font-family:var(--fm);font-size:11px;color:var(--text-3);margin-bottom:14px;line-height:1.7">
+          应用线程与 GC 线程并发运行时，以下两个操作<strong style="color:var(--red)">同时发生</strong>就会产生漏标：
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px">
+          <div style="background:rgba(0,0,0,0.03);border:1px solid var(--border);border-radius:8px;padding:16px 18px;display:flex;gap:16px;align-items:flex-start">
+            <div style="flex:1">
+              <div style="font-family:var(--fm);font-size:10px;color:var(--text-3);margin-bottom:12px;letter-spacing:.08em;text-transform:uppercase">初始状态</div>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:6px">
+                <div style="width:36px;height:36px;background:rgba(74,222,128,0.2);border:2px solid rgba(74,222,128,0.5);border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:11px;color:var(--g1)">A●</div>
+                <div style="font-family:var(--fm);font-size:9px;color:var(--text-3)">↓ 指向</div>
+                <div style="width:36px;height:36px;background:rgba(251,191,36,0.15);border:2px solid rgba(251,191,36,0.4);border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:11px;color:#fbbf24">B◑</div>
+                <div style="font-family:var(--fm);font-size:9px;color:var(--text-3)">↓ 指向</div>
+                <div style="width:36px;height:36px;background:rgba(0,0,0,0.025);border:2px dashed rgba(0,0,0,0.12);border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:11px;color:var(--text-3)">C○</div>
+              </div>
+            </div>
+            <div style="font-family:var(--fm);font-size:11px;color:var(--text-3);line-height:1.7;padding-top:28px">A 已扫描完毕<br>B 正在扫描中<br>C 尚未处理</div>
+          </div>
+          <div style="background:rgba(248,113,113,0.08);border:1px solid rgba(248,113,113,0.2);border-radius:8px;padding:16px 18px;display:flex;gap:16px;align-items:flex-start">
+            <div style="flex:1">
+              <div style="font-family:var(--fm);font-size:10px;color:var(--red);margin-bottom:12px;letter-spacing:.08em;text-transform:uppercase">漏标结果！</div>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:6px">
+                <div style="width:36px;height:36px;background:rgba(74,222,128,0.2);border:2px solid rgba(74,222,128,0.5);border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:11px;color:var(--g1)">A●</div>
+                <div style="font-family:var(--fm);font-size:9px;color:var(--text-3)">↘ (不再扫描)</div>
+                <div style="width:36px;height:36px;background:rgba(74,222,128,0.2);border:2px solid rgba(74,222,128,0.5);border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:11px;color:var(--g1)">B●</div>
+                <div style="height:6px"></div>
+                <div style="width:36px;height:36px;background:rgba(0,0,0,0.025);border:2px dashed rgba(248,113,113,0.5);border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:11px;color:var(--red)">C○</div>
+              </div>
+            </div>
+            <div style="font-family:var(--fm);font-size:11px;color:var(--red);line-height:1.7;padding-top:28px;font-weight:500">C 仍然存活<br>却永远是白色<br>→ 被错误回收！</div>
+          </div>
+        </div>
+        <div style="margin-top:14px;background:rgba(248,113,113,0.08);border:1px solid rgba(248,113,113,0.2);border-radius:8px;padding:12px 14px;font-family:var(--fm);font-size:12px;color:var(--text-2);line-height:1.75">
+          <strong style="color:var(--red)">漏标的两个必要条件（缺一不可）：</strong><br>
+          条件① 黑色对象新增了对白色对象的引用（A.next = C）<br>
+          条件② 所有通往该白色对象的灰色路径被删除（B.next = null）<br>
+          <span style="color:var(--text-3)">破坏任意一个条件，漏标就不会发生。SATB 选择破坏条件②。</span>
+        </div>
+      </div>
+
+      <!-- ③ SATB 解法 -->
+      <div class="diagram" style="margin-top:20px">
+        <div class="diagram-title">③ SATB 快照解法——记录被删除的引用</div>
+        <div style="font-family:var(--fm);font-size:12px;color:var(--text-2);line-height:1.8;margin-bottom:16px">
+          SATB 的核心思路：<strong style="color:var(--text)">标记开始时所有可达对象构成一个逻辑快照</strong>，
+          GC 保证快照中的每个对象本轮都不会被错误回收。
+          当应用线程<em>删除一条引用</em>时，写前屏障把被删除的旧引用值记录下来——
+          这样即使灰色路径断开，目标对象依然能在 Remark 阶段被重新扫描。
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div style="background:rgba(248,113,113,0.08);border:1px solid rgba(248,113,113,0.2);border-radius:8px;padding:14px">
+            <div style="font-family:var(--fm);font-size:10px;color:var(--red);margin-bottom:10px;letter-spacing:.08em;text-transform:uppercase">无屏障（会漏标）</div>
+            <div style="font-family:var(--fm);font-size:12px;color:var(--text-2);line-height:1.8">
+              B.next = null 执行后，C 只剩黑色 A 指向，<br>
+              GC 不会重扫 A，C 永远是白色 → <span style="color:var(--red)">被回收</span>
+            </div>
+          </div>
+          <div style="background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.2);border-radius:8px;padding:14px">
+            <div style="font-family:var(--fm);font-size:10px;color:var(--g1);margin-bottom:10px;letter-spacing:.08em;text-transform:uppercase">有 SATB 写前屏障（正确）</div>
+            <div style="font-family:var(--fm);font-size:12px;color:var(--text-2);line-height:1.8">
+              B.next = null 执行<strong style="color:var(--text)">之前</strong>，屏障将旧值 C 压入队列，<br>
+              Remark 处理队列时标记 C 为存活 → <span style="color:var(--g1)">安全保留</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ④ SATB vs 增量更新 -->
+      <div class="diagram" style="margin-top:20px">
+        <div class="diagram-title">④ SATB vs CMS 增量更新（Incremental Update）</div>
+        <table class="cmp-table">
+          <thead>
+            <tr><th>维度</th><th>SATB（G1）</th><th style="color:var(--teal)">Incremental Update（CMS）</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>屏障时机</td>
+              <td>写<strong>前</strong>屏障，记录<strong>旧引用</strong>（被删除的值）</td>
+              <td style="background:rgba(45,212,191,0.03)">写<strong>后</strong>屏障，记录<strong>新引用</strong>（新赋入的值）</td>
+            </tr>
+            <tr>
+              <td>破坏漏标条件</td>
+              <td>破坏条件②：灰色路径断开时保留旧引用，防止路径彻底丢失</td>
+              <td style="background:rgba(45,212,191,0.03)">破坏条件①：黑色对象新增引用后，将黑色重置为灰色重新扫描</td>
+            </tr>
+            <tr>
+              <td>Remark 停顿</td>
+              <td>短——只处理 SATB 队列（通常远小于全堆）</td>
+              <td style="background:rgba(45,212,191,0.03)">长——需重扫所有被修改变为灰色的黑色对象子树</td>
+            </tr>
+            <tr>
+              <td>浮动垃圾</td>
+              <td>较多——快照中存活的对象本轮不回收</td>
+              <td style="background:rgba(45,212,191,0.03)">较少——实时追踪新引用，垃圾更精准</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 四阶段时序 -->
+      <div class="diagram" style="margin-top:20px">
+        <div class="diagram-title">⑤ G1 并发标记四阶段时序</div>
+        <div class="phase-timeline">
+          <div class="phase-bar phase-stw">
+            <div class="phase-label">① Initial Mark</div>
+            <div class="phase-desc">STW · 搭车 Young GC<br>标记 GC Roots 直接可达对象<br>设置 nextTAMS，激活写前屏障</div>
+          </div>
+          <div class="phase-bar phase-conc">
+            <div class="phase-label">② Concurrent Mark</div>
+            <div class="phase-desc">并发 · DFS 遍历对象图<br>写前屏障记录变更到 SATB Buffer<br>GC 线程持续消费 Global Queue</div>
+          </div>
+          <div class="phase-bar phase-stw">
+            <div class="phase-label">③ Remark</div>
+            <div class="phase-desc">STW · 清空所有 SATB Buffer<br>处理剩余引用，完成漏标修复<br>停顿约 1~10ms</div>
+          </div>
+          <div class="phase-bar phase-g1">
+            <div class="phase-label">④ Cleanup</div>
+            <div class="phase-desc">部分 STW · 统计各 Region<br>存活率，清理 100% 空 Region<br>生成 Mixed GC 候选列表</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="callout callout-warn" style="margin-top:20px">
+        <span class="callout-icon">⚠</span>
+        <div class="callout-body">
+          <strong>浮动垃圾（Floating Garbage）——SATB 的代价：</strong><br>
+          并发标记期间若对象 X 变为不可达，但快照中 X 曾经是可达的，SATB 会把旧引用记录下来确保 X 不被漏标。
+          结果是：X 在本轮 GC 被认为存活，<em>不会被回收</em>，成为"浮动垃圾"，等待下一次 GC 清除。
+          通常浮动垃圾占堆的 0~5%，是 SATB 换取正确性和短暂 Remark 停顿的代价。
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. RSet -->
+    <div class="subsection" id="g1-rset">
+      <h3 class="sub-title"><span class="dot g1-dot"></span>Remembered Set（RSet）</h3>
+      <p class="sub-body">
+        G1 每次只回收部分 Region，但需要知道"从其他 Region 是否有引用指向本 Region 的对象"。
+        <strong>RSet</strong> 就是这个索引：每个 Region 维护一个 Card Table 集合，
+        记录哪些外部 Card（512 字节内存块）持有指向本 Region 的引用。
+        维护由 <em>写后屏障（Post-Write Barrier）</em> + <em>Dirty Card Queue</em> 异步完成。
+      </p>
+      <div class="diagram">
+        <div class="diagram-title">跨 Region 引用与 RSet 示意</div>
+        <div class="rset-diagram">
+          <div class="region-box">
+            <div class="region-box-title" style="color:var(--orange)">Old Region A</div>
+            <div class="rset-entries">
+              <div>obj_α <span class="rset-arrow">──→</span></div>
+              <div>obj_β <span class="rset-arrow">──→</span></div>
+            </div>
+          </div>
+          <svg width="60" height="80" style="flex-shrink:0;margin-top:28px">
+            <defs>
+              <marker id="arr" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+                <polygon points="0 0,8 3,0 6" fill="rgba(249,115,22,0.7)"/>
+              </marker>
+            </defs>
+            <line x1="0" y1="24" x2="50" y2="24" stroke="rgba(249,115,22,0.6)" stroke-width="1.5" marker-end="url(#arr)" stroke-dasharray="4,2"/>
+            <line x1="0" y1="52" x2="50" y2="52" stroke="rgba(249,115,22,0.6)" stroke-width="1.5" marker-end="url(#arr)" stroke-dasharray="4,2"/>
+          </svg>
+          <div class="region-box">
+            <div class="region-box-title" style="color:var(--g1)">Young Region B</div>
+            <div class="rset-entries" style="margin-bottom:10px">
+              <div style="color:var(--text)">obj_1</div>
+              <div style="color:var(--text)">obj_2</div>
+            </div>
+            <div style="border-top:1px solid var(--border);padding-top:10px">
+              <div style="font-family:var(--fm);font-size:10px;color:var(--text-3);margin-bottom:6px">RSet of B</div>
+              <div class="obj-ref" style="color:var(--orange)">Region A · Card 0x20</div><br>
+              <div class="obj-ref" style="color:var(--orange);margin-top:4px">Region A · Card 0x34</div>
+            </div>
+          </div>
+          <div style="font-family:var(--fm);font-size:11px;color:var(--text-3);width:100%;margin-top:12px;line-height:1.8;">
+            回收 Region B 时，只需扫描 RSet 中记录的 Region A 的两个 Card，
+            无需扫描整个堆即可找到所有跨 Region 引用。
+          </div>
+        </div>
+      </div>
+      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#16a34a;background:rgba(0,0,0,0.03)">
+        <strong>面试要点：</strong>RSet（Remembered Set）记录「哪些外部 Region 的对象引用了本 Region」，使 GC 时只扫描 RSet 而不必扫描全堆。<strong>代价</strong>：每次引用写操作都要更新 RSet（通过 dirty card queue → Refinement 线程异步维护），有写屏障开销。RSet 本身也占内存（典型 1–5% 堆空间）。大 Region 的 RSet 条目太多时触发 humongous evacuation failure。
+      </div>
+      <div class="callout callout-warn">
+        <span class="callout-icon">⚠</span>
+        <div class="callout-body">
+          <strong>RSet 的代价：</strong>每个 Region 的 RSet 占用额外内存（通常堆的 1%~20%）；
+          每次写操作都触发写后屏障更新 RSet；Dirty Card Queue 消耗 CPU。
+          Region 越多、跨 Region 引用越密集，RSet 开销越高。
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. CSet -->
+    <div class="subsection" id="g1-cset">
+      <h3 class="sub-title"><span class="dot g1-dot"></span>Collection Set（CSet）与 Garbage First</h3>
+      <p class="sub-body">
+        并发标记后，G1 已知每个 Region 的 <strong>存活率</strong>。
+        "Garbage First" 名字正来源于此——按 <em>垃圾占比 × 回收价值</em> 排序，
+        优先回收垃圾最多的 Region，在停顿时间预算内最大化回收效率。
+        被选入 <strong>CSet（Collection Set）</strong>的 Region，其所有存活对象将被复制走，Region 整体释放。
+      </p>
+      <div class="diagram">
+        <div class="diagram-title">CSet 选取逻辑（按垃圾密度排序）</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="display:flex;gap:8px;align-items:center;font-family:var(--fm);font-size:12px">
+            <div style="width:120px;color:var(--text-3)">Region 存活率</div>
+            <div style="flex:1;background:var(--bg-2);border-radius:4px;overflow:hidden;height:22px;display:flex">
+              <div style="width:15%;background:rgba(74,222,128,0.4);display:flex;align-items:center;padding:0 6px;font-size:10px;color:var(--g1)">15%</div>
+              <div style="width:85%;background:rgba(248,113,113,0.15);display:flex;align-items:center;justify-content:flex-end;padding:0 8px;font-size:10px;color:var(--red)">85% 垃圾 ← 优先回收</div>
+            </div>
+            <div style="color:var(--red);font-size:10px;width:60px;text-align:right">高价值</div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;font-family:var(--fm);font-size:12px">
+            <div style="width:120px;color:var(--text-3)">Region 存活率</div>
+            <div style="flex:1;background:var(--bg-2);border-radius:4px;overflow:hidden;height:22px;display:flex">
+              <div style="width:45%;background:rgba(74,222,128,0.3);display:flex;align-items:center;padding:0 6px;font-size:10px;color:var(--g1)">45%</div>
+              <div style="width:55%;background:rgba(248,113,113,0.1);display:flex;align-items:center;justify-content:flex-end;padding:0 8px;font-size:10px;color:rgba(248,113,113,0.5)">55% 垃圾</div>
+            </div>
+            <div style="color:var(--text-3);font-size:10px;width:60px;text-align:right">次优先</div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;font-family:var(--fm);font-size:12px">
+            <div style="width:120px;color:var(--text-3)">Region 存活率</div>
+            <div style="flex:1;background:var(--bg-2);border-radius:4px;overflow:hidden;height:22px;display:flex">
+              <div style="width:75%;background:rgba(74,222,128,0.2);display:flex;align-items:center;padding:0 6px;font-size:10px;color:rgba(74,222,128,0.6)">75% 存活</div>
+              <div style="width:25%;background:rgba(248,113,113,0.07);display:flex;align-items:center;justify-content:flex-end;padding:0 8px;font-size:10px;color:rgba(248,113,113,0.3)">25%</div>
+            </div>
+            <div style="color:var(--text-3);font-size:10px;width:60px;text-align:right">跳过</div>
+          </div>
+        </div>
+        <div style="font-family:var(--fm);font-size:11px;color:var(--text-3);margin-top:12px;">
+          在停顿时间预算（默认 200ms）内，从高到低选取 Region 加入 CSet，时间耗尽则停止选取。
+        </div>
+      </div>
+      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#16a34a;background:rgba(0,0,0,0.03)">
+        <strong>面试要点：</strong>CSet（Collection Set）是本轮 GC 要回收的 Region 集合。G1 优先选择<strong>垃圾最多的 Region</strong>（Garbage First 命名来源），通过「每 Region 垃圾预估量 ÷ 回收耗时」计算性价比，在 MaxGCPauseMillis 预算内尽量多选高性价比 Region。Mixed GC 时 CSet 包含所有 Young Region + 部分 Old Region。
+      </div>
+    </div>
+
+    <!-- 5. Evacuation -->
+    <div class="subsection" id="g1-evacuation">
+      <h3 class="sub-title"><span class="dot g1-dot"></span>Evacuation（疏散复制）</h3>
+      <p class="sub-body">
+        Evacuation 是 G1 真正回收内存的步骤，<strong>全程 STW</strong>。
+        CSet 中所有存活对象被并行复制（<em>Parallel Copy</em>）到空 Region，
+        原 Region 整体清空——这就避免了碎片化，G1 始终使用整块 Region。
+        若 to-space 不足，则发生 <em>Evacuation Failure</em>，退化为类 Full GC。
+      </p>
+      <div class="diagram">
+        <div class="diagram-title">Evacuation 前后对比</div>
+        <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:16px;align-items:center">
+          <div>
+            <div style="font-family:var(--fm);font-size:10px;color:var(--text-3);margin-bottom:10px;letter-spacing:.1em;text-transform:uppercase">CSet Region（回收前）</div>
+            <div style="display:flex;flex-direction:column;gap:3px">
+              <div style="height:20px;background:rgba(248,113,113,0.15);border-radius:3px;display:flex;align-items:center;padding:0 8px;font-family:var(--fm);font-size:10px;color:var(--red)">垃圾对象 × 8</div>
+              <div style="height:20px;background:rgba(74,222,128,0.2);border-radius:3px;display:flex;align-items:center;padding:0 8px;font-family:var(--fm);font-size:10px;color:var(--g1)">存活对象 obj_a</div>
+              <div style="height:20px;background:rgba(248,113,113,0.15);border-radius:3px;display:flex;align-items:center;padding:0 8px;font-family:var(--fm);font-size:10px;color:var(--red)">垃圾对象 × 5</div>
+              <div style="height:20px;background:rgba(74,222,128,0.2);border-radius:3px;display:flex;align-items:center;padding:0 8px;font-family:var(--fm);font-size:10px;color:var(--g1)">存活对象 obj_b</div>
+              <div style="height:20px;background:rgba(248,113,113,0.15);border-radius:3px;display:flex;align-items:center;padding:0 8px;font-family:var(--fm);font-size:10px;color:var(--red)">垃圾对象 × 3</div>
+            </div>
+          </div>
+          <div style="text-align:center">
+            <div style="font-size:22px;color:var(--zgc)">→</div>
+            <div style="font-family:var(--fm);font-size:9px;color:var(--text-3);margin-top:4px">复制存活</div>
+          </div>
+          <div>
+            <div style="font-family:var(--fm);font-size:10px;color:var(--text-3);margin-bottom:10px;letter-spacing:.1em;text-transform:uppercase">目标 Region（复制后）</div>
+            <div style="display:flex;flex-direction:column;gap:3px">
+              <div style="height:20px;background:rgba(74,222,128,0.2);border-radius:3px;display:flex;align-items:center;padding:0 8px;font-family:var(--fm);font-size:10px;color:var(--g1)">obj_a（紧凑排列）</div>
+              <div style="height:20px;background:rgba(74,222,128,0.2);border-radius:3px;display:flex;align-items:center;padding:0 8px;font-family:var(--fm);font-size:10px;color:var(--g1)">obj_b</div>
+              <div style="height:52px;background:rgba(0,0,0,0.025);border:1px dashed rgba(0,0,0,0.09);border-radius:3px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:10px;color:var(--text-3)">空闲（可继续分配）</div>
+            </div>
+          </div>
+        </div>
+        <div style="font-family:var(--fm);font-size:11px;color:var(--text-3);margin-top:14px;">
+          原 CSet Region 整体标记为 Free，无碎片化，下次可直接分配 Eden/Old 使用。
+        </div>
+      </div>
+      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#16a34a;background:rgba(0,0,0,0.03)">
+        <strong>面试要点：</strong>Evacuation（疏散）= 将 CSet 中存活对象复制到空 Region，原 Region 整体释放（天然压缩，无碎片）。<strong>Evacuation Failure</strong>：没有足够空 Region 接收存活对象时触发，此时 G1 退化为全堆 Stop-The-World（类似 Full GC），是 G1 最需要避免的场景。预防：保留足够空 Region（避免堆使用率超 70–80%）、降低分配速率。
+      </div>
+    </div>
+
+    <!-- 6. Young GC -->
+    <div class="subsection" id="g1-young">
+      <h3 class="sub-title"><span class="dot g1-dot"></span>Young GC 机制详解</h3>
+      <p class="sub-body">
+        Young GC 是 G1 最频繁执行的 GC 类型，<strong>全程 STW、多线程并行</strong>。
+        触发条件是 Eden Region 被填满，目标是回收所有 Young Region（Eden + Survivor），
+        将存活对象复制到新 Survivor Region 或晋升至 Old Region。
+        整个过程以 <em>Evacuation（疏散复制）</em> 为核心，没有标记位清扫，只有对象复制。
+      </p>
+
+      <div class="callout callout-g1" style="margin-top:0">
+        <span class="callout-icon">💡</span>
+        <div class="callout-body">
+          <strong>TLAB（Thread-Local Allocation Buffer）：</strong>
+          每个线程持有一小块独占的 Eden 内存，对象在 TLAB 内分配无需任何锁，速度接近栈分配。
+          TLAB 用尽时才从 Eden 申请新的 TLAB（需短暂锁定），只有 Eden Region 全满时才触发 Young GC。
+          大对象（&gt; TLAB 剩余空间一半）直接在 Eden Region 中 CAS 分配，绕过 TLAB。
+        </div>
+      </div>
+
+      <!-- Young GC 步骤 -->
+      <div class="diagram" style="margin-top:24px">
+        <div class="diagram-title">Young GC 并行执行步骤（全程 STW）</div>
+        <div style="display:flex;flex-direction:column;gap:0;border:1px solid var(--border);border-radius:8px;overflow:hidden">
+          <div style="display:grid;grid-template-columns:32px 140px 60px 1fr;gap:0;background:var(--bg-2);padding:8px 14px;font-family:var(--fm);font-size:10px;color:var(--text-3);letter-spacing:.1em;text-transform:uppercase;border-bottom:1px solid var(--border)">
+            <div>#</div><div>步骤</div><div>线程</div><div>关键说明</div>
+          </div>
+          <div style="display:grid;grid-template-columns:32px 140px 60px 1fr;gap:0;padding:10px 14px;border-bottom:1px solid var(--border);align-items:start">
+            <div style="font-family:var(--fm);font-size:11px;color:var(--text-3)">1</div>
+            <div style="font-family:var(--fm);font-size:12px;color:var(--g1);font-weight:600">Root Scanning</div>
+            <div><span style="font-family:var(--fm);font-size:9px;color:var(--red);background:rgba(248,113,113,0.1);padding:2px 5px;border-radius:3px">并行</span></div>
+            <div style="font-family:var(--fm);font-size:12px;color:var(--text-2);line-height:1.7">扫描所有 GC Roots：线程栈帧局部变量、JNI 全局/局部引用、类的静态字段、JVM 内部引用（类加载器、监视器等）。</div>
+          </div>
+          <div style="display:grid;grid-template-columns:32px 140px 60px 1fr;gap:0;padding:10px 14px;border-bottom:1px solid var(--border);align-items:start">
+            <div style="font-family:var(--fm);font-size:11px;color:var(--text-3)">2</div>
+            <div style="font-family:var(--fm);font-size:12px;color:var(--g1);font-weight:600">Update RS</div>
+            <div><span style="font-family:var(--fm);font-size:9px;color:var(--red);background:rgba(248,113,113,0.1);padding:2px 5px;border-radius:3px">并行</span></div>
+            <div style="font-family:var(--fm);font-size:12px;color:var(--text-2);line-height:1.7">处理 <strong style="color:var(--text)">Dirty Card Queue</strong> 中积压的写后屏障记录，将外部对 Young Region 的引用更新到对应 Region 的 RSet 中。</div>
+          </div>
+          <div style="display:grid;grid-template-columns:32px 140px 60px 1fr;gap:0;padding:10px 14px;border-bottom:1px solid var(--border);align-items:start">
+            <div style="font-family:var(--fm);font-size:11px;color:var(--text-3)">3</div>
+            <div style="font-family:var(--fm);font-size:12px;color:var(--g1);font-weight:600">Scan RS</div>
+            <div><span style="font-family:var(--fm);font-size:9px;color:var(--red);background:rgba(248,113,113,0.1);padding:2px 5px;border-radius:3px">并行</span></div>
+            <div style="font-family:var(--fm);font-size:12px;color:var(--text-2);line-height:1.7">扫描每个 Young Region 的 RSet，找出所有 <strong style="color:var(--text)">Old → Young 跨代引用</strong>，将这些被引用的 Young 对象加入待处理队列（相当于额外的根）。这是 G1 无需扫描全堆的关键。</div>
+          </div>
+          <div style="display:grid;grid-template-columns:32px 140px 60px 1fr;gap:0;padding:10px 14px;border-bottom:1px solid var(--border);align-items:start">
+            <div style="font-family:var(--fm);font-size:11px;color:var(--text-3)">4</div>
+            <div style="font-family:var(--fm);font-size:12px;color:var(--g1);font-weight:600">Object Copy</div>
+            <div><span style="font-family:var(--fm);font-size:9px;color:var(--red);background:rgba(248,113,113,0.1);padding:2px 5px;border-radius:3px">并行</span></div>
+            <div style="font-family:var(--fm);font-size:12px;color:var(--text-2);line-height:1.7">
+              核心步骤。每个 GC 线程持有独立的 <strong style="color:var(--text)">GCLAB</strong>，并行复制存活对象：<br>
+              <span style="color:var(--g1)">▸</span> 年龄 &lt; <code style="font-family:var(--fm);font-size:10px;background:rgba(0,0,0,0.05);padding:1px 4px;border-radius:3px">MaxTenuringThreshold</code>（默认 15）→ 复制到新 Survivor Region，年龄 +1<br>
+              <span style="color:var(--zgc)">▸</span> 年龄 ≥ 阈值 或 Survivor 空间不足 → 晋升至 Old Region
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:32px 140px 60px 1fr;gap:0;padding:10px 14px;align-items:start">
+            <div style="font-family:var(--fm);font-size:11px;color:var(--text-3)">5</div>
+            <div style="font-family:var(--fm);font-size:12px;color:var(--g1);font-weight:600">Free Regions</div>
+            <div><span style="font-family:var(--fm);font-size:9px;color:rgba(0,0,0,0.48);background:rgba(0,0,0,0.05);padding:2px 5px;border-radius:3px">单线程</span></div>
+            <div style="font-family:var(--fm);font-size:12px;color:var(--text-2);line-height:1.7">全部 Eden Region + 旧 Survivor Region 整体释放为 Free，重置 Region 元数据。STW 结束，恢复应用线程。</div>
+          </div>
+        </div>
+      </div>
+      <div class="callout callout-info" style="margin-top:1rem;border-left-color:#16a34a;background:rgba(0,0,0,0.03)">
+        <strong>面试要点：</strong>Young GC 完全 STW（Parallel 多线程执行），只回收 Young Region（Eden + Survivor）。<strong>Minor GC 触发</strong>：Eden Region 分配满时。存活对象根据年龄（默认 15 次）晋升到 Old；Survivor 区大小由 G1 动态调整（<code>-XX:TargetSurvivorRatio</code>）。Young GC 结束后统计停顿时间，动态调整下次 Young 区 Region 数量以满足 MaxGCPauseMillis。
+      </div>
+
+      <div class="callout callout-warn" style="margin-top:16px">
+        <span class="callout-icon">⚠</span>
+        <div class="callout-body">
+          <strong>Evacuation Failure（to-space 溢出）：</strong>
+          Object Copy 阶段若 Survivor + Old 均无空闲 Region 可用，GC 无法完成复制，
+          存活对象原地保留，本次 Young GC 标记失败，随即触发 <em>Full GC（Serial Old）</em>进行全堆压缩。
+          典型诱因：晋升速率过快、<code>-XX:G1ReservePercent</code> 过小、堆占用率长期 &gt;85%。
+        </div>
+      </div>
+    </div>
+
+    <!-- 7. G1 Flow -->
+    <div class="subsection" id="g1-flow">
+      <h3 class="sub-title"><span class="dot g1-dot"></span>G1 完整 GC 流程</h3>
+      <p class="sub-body">
+        G1 的 GC 生命周期由三种模式交替构成，以<strong>老年代占堆比例</strong>作为主要驱动信号。
+        Young GC 在 Eden 填满时持续发生；当 Old 占比触达 <em>IHOP</em> 阈值，
+        下一次 Young GC 会"捎带"启动并发标记（Initial Mark 搭车）；
+        标记完成后连续执行若干轮 Mixed GC 逐步消化老年代；
+        只有内存耗尽且 GC 跟不上分配速率时，才退化为代价极高的 Full GC。
+      </p>
+
+      <div class="diagram">
+        <div class="diagram-title">G1 GC 完整生命周期时序</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="font-family:var(--fm);font-size:10px;color:var(--text-3);width:88px;flex-shrink:0;text-align:right">GC 阶段</div>
+            <div style="flex:1;display:flex;gap:3px;align-items:stretch">
+              <div style="flex:1;min-height:38px;background:rgba(74,222,128,0.13);border:1px solid rgba(74,222,128,0.3);border-radius:4px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:10px;color:var(--g1);text-align:center;line-height:1.4">Young<br>GC</div>
+              <div style="flex:1.4;min-height:38px;background:rgba(74,222,128,0.2);border:2px solid rgba(74,222,128,0.5);border-radius:4px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:var(--fm);font-size:10px;color:var(--g1);text-align:center;line-height:1.3">
+                <span>Young GC</span>
+                <span style="font-size:9px;color:var(--teal);margin-top:2px">+ Initial Mark ★</span>
+              </div>
+              <div style="flex:0.6;min-height:38px;background:rgba(45,212,191,0.1);border:1px solid rgba(45,212,191,0.25);border-radius:4px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:9px;color:var(--teal);text-align:center;line-height:1.4">Conc<br>Mark</div>
+              <div style="flex:0.45;min-height:38px;background:rgba(248,113,113,0.13);border:1px solid rgba(248,113,113,0.3);border-radius:4px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:9px;color:var(--red);text-align:center;line-height:1.4">Re<br>mark</div>
+              <div style="flex:0.5;min-height:38px;background:rgba(45,212,191,0.07);border:1px solid rgba(45,212,191,0.18);border-radius:4px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:9px;color:var(--teal);text-align:center;line-height:1.4">Clean<br>up</div>
+              <div style="flex:1;min-height:38px;background:rgba(251,191,36,0.13);border:1px solid rgba(251,191,36,0.3);border-radius:4px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:10px;color:var(--gold);text-align:center;line-height:1.4">Mixed<br>GC ×1</div>
+              <div style="flex:1;min-height:38px;background:rgba(251,191,36,0.13);border:1px solid rgba(251,191,36,0.3);border-radius:4px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:10px;color:var(--gold);text-align:center;line-height:1.4">Mixed<br>GC ×2</div>
+              <div style="flex:1;min-height:38px;background:rgba(74,222,128,0.13);border:1px solid rgba(74,222,128,0.3);border-radius:4px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:10px;color:var(--g1);text-align:center;line-height:1.4">Young<br>GC</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="font-family:var(--fm);font-size:10px;color:var(--text-3);width:88px;flex-shrink:0;text-align:right">触发条件</div>
+            <div style="flex:1;display:flex;gap:3px;font-family:var(--fm);font-size:9px;color:var(--text-3)">
+              <div style="flex:1;padding:3px 4px;text-align:center;line-height:1.4">Eden 满</div>
+              <div style="flex:1.4;padding:3px 4px;text-align:center;line-height:1.4;color:var(--teal)">Old ≥ IHOP (45%)</div>
+              <div style="flex:0.6;padding:3px 4px;text-align:center">─</div>
+              <div style="flex:0.45;padding:3px 4px;text-align:center">─</div>
+              <div style="flex:0.5;padding:3px 4px;text-align:center">─</div>
+              <div style="flex:1;padding:3px 4px;text-align:center;line-height:1.4;color:var(--gold)">标记完成</div>
+              <div style="flex:1;padding:3px 4px;text-align:center;line-height:1.4;color:var(--gold)">继续回收</div>
+              <div style="flex:1;padding:3px 4px;text-align:center;line-height:1.4">Old 降至安全水位</div>
+            </div>
+          </div>
+        </div>
+        <div style="font-family:var(--fm);font-size:11px;color:var(--text-3);margin-top:12px;line-height:1.9">
+          <span style="color:var(--g1)">★ Initial Mark 搭车</span>：并发标记不单独产生 STW，而是附加在一次 Young GC 尾部（共用同一个安全点），延长该次 Young GC 约 1~3ms。
+        </div>
+      </div>
+
+      <!-- Mixed GC -->
+      <div class="diagram" style="margin-top:20px">
+        <div class="diagram-title">Mixed GC 执行逻辑与退出条件</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <div>
+            <div style="font-family:var(--fm);font-size:10px;color:var(--text-3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px">CSet 构成（每轮 Mixed GC）</div>
+            <div style="display:flex;flex-direction:column;gap:5px">
+              <div style="height:28px;background:rgba(74,222,128,0.15);border:1px solid rgba(74,222,128,0.3);border-radius:4px;display:flex;align-items:center;padding:0 12px;font-family:var(--fm);font-size:11px;color:var(--g1)">全部 Young Region（强制入选）</div>
+              <div style="font-family:var(--fm);font-size:9px;color:var(--text-3);text-align:center">+</div>
+              <div style="background:rgba(251,191,36,0.12);border:1px solid rgba(251,191,36,0.3);border-radius:4px;padding:8px 12px">
+                <div style="font-family:var(--fm);font-size:11px;color:var(--gold);margin-bottom:6px">Old Region（按垃圾密度降序选取）</div>
+                <div style="display:flex;flex-direction:column;gap:3px">
+                  <div style="height:18px;background:rgba(248,113,113,0.2);border-radius:3px;display:flex;align-items:center;padding:0 8px;font-family:var(--fm);font-size:10px;color:var(--red)">Old Region [垃圾 82%] ← 优先</div>
+                  <div style="height:18px;background:rgba(248,113,113,0.14);border-radius:3px;display:flex;align-items:center;padding:0 8px;font-family:var(--fm);font-size:10px;color:rgba(248,113,113,0.8)">Old Region [垃圾 71%]</div>
+                  <div style="height:18px;background:rgba(0,0,0,0.025);border:1px dashed rgba(0,0,0,0.1);border-radius:3px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:10px;color:var(--text-3)">… 加入直到停顿预算耗尽</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div>
+            <div style="font-family:var(--fm);font-size:10px;color:var(--text-3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px">Mixed GC 退出条件（满足任一）</div>
+            <div style="display:flex;flex-direction:column;gap:8px;font-family:var(--fm);font-size:12px">
+              <div style="background:var(--bg-2);border:1px solid var(--border);border-radius:6px;padding:10px 12px;line-height:1.6">
+                <div style="color:var(--gold);margin-bottom:4px">条件 ①</div>
+                <div style="color:var(--text-2)">候选列表中剩余 Old Region 的垃圾占比均 &lt; <code>G1HeapWastePercent</code>（默认 5%），回收性价比不足</div>
+              </div>
+              <div style="background:var(--bg-2);border:1px solid var(--border);border-radius:6px;padding:10px 12px;line-height:1.6">
+                <div style="color:var(--gold);margin-bottom:4px">条件 ②</div>
+                <div style="color:var(--text-2)">已执行轮数达到 <code>G1MixedGCCountTarget</code>（默认 8 轮）上限</div>
+              </div>
+              <div style="background:var(--bg-2);border:1px solid var(--border);border-radius:6px;padding:10px 12px;line-height:1.6">
+                <div style="color:var(--gold);margin-bottom:4px">条件 ③</div>
+                <div style="color:var(--text-2)">老年代占堆比例已降至安全水位以下，Old 压力解除</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style="font-family:var(--fm);font-size:11px;color:var(--text-3);margin-top:14px;line-height:1.8">
+          Mixed GC 本质是加强版 Young GC：Evacuation 步骤相同（全 STW 并行复制），只是 CSet 额外包含了部分 Old Region。
+          Mixed GC 退出后，G1 恢复为纯 Young GC 模式，等待下次 IHOP 触发新一轮并发标记。
+        </div>
+      </div>
+
+      <!-- Full GC 退化 -->
+      <div class="callout callout-warn" style="margin-top:24px">
+        <span class="callout-icon">⚠</span>
+        <div class="callout-body">
+          <strong>Full GC 退化（应极力避免）</strong><br>
+          以下两种情况会触发 Full GC，G1 退化为<em>单线程 Serial Old</em>，对整个堆做压缩整理，停顿可达秒级：
+          <ul style="margin-top:8px;padding-left:0;list-style:none;display:flex;flex-direction:column;gap:6px">
+            <li style="padding-left:16px;position:relative"><span style="position:absolute;left:0;color:var(--red)">▸</span><strong>Evacuation Failure</strong>：Evacuation 时 Free Region 不足，存活对象无处复制。根因：晋升速率过快 / 大对象过多 / 堆占用率长期偏高。</li>
+            <li style="padding-left:16px;position:relative"><span style="position:absolute;left:0;color:var(--red)">▸</span><strong>Concurrent Mode Failure</strong>：并发标记期间 Old 代已被填满，GC 来不及回收——此时触发 Full GC。根因：IHOP 设置过高 / 晋升速率远超并发标记速度。</li>
+          </ul>
+          <strong style="display:block;margin-top:8px">规避手段：</strong>降低 <code>-XX:InitiatingHeapOccupancyPercent</code>（提前触发标记）、增加 <code>-XX:G1ReservePercent</code>（预留更多空 Region）、增大 <code>-Xmx</code>。
+        </div>
+      </div>
+
+      <!-- 关键参数 -->
+      <h4 style="font-family:var(--fw);font-size:16px;color:var(--text-2);margin:28px 0 12px">关键调优参数</h4>
+      <div class="kv-grid" style="grid-template-columns:repeat(auto-fill,minmax(220px,1fr))">
+        <div class="kv-item">
+          <div class="kv-key">MaxGCPauseMillis</div>
+          <div class="kv-val" style="font-size:12px">默认 <strong style="color:var(--g1)">200ms</strong><br>停顿时间目标，驱动 CSet 大小和 Young 区比例动态调整</div>
+        </div>
+        <div class="kv-item">
+          <div class="kv-key">InitiatingHeapOccupancyPercent</div>
+          <div class="kv-val" style="font-size:12px">初始参考值 <strong style="color:var(--g1)">45%</strong>，JDK 9+ 默认启用 <strong>Adaptive IHOP</strong>——G1 根据历史晋升速率和并发标记耗时动态预测触发点</div>
+        </div>
+        <div class="kv-item">
+          <div class="kv-key">G1MixedGCCountTarget</div>
+          <div class="kv-val" style="font-size:12px">默认 <strong style="color:var(--g1)">8</strong><br>一轮并发标记后最多执行 Mixed GC 的轮数上限</div>
+        </div>
+        <div class="kv-item">
+          <div class="kv-key">G1HeapWastePercent</div>
+          <div class="kv-val" style="font-size:12px">默认 <strong style="color:var(--g1)">5%</strong><br>候选 Old Region 垃圾率低于此值时停止 Mixed GC</div>
+        </div>
+        <div class="kv-item">
+          <div class="kv-key">G1ReservePercent</div>
+          <div class="kv-val" style="font-size:12px">默认 <strong style="color:var(--g1)">10%</strong><br>为 Evacuation 预留的堆空间比例，防止 to-space 耗尽</div>
+        </div>
+        <div class="kv-item">
+          <div class="kv-key">G1NewSizePercent / MaxNewSize</div>
+          <div class="kv-val" style="font-size:12px">Young 区占堆的 <strong style="color:var(--g1)">5%~60%</strong><br>G1 在此范围内动态调整 Eden Region 数量</div>
+        </div>
+      </div>
+      <div class="callout callout-info" style="margin-top:24px">
+        <span class="callout-icon">📋</span>
+        <div class="callout-body">
+          <strong>G1 GC 日志关键标志（<code style="font-family:var(--fm);font-size:11px">-Xlog:gc*</code>）：</strong>
+          <ul style="margin-top:8px;line-height:2">
+            <li><code style="font-family:var(--fm);font-size:11px">GC pause (G1 Evacuation Pause) (young)</code> → 正常 Young GC，STW 应 &lt;200ms</li>
+            <li><code style="font-family:var(--fm);font-size:11px">GC pause (G1 Evacuation Pause) (mixed)</code> → Mixed GC，Old Region 正在被回收</li>
+            <li><code style="font-family:var(--fm);font-size:11px;color:var(--red)">(to-space exhausted)</code> → <strong style="color:var(--red)">Evacuation Failure！</strong>立即检查 Free Region 数量和晋升速率</li>
+            <li><code style="font-family:var(--fm);font-size:11px;color:var(--red)">Full GC (Ergonomics)</code> → G1 降级为 Serial Old Full GC，停顿可达秒级</li>
+            <li><code style="font-family:var(--fm);font-size:11px">GC concurrent-mark-start</code> → 并发标记已启动，Old 代占比触达 IHOP 阈值</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+  </section>
+
+  <div style="display:flex;justify-content:flex-end;padding-top:24px;margin-top:12px;border-top:1px solid var(--border)">
+    <a href="gc-qa.html" style="font-family:var(--fm);font-size:12px;color:var(--g1);text-decoration:none;display:inline-flex;align-items:center;gap:6px;padding:7px 18px;background:rgba(22,163,74,0.07);border:1px solid rgba(22,163,74,0.2);border-radius:20px;font-weight:500">G1 面试题 →</a>
+  </div>
+
+</main>
+</div>
+
+<aside class="toc-panel" id="toc-panel">
+  <div class="toc-title">≡ &nbsp;On this page</div>
+  <nav id="toc-nav"></nav>
+</aside>
+
+<script src="style/search-data.js"></script>
+<script src="style/shared.js"></script>
+</body>
+</html>
