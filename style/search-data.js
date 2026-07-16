@@ -270,4 +270,30 @@ window.SEARCH_INDEX = [
   { page: 'architecture.html', label: '架构', id: 'q-arch-12', title: '微服务配置中心（Nacos/Apollo）解决了什么？配置热更新原理？', ctx: 'Q&A' },
   { page: 'architecture.html', label: '架构', id: 'q-arch-13', title: 'TraceID 怎么在跨服务调用中传递？SkyWalking 如何无侵入接入？', ctx: 'Q&A' },
   { page: 'architecture.html', label: '架构', id: 'q-arch-14', title: '两个服务都要用「用户」概念（账号 vs 画像），如何用防腐层 ACL 避免耦合？', ctx: 'Q&A' },
+
+  // ── G1 GC（独立页）──
+  { page: 'gc-g1.html', label: 'G1 GC', id: 'g1-section',     title: 'G1 GC 核心设计', ctx: 'Region 分区、SATB 并发标记、RSet、CSet、Evacuation 疏散回收' },
+  { page: 'gc-g1.html', label: 'G1 GC', id: 'g1-heap',        title: 'G1 堆分区模型', ctx: 'Region 大小、Eden/Survivor/Old/Humongous Region、动态调整 Young 区' },
+  { page: 'gc-g1.html', label: 'G1 GC', id: 'g1-satb',        title: 'SATB 并发标记', ctx: 'Snapshot-At-The-Beginning、写前屏障、SATB 队列、浮动垃圾' },
+  { page: 'gc-g1.html', label: 'G1 GC', id: 'g1-rset',        title: 'Remembered Set (RSet)', ctx: '跨 Region 引用追踪、写后屏障、Dirty Card Queue、Refinement 线程' },
+  { page: 'gc-g1.html', label: 'G1 GC', id: 'g1-cset',        title: 'Collection Set (CSet)', ctx: '垃圾优先、停顿时间预算、MaxGCPauseMillis 200ms 默认' },
+  { page: 'gc-g1.html', label: 'G1 GC', id: 'g1-evacuation',  title: 'Evacuation 疏散回收', ctx: 'STW 并行复制、存活对象迁移、Region 整块释放、to-space exhausted' },
+  { page: 'gc-g1.html', label: 'G1 GC', id: 'g1-young',       title: 'Young GC 流程', ctx: 'GCLAB、并行疏散、Eden 清空、Survivor 晋升、Evacuation Failure' },
+  { page: 'gc-g1.html', label: 'G1 GC', id: 'g1-flow',        title: 'G1 完整 GC 流程', ctx: 'Young GC→并发标记→Mixed GC→Full GC 退化、IHOP 阈值 45%' },
+
+  // ── ZGC（独立页）──
+  { page: 'gc-zgc.html', label: 'ZGC', id: 'zgc-section',    title: 'ZGC 核心设计', ctx: '染色指针、多重虚拟内存映射、读屏障、亚毫秒停顿' },
+  { page: 'gc-zgc.html', label: 'ZGC', id: 'zgc-pointer',    title: '染色指针', ctx: '64 位指针高位编码 GC 元数据、Marked0/Marked1/Remapped/Finalizable' },
+  { page: 'gc-zgc.html', label: 'ZGC', id: 'zgc-multimap',   title: '多重虚拟内存映射', ctx: 'mmap 同一物理内存映射三个虚拟地址空间，配合染色指针访问' },
+  { page: 'gc-zgc.html', label: 'ZGC', id: 'zgc-barrier',    title: '读屏障（Load Barrier）', ctx: '每次堆引用加载时检查 Remapped 位，按需修复旧指针' },
+  { page: 'gc-zgc.html', label: 'ZGC', id: 'zgc-cycle',      title: 'ZGC 并发 GC 周期', ctx: '三次 STW（均 <1ms）、并发标记、并发重定位、延迟修复策略' },
+  { page: 'gc-zgc.html', label: 'ZGC', id: 'comparison',     title: 'G1 vs ZGC 对比', ctx: '停顿模型、吞吐量、RSet vs 全堆标记、适用堆大小、选型依据' },
+
+  // ── CMS GC（独立页）──
+  { page: 'gc-cms.html', label: 'CMS GC', id: 'cms-section',     title: 'CMS GC 概览', ctx: 'Concurrent Mark Sweep、六阶段流程、JDK 14 已移除' },
+  { page: 'gc-cms.html', label: 'CMS GC', id: 'cms-overview',    title: 'CMS 概览与传统分代堆', ctx: 'Eden+Survivor+Old 固定分代、free-list 管理、与 G1 Region 对比' },
+  { page: 'gc-cms.html', label: 'CMS GC', id: 'cms-phases',      title: 'CMS 六阶段流程', ctx: 'Initial Mark、Concurrent Mark、Preclean、Remark（STW）、Sweep、Reset' },
+  { page: 'gc-cms.html', label: 'CMS GC', id: 'cms-card-table',  title: '卡表（Card Table）', ctx: '512B 划分、dirty 标记、写后屏障、Young GC 加速、vs G1 RSet' },
+  { page: 'gc-cms.html', label: 'CMS GC', id: 'cms-incremental', title: '增量更新算法', ctx: '写后屏障、黑色对象变灰、Remark 重扫子树、vs SATB' },
+  { page: 'gc-cms.html', label: 'CMS GC', id: 'cms-problems',    title: 'CMS 三大核心问题', ctx: 'Concurrent Mode Failure、Promotion Failure、内存碎片' },
 ];
